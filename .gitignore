@@ -1,0 +1,11 @@
+# 构建产物（clone 后跑 ./install.sh 或 npm run build 即可）
+dist/
+
+# 本地依赖（只有一个指向 @types/node 的符号链接）
+node_modules/
+
+# 渲染/导出产物（.design-preview 在设计稿旁边，不进仓库）
+.design-preview/
+*.tmp
+
+.DS_Store

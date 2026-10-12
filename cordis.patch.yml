@@ -1,0 +1,3 @@
+- insert:
+    - id: design-tools
+      name: '@local/dsh-plugin-design'

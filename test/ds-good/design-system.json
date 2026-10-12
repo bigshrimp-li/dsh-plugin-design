@@ -1,0 +1,13 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": { "v": 1, "at": "2026-09-14T18:20:00Z" },
+  "title": "Acme",
+  "namespace": "Acme",
+  "libraries": [],
+  "sections": {},
+  "groups": [],
+  "assetGroups": {},
+  "blobs": {},
+  "docs": { "readme": "README.md", "sections": [] }
+}

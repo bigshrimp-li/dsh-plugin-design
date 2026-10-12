@@ -1,0 +1,70 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-12T13:16:11Z"
+  },
+  "title": "Ember Coffee — Order flow",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "1 · Coffee",
+      "is_interactive": true
+    },
+    "Base.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "2 · Base",
+      "is_interactive": true
+    },
+    "Flavor.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "3 · Flavour",
+      "is_interactive": true
+    },
+    "Review.dc.html": {
+      "x": 1410,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "4 · Review",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Base.dc.html",
+    "Flavor.dc.html",
+    "Review.dc.html"
+  ],
+  "notes": {
+    "flow": {
+      "x": 0,
+      "y": -300,
+      "text": "Order flow — coffee › base › flavour › confirm",
+      "kind": "title1",
+      "maxW": 1800
+    }
+  },
+  "designSystems": [
+    {
+      "title": "Ember",
+      "namespace": "ember",
+      "artifact": "../ember-ds",
+      "version": null,
+      "copiedAt": "2026-10-12T13:16:11Z"
+    }
+  ]
+}

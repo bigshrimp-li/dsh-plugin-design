@@ -1,0 +1,34 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-12T09:46:03Z"
+  },
+  "title": "Ethiopia Guji — On the bar",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 794,
+      "h": 1123,
+      "title": "A4 poster"
+    }
+  },
+  "order": [
+    "Main.dc.html"
+  ],
+  "notes": {},
+  "designSystems": [
+    {
+      "title": "Ember",
+      "namespace": "ember",
+      "artifact": "../ember-ds",
+      "version": null,
+      "copiedAt": "2026-10-12T09:46:03Z"
+    }
+  ]
+}

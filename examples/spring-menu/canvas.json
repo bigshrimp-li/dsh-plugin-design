@@ -1,0 +1,11 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-12T08:20:56Z" },
+  "title": "Ember Coffee — Spring Menu",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": { "Main.dc.html": { "x": 0, "y": 0, "w": 880, "h": 560 } },
+  "order": ["Main.dc.html"],
+  "notes": {},
+  "designSystems": []
+}

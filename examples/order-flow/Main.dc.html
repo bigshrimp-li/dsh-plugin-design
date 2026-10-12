@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ember Coffee — Choose your coffee</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Karla:wght@400;500;700&display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #FAF6F0; color: #2B2118; font-family: Karla, ui-sans-serif, system-ui, sans-serif">
+
+<div style="flex: 0 0 auto; padding: 20px 20px 0">
+<div style="display: flex; align-items: center; height: 44px; margin-left: -4px">
+<img src="/_blob/20af7073219326ed93fbb45d8e378119" alt="Ember Coffee" style="width: 122px; height: 34px; display: block">
+</div>
+</div>
+
+<div style="flex: 0 0 auto; padding: 4px 20px 0">
+<p style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #6F6254">Step 1 of 3</p>
+<h1 style="margin: 8px 0 0; font-family: Fraunces, Georgia, serif; font-size: 30px; line-height: 34px; font-weight: 600; letter-spacing: -0.01em">Choose your coffee</h1>
+<p style="margin: 6px 0 0; font-size: 13px; line-height: 19px; color: #6F6254">Ground to order. One size, 12 oz.</p>
+</div>
+
+<div style="flex: 0 0 auto; display: flex; gap: 6px; padding: 20px 20px 0">
+<span style="flex: 1 1 0; height: 3px; border-radius: 9999px; background: #2B2118"></span>
+<span style="flex: 1 1 0; height: 3px; border-radius: 9999px; background: #E4DBCF"></span>
+<span style="flex: 1 1 0; height: 3px; border-radius: 9999px; background: #E4DBCF"></span>
+</div>
+
+<div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+
+<sc-for list="{{coffees}}" as="c" hint-placeholder-count="4">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.selected}}" style="display: flex; align-items: center; gap: 14px; width: 100%; box-sizing: border-box; min-height: 64px; padding: 14px 16px; background: #FFFFFF; border: {{c.border}}; border-radius: 8px; text-align: left; font-size: 16px; color: #2B2118; cursor: pointer">
+<span style="flex: 0 0 auto; width: 20px; height: 20px; box-sizing: border-box; border-radius: 9999px; border: {{c.dotBorder}}; background: {{c.dotFill}}"></span>
+<span style="flex: 1 1 auto; min-width: 0">
+<span style="display: block; font-weight: 700; line-height: 22px">{{c.name}}</span>
+<span style="display: block; margin-top: 2px; font-size: 13px; line-height: 18px; color: #6F6254">{{c.note}}</span>
+</span>
+</button>
+</sc-for>
+
+<p style="margin: 6px 2px 0; font-size: 13px; line-height: 19px; color: #6F6254">Every coffee is 12 oz and ground to order. Ask at the bar if you want the beans whole.</p>
+
+</div>
+
+<div style="flex: 0 0 auto; padding: 16px 20px 28px; border-top: 1px solid #E4DBCF">
+<a href="Base.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 52px; background: #2B2118; color: #FFFFFF; border-radius: 8px; font-size: 16px; font-weight: 700; text-decoration: none">Next: choose a base</a>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+var coffees = [
+{ id: 'guji', name: 'Ethiopia Guji', note: 'Washed · jasmine, apricot' },
+{ id: 'huila', name: 'Colombia Huila', note: 'Natural · cocoa, red plum' },
+{ id: 'house', name: 'House blend', note: 'Chocolate, hazelnut · the everyday one' },
+{ id: 'decaf', name: 'Decaf Brazil', note: 'Nutty, low acid · same price' }
+];
+var picked = (this.state && this.state.picked) || 'guji';
+return {
+coffees: coffees.map(function (c) {
+var on = c.id === picked;
+return {
+name: c.name,
+note: c.note,
+selected: on,
+border: on ? '1.5px solid #C2410C' : '1.5px solid #E4DBCF',
+dotBorder: on ? '5px solid #C2410C' : '1.5px solid #C9BCA9',
+dotFill: on ? '#C2410C' : 'transparent',
+pick: function () { this.setState({ picked: c.id }); }.bind(this)
+};
+}.bind(this))
+};
+}
+}
+</script>
+</body>
+</html>

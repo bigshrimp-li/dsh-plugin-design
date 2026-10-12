@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Broken</title>
+<script src="./SUPPORT.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width: 880px>
+<h1 style=color:red>{{ a + b }}</h1>
+<img src="data:image/png;base64,AAAA">
+<iframe src="https://example.com"></iframe>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":"#fff",}'>
+class Component extends DCLogic { renderVals() { document.body.innerHTML = 'x'; return {}; } }
+</script>
+</body>
+</html>

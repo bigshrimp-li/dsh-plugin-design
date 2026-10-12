@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ethiopia Guji — On the bar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Karla:wght@400;500;700&display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; display: flex; flex-direction: column; background: #FAF6F0; color: #2B2118; font-family: Karla, ui-sans-serif, system-ui, sans-serif">
+
+<div style="flex: 1 1 auto; min-height: 0; padding: 72px 72px 0; display: flex; flex-direction: column">
+
+<img src="/_blob/20af7073219326ed93fbb45d8e378119" alt="Ember Coffee" style="width: 190px; height: 52px; display: block">
+
+<div style="margin-top: 64px; display: flex; align-items: center; gap: 12px">
+<span style="display: block; width: 28px; height: 1px; background: #2B2118"></span>
+<p style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #6F6254">On the bar now</p>
+</div>
+
+<h1 style="margin: 22px 0 0; font-family: Fraunces, Georgia, serif; font-size: 112px; line-height: 1; font-weight: 600; letter-spacing: -0.02em">Ethiopia<br>Guji</h1>
+
+<p style="margin: 26px 0 0; font-size: 20px; line-height: 28px; color: #6F6254">Washed &middot; jasmine, apricot</p>
+
+<sc-if value="{{showNotes}}" hint-placeholder-val="{{true}}">
+<p style="margin: 14px 0 0; font-size: 17px; line-height: 27px; max-width: 34ch; text-wrap: pretty">Rested four days, roasted on Tuesdays. Ground to order at the counter, or take it whole.</p>
+</sc-if>
+
+<div style="margin-top: auto; padding-top: 56px">
+<svg viewBox="0 0 320 220" width="320" height="220" aria-hidden="true" style="display: block; margin-left: -8px">
+<circle cx="96" cy="132" r="88" fill="none" stroke="#E4DBCF" stroke-width="2" />
+<circle cx="158" cy="136" r="72" fill="none" stroke="#E4DBCF" stroke-width="2" />
+<circle cx="216" cy="140" r="55" fill="none" stroke="#E4DBCF" stroke-width="2" />
+</svg>
+</div>
+
+</div>
+
+<div style="flex: 0 0 auto; background: {{accent}}; color: #FFFFFF; padding: 56px 72px 56px">
+
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #FFFFFF">250 g &middot; whole bean or ground</p>
+
+<p style="margin: 10px 0 0; font-family: Fraunces, Georgia, serif; font-size: 52px; line-height: 1; font-weight: 600; color: #FFFFFF">[PRICE]</p>
+
+<p style="margin: 26px 0 0; font-size: 13px; line-height: 18px; letter-spacing: 0.04em; color: #FFFFFF">[WEBSITE]</p>
+
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C2410C"},"showNotes":{"editor":"boolean","default":true},"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+renderVals() {
+return { accent: this.props.accent ?? '#C2410C', showNotes: this.props.showNotes ?? true };
+}
+}
+</script>
+</body>
+</html>

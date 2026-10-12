@@ -1,0 +1,33 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": { "v": 1, "at": "2026-10-12T08:21:00Z" },
+  "title": "Ember",
+  "namespace": "Ember",
+  "libraries": [],
+  "sections": {},
+  "groups": ["Logos"],
+  "assetGroups": {
+    "Logos": {
+      "name": "Logos",
+      "tile": "l",
+      "order": ["ember-wordmark.svg"],
+      "files": {
+        "ember-wordmark.svg": {
+          "name": "ember-wordmark.svg",
+          "blob": "20af7073219326ed93fbb45d8e378119",
+          "size": 318,
+          "type": "image/svg+xml"
+        }
+      }
+    }
+  },
+  "blobs": {},
+  "docs": { "readme": "README.md", "sections": [] },
+  "lastChange": {
+    "by": "DSH",
+    "at": "2026-10-12T08:21:00Z",
+    "via": "design_system_import_asset",
+    "note": "First version: brand manual, tokens and the wordmark."
+  }
+}

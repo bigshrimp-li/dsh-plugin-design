@@ -1,0 +1,9 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-09-14T18:20:00Z" },
+  "title": "Broken",
+  "boards": { "Main.dc.html": { "x": 0, "y": 0, "w": 20, "h": 560 }, "Missing.dc.html": { "x": 0, "y": 700, "w": 800, "h": 600 } },
+  "order": ["Main.dc.html", "Missing.dc.html"],
+  "notes": {},
+  "designSystems": []
+}
