@@ -8,12 +8,17 @@
  * 于是：DSH 里的侧边栏面板只是一个指向它的 iframe；用浏览器直接打开它也能用。
  */
 import http from 'node:http';
+import { handleStructure } from './structure-routes.ts';
+import { handleClipboard } from './clipboard-routes.ts';
+import { handleNotes } from './notes-routes.ts';
+import { handleMultiSelect } from './multiselect-routes.ts';
+import { handleAnnotations } from './annotation-routes.ts';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
-import { checkCanvas } from '../check/canvas-check.ts';
-import { elementAt, listElements, readBoard, setInlineStyle, setText } from './source.ts';
+import { realpathSync } from 'node:fs';
+import { EditorTransactions, revisionOf, TransactionError } from './transactions.ts';
+import { elementAt, listElements, setInlineStyle, setText, validateSourceRef } from './source.ts';
 
 const ASSETS = fileURLToPath(new URL('./assets/', import.meta.url));
 const SUPPORT = fileURLToPath(new URL('../../vendor/support.js', import.meta.url));
@@ -49,22 +54,22 @@ function safeJoin(root: string, rel: string): string {
   return abs;
 }
 
-interface UndoEntry { abs: string; before: string; after: string; at: number; label: string }
-const revisionOf = (source: string) => createHash('sha256').update(source).digest('hex');
-
 export async function startEditor(options: EditorOptions): Promise<EditorHandle> {
-  const workspace = path.resolve(options.workspaceDir);
-  const undo = new Map<string, UndoEntry[]>();
+  const workspace = await fs.realpath(options.workspaceDir);
+  const transactions = new EditorTransactions();
   const clients = new Set<http.ServerResponse>();
-  // Validation reads every board in a canvas, so writes/undo share a canvas lock.
-  const writes = new Map<string, Promise<void>>();
-  const lock = async (key: string) => {
-    const previous = writes.get(key) ?? Promise.resolve();
-    let release!: () => void;
-    const current = new Promise<void>(resolve => { release = resolve; });
-    writes.set(key, current);
-    await previous;
-    return () => { release(); if (writes.get(key) === current) writes.delete(key); };
+  const canvasDir = (canvas: string) => {
+    const dir = realpathSync(safeJoin(workspace, canvas));
+    safeJoin(workspace, path.relative(workspace, dir));
+    return dir;
+  };
+  const boardPath = async (dir: string, board: string) => {
+    const index = JSON.parse(await fs.readFile(path.join(dir, 'canvas.json'), 'utf8'));
+    if (!Array.isArray(index.order) || !index.order.includes(board) || !index.boards?.[board])
+      throw new TransactionError(400, 'unknown_board', '画板未登记在设计稿索引中');
+    const abs = realpathSync(safeJoin(dir, board));
+    safeJoin(dir, path.relative(dir, abs));
+    return abs;
   };
   const support = await fs.readFile(SUPPORT);
 
@@ -120,7 +125,6 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-    let releaseWrite: (() => void) | undefined;
     const json = (code: number, value: unknown) => {
       if (res.headersSent) return;
       res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -135,7 +139,7 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
         res.end(await fs.readFile(path.join(ASSETS, 'shell.html')));
         return;
       }
-      if (route === '/shell.js' || route === '/shell.css') {
+      if (/^\/[a-z][a-z0-9-]*\.(js|css)$/.test(route) && route !== '/support.js') {
         res.writeHead(200, { 'Content-Type': mimeOf(route), 'Cache-Control': 'no-store' });
         res.end(await fs.readFile(path.join(ASSETS, route.slice(1))));
         return;
@@ -158,7 +162,9 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
         const rest = route.slice('/board/'.length);
         const abs = safeJoin(workspace, rest);
         let html = await fs.readFile(abs, 'utf8');
-        const canvasRel = path.dirname(rest);
+        let root = path.dirname(abs);
+        while (!(await fs.stat(path.join(root, 'canvas.json')).catch(() => null)) && root !== workspace) root = path.dirname(root);
+        const canvasRel = path.relative(workspace, root) || '.';
         // 素材是内容寻址的绝对路径 `/_blob/<id>`：补上设计稿前缀，不去改设计稿本身
         html = html.split('"/_blob/').join(`"/_blob/${canvasRel}/`);
         html = html.split("'/_blob/").join(`'/_blob/${canvasRel}/`);
@@ -210,9 +216,10 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
       if (route === '/api/board') {
         const canvasRel = url.searchParams.get('canvas') ?? '';
         const boardRel = url.searchParams.get('board') ?? '';
-        const dir = safeJoin(workspace, canvasRel);
-        const index = JSON.parse(await fs.readFile(path.join(dir, 'canvas.json'), 'utf8'));
-        const abs = safeJoin(dir, boardRel);
+        const dir = canvasDir(canvasRel);
+        const indexSource = await fs.readFile(path.join(dir, 'canvas.json'), 'utf8');
+        const index = JSON.parse(indexSource);
+        const abs = await boardPath(dir, boardRel);
         const source = await fs.readFile(abs, 'utf8');
         const box = index.boards?.[boardRel];
         json(200, {
@@ -221,7 +228,7 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
           title: index.title,
           declared: box ? { w: box.w, h: box.h } : null,
           isInteractive: box?.is_interactive === true,
-          source,
+          source, canvasIndex: index, indexRevision: revisionOf(indexSource),
           revision: revisionOf(source),
           elements: listElements(source).map((e) => ({
             tid: e.tid, tag: e.tag, depth: e.depth, parentTid: e.parentTid,
@@ -231,92 +238,60 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
             editableText: !e.isVoid && !e.selfClosing && !['style', 'script', 'helmet'].includes(e.tag)
               && !/<[A-Za-z]/.test(source.slice(e.inner[0], e.inner[1])),
           })),
-          canUndo: (undo.get(abs)?.length ?? 0) > 0,
+          ...transactions.status(dir),
         });
         return;
       }
 
-      if (route === '/api/edit' && req.method === 'POST') {
+      if (req.method === 'POST' && route.startsWith('/api/')) {
         const body = await readJsonBody(req);
         const canvasRel = String(body.canvas ?? '');
         const boardRel = String(body.board ?? '');
-        const tid = Number(body.tid);
-        if (!Number.isInteger(tid)) { json(400, { error: 'tid 必须是整数' }); return; }
-        const dir = safeJoin(workspace, canvasRel);
-        const abs = safeJoin(dir, boardRel);
-        releaseWrite = await lock(dir);
-
-        // 两个写者（人 + agent）：写入前当场重读，永远基于磁盘上的当前内容改
-        const before = await readBoard(abs);
-        if (body.revision !== undefined && body.revision !== revisionOf(before)) {
-          json(409, { error: '画板已在别处修改，本次保存已停止。请重新加载后再编辑。' });
+        const dir = canvasDir(canvasRel);
+        if (route === '/api/edit') {
+          await boardPath(dir, boardRel);
+          const tid = Number(body.tid);
+          if (!Number.isSafeInteger(tid) || typeof body.revision !== 'string')
+            throw new TransactionError(400, 'revision_required', '保存需要有效元素编号和读取版本');
+          let after = '';
+          const out = await transactions.mutate(dir, {
+            label: typeof body.text === 'string' ? '修改文字' : '修改样式', origin: body.origin,
+            revisions: { [boardRel]: body.revision },
+            build(snapshot) {
+              const before = snapshot[boardRel]!.toString('utf8');
+              // Legacy callers may omit sourceRef, but may never omit the revision.
+              try {
+                const target = validateSourceRef(before, body.sourceRef ?? {canvas:canvasRel,board:boardRel,revision:body.revision,tid}, {canvas:canvasRel,board:boardRel});
+                if (target.tid !== tid) throw new Error('元素引用与目标编号不一致');
+              } catch (error) { throw new TransactionError(409, 'invalid_source', String((error as Error).message)); }
+              try { after = typeof body.text === 'string' ? setText(before, tid, body.text) : setInlineStyle(before, tid, String(body.style ?? '')); }
+              catch(error) { throw new TransactionError(409, 'invalid_edit', (error as Error).message); }
+              return { [boardRel]: after };
+            },
+          });
+          if (out.changed) broadcast({type:'edited',canvas:canvasRel,board:boardRel,tid,files:out.files,origin:body.origin});
+          json(200, {...out, style:elementAt(after,tid)?.style ?? '', revision:revisionOf(after)});
           return;
         }
-        let after: string;
-        try {
-          after = typeof body.text === 'string'
-            ? setText(before, tid, body.text)
-            : setInlineStyle(before, tid, typeof body.style === 'string' ? body.style : '');
-        } catch (e) {
-          json(409, { error: e instanceof Error ? e.message : String(e) });
+        if (route === '/api/undo' || route === '/api/redo') {
+          const out = await transactions[route === '/api/undo' ? 'undo' : 'redo'](dir);
+          if (out.changed) broadcast({type:'edited',canvas:canvasRel,files:out.files,origin:body.origin});
+          json(200, {...out, revision:out.revisions[boardRel]});
           return;
         }
-        if (after === before) {
-          json(200, { changed: false, style: elementAt(after, tid)?.style ?? '', revision: revisionOf(after), canUndo: (undo.get(abs)?.length ?? 0) > 0 });
-          return;
+        const ctx = {workspace,canvasDir,boardPath,transactions,broadcast,origin:body.origin};
+        for (const handler of [handleStructure, handleClipboard, handleNotes, handleMultiSelect, handleAnnotations]) {
+          const result = await handler(route,body,ctx);
+          if (result !== undefined) { json(200,result); return; }
         }
-
-        // 写完先自检：编辑器不该产出不合法的画板
-        await fs.writeFile(abs, after);
-        const report = await checkCanvas(dir).catch((e) => ({ issues: [{ file: '', message: String(e) }] }));
-        const issues = report.issues ?? [];
-        if (issues.length > 0) {
-          // An outside writer is not covered by our lock; never roll its newer bytes back.
-          if (await fs.readFile(abs, 'utf8') === after) await fs.writeFile(abs, before);
-          json(422, { error: '这次改动会让设计稿校验不过，已经回滚', problems: issues.slice(0, 6) });
-          return;
-        }
-
-        const stack = undo.get(abs) ?? [];
-        stack.push({ abs, before, after, at: Date.now(), label: typeof body.text === 'string' ? 'text' : 'style' });
-        if (stack.length > 100) stack.shift();
-        undo.set(abs, stack);
-
-        const el = elementAt(after, tid);
-        // 带上发起方：否则自己的改动会从 SSE 绕回来，被当成"别人改了"而触发一次无谓的重载
-        broadcast({ type: 'edited', canvas: canvasRel, board: boardRel, tid, origin: body.origin ?? null });
-        json(200, { changed: true, style: el?.style ?? '', canUndo: true, revision: revisionOf(after) });
-        return;
-      }
-
-      if (route === '/api/undo' && req.method === 'POST') {
-        const body = await readJsonBody(req);
-        const dir = safeJoin(workspace, String(body.canvas ?? ''));
-        const abs = safeJoin(dir, String(body.board ?? ''));
-        releaseWrite = await lock(dir);
-        const stack = undo.get(abs) ?? [];
-        const entry = stack.at(-1);
-        if (entry === undefined) { json(200, { changed: false, canUndo: false }); return; }
-        // 只有在文件仍是我们写下的那一版时才回退，避免抹掉 agent 之后的改动
-        const current = await fs.readFile(abs, 'utf8');
-        if (current !== entry.after) {
-          json(409, { error: '这个文件在编辑器之外被改过（可能是 agent），撤销会覆盖掉那些改动，所以停手了', changed: false });
-          return;
-        }
-        await fs.writeFile(abs, entry.before);
-        stack.pop();
-        broadcast({ type: 'edited', canvas: body.canvas, board: body.board, tid: null, origin: body.origin ?? null });
-        json(200, { changed: true, canUndo: stack.length > 0, revision: revisionOf(entry.before) });
-        return;
       }
 
       json(404, { error: `没有这个路由：${route}` });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      const code = /ENOENT/.test(message) ? 404 : 500;
-      json(code, { error: message });
-    } finally {
-      releaseWrite?.();
+      const error = e as TransactionError;
+      const code = error.status ?? (/ENOENT/.test(message) ? 404 : 500);
+      json(code, { error: message, code:error.code, problems:error.problems });
     }
   });
 

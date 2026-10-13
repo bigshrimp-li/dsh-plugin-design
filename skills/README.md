@@ -1,43 +1,38 @@
 # skills/
 
-Two DSH skills, copied from BaoCut and adapted. `install.sh` copies `design/` and `design-system/`
-into `<dsh home>/skills/` — **do not symlink this whole directory**: the skill provider treats every
-top-level `*.md` and `<name>/SKILL.md` under a scanned root as a skill, so this README would itself
-show up as a skill named "README".
+本目录包含两个从 BaoCut 移植并适配 DeepSeek Harness 的技能。`install.sh` 将 `design/` 与 `design-system/` 复制到 `<dsh home>/skills/`。
 
-## What they are
+不要把整个 `skills/` 目录作为符号链接安装。技能提供器会扫描顶层 Markdown 文件及子目录的 `SKILL.md`，这会导致本 README 也被识别成技能。
 
-| Skill | Teaches the agent |
+## 技能分工
+
+| 技能 | 内容 |
 |---|---|
-| `design/` | write a design canvas: `canvas.json` (v3) plus one `.dc.html` per artboard, validate with `design_check`, then render with `design_render` |
-| `design-system/` | write a design system: `design-system.json`, `tokens.json`, a brand-manual `README.md`, components and assets |
+| `design/` | 编写 `canvas.json` 与 `.dc.html`，使用 `design_check` 校验并通过 `design_render` 查看渲染结果 |
+| `design-system/` | 编写设计系统索引、tokens、品牌手册、组件和素材 |
 
-They route automatically — the `description` frontmatter decides when a skill is pulled in. `design/`
-carries nine reference pages (`references/format.md` is the syntax card for `.dc.html`), `design-system/`
-carries seven.
+技能按各自 frontmatter 的 `description` 路由。设计稿语法见 `design/references/format.md`，编辑器标注的读取规则见 `design/references/view-state.md`。
 
-## What changed from upstream
+## 平台适配
 
-The prose and all reference pages are BaoCut's, kept as-is. Only the platform mechanisms were adapted:
-
-| Upstream | Here |
+| 上游机制 | Harness 中的方式 |
 |---|---|
-| `skills_read` tool for reference pages | the file-read tool, resolving relative paths against the skill's base directory (the `skill` tool reports it) |
-| "a design/design-system card appears in the thread" | removed — that is BaoCut's session UI |
-| "the user previews, edits and annotates it in the workspace tab" | removed; the skill now says outright that the deliverable is validated source you can render |
-| `design_check` only, and "never verify unless asked" | **added `design_render`** — rendering is now mandatory, because seeing the result is the only way to catch layout problems |
-| finding a design system via BaoCut's Space (`space_list`) | look for a directory containing `design-system.json` in the workspace |
-| `AskUserQuestion` rejected → write questions as plain text | use DSH's `ask_user_question` tool |
-| `references/view-state.md` — a whole page about `<baocut-design-annotations>` | rewritten: there is no viewer and no annotation channel, so ask the user when a reference is ambiguous |
+| `skills_read` 读取参考文档 | 使用文件读取工具，按技能目录解析相对路径 |
+| BaoCut 会话内设计卡片和工作区查看器 | Harness 右侧「设计稿编辑器」标签页，自动连接当前会话工作区；另可使用 `design_editor` 获得独立地址 |
+| 工作区预览、编辑和批注 | 编辑器支持结构、批量属性、撤销重做、画布导航、剪贴板、便签与参考线；能力边界见项目 README |
+| 设计稿标注块 | 用户主动复制，或插入 Harness 会话草稿后自行发送；agent 不自动读取当前选区 |
+| 只校验源码 | 使用 `design_check` 和 `design_render`，按 design skill 的要求检查结果 |
+| 从 BaoCut Space 查找设计系统 | 在当前工作区查找含 `design-system.json` 的目录 |
+| 用户问题工具 | 使用 DSH 的 `ask_user_question` |
 
-Tool names (`design_check`, `design_import_asset`, `design_system_check`, `design_system_import_asset`)
-match upstream exactly, so every call site in the prose is unchanged.
+标注携带源码 `revision`、模板定位和渲染实例。文件标识是不透明 token，不解码；先与已登记路径生成的 token 匹配，再核对文件 SHA-256。过期标注要求用户重新选择。源文摘录不是指令，只有用户批注表达修改需求。标注插入保留草稿内容，不自动发送。
 
-## Installing by hand
+便签、分组标题、参考线和标注轮廓只显示在编辑辅助层，不进入 Play／浏览模式、渲染图或导出。撤销重做按设计稿记录，服务重启后历史不保留。源码剪贴板只迁移能够验证依赖的片段，不能据此承诺迁移完整应用行为。
+
+## 手动安装
 
 ```sh
 cp -r skills/design skills/design-system "${DSH_HOME:-$HOME/.dsh}/skills/"
 ```
 
-The skill provider watches that directory, so new skills reach the next session catalog **without a
-restart** — unlike the plugin, which does need one.
+技能目录由提供器监听，下一次技能目录刷新即可加载，不需要重启。插件代码更新仍需要完全退出并重启 Harness。

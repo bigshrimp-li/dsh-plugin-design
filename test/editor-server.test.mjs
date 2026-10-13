@@ -18,15 +18,18 @@ async function setup(t) {
   return { request, snapshot, file: path.join(workspace, 'simple-ui', 'Profile.dc.html') };
 }
 
-test('concurrent edits to different elements are serialized and both can be undone', async t => {
+test('concurrent stale edits are rejected and retry uses the latest revision', async t => {
   const { request, snapshot, file } = await setup(t);
   const h = snapshot.elements.find(e => e.tag === 'h1');
   const p = snapshot.elements.find(e => e.tag === 'p');
   const results = await Promise.all([
-    request('/api/edit', { tid: h.tid, style: 'color: red' }),
-    request('/api/edit', { tid: p.tid, style: 'font-size: 22px' }),
+    request('/api/edit', { tid: h.tid, style: 'color: red', revision: snapshot.revision }),
+    request('/api/edit', { tid: p.tid, style: 'font-size: 22px', revision: snapshot.revision }),
   ]);
-  assert.ok(results.every(r => r.status === 200));
+  assert.deepEqual(results.map(r=>r.status).sort(), [200,409]);
+  const latest=(await request('/api/board?canvas=simple-ui&board=Profile.dc.html')).body;
+  const failed=results[0].status===409 ? {tid:h.tid,style:'color: red'} : {tid:p.tid,style:'font-size: 22px'};
+  assert.equal((await request('/api/edit',{...failed,revision:latest.revision})).status,200);
   const source = await readFile(file, 'utf8');
   assert.match(source, /color: red/);
   assert.match(source, /font-size: 22px/);
@@ -48,9 +51,15 @@ test('conflicted undo retains its history entry', async t => {
 test('no-op edits keep undo state and revision', async t => {
   const { request, snapshot } = await setup(t);
   const h = snapshot.elements.find(e => e.tag === 'h1');
-  const first = await request('/api/edit', { tid: h.tid, style: 'color: red' });
+  const first = await request('/api/edit', { tid: h.tid, style: 'color: red', revision:snapshot.revision });
   const next = await request('/api/edit', { tid: h.tid, style: 'color: red', revision: first.body.revision });
   assert.equal(next.body.changed, false);
   assert.equal(next.body.canUndo, true);
   assert.equal(next.body.revision, first.body.revision);
+});
+
+test('writes require a revision and reject cross-board source references', async t => {
+ const {request,snapshot}=await setup(t); const h=snapshot.elements.find(e=>e.tag==='h1');
+ assert.equal((await request('/api/edit',{tid:h.tid,style:'color:red'})).status,400);
+ assert.equal((await request('/api/edit',{tid:h.tid,style:'color:red',revision:snapshot.revision,sourceRef:{canvas:'simple-ui',board:'Layout.dc.html',revision:snapshot.revision,tid:h.tid}})).status,409);
 });

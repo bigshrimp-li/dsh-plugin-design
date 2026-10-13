@@ -2,7 +2,7 @@
   "name": "@local/dsh-plugin-design",
   "version": "0.1.0",
   "private": true,
-  "description": "Design tools for DeepSeek Harness \u2014 validate, render and export design canvases and design systems",
+  "description": "Design tools for DeepSeek Harness — validate, render and export design canvases and design systems",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
@@ -26,7 +26,8 @@
       "platform": "web",
       "immediately": true,
       "inject": [
-        "@deepseek-ai/dsh-client-ui-sidebar-right"
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-ui-conversation"
       ]
     }
   },

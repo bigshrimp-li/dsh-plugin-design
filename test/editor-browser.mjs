@@ -274,6 +274,52 @@ try {
     assert.equal(await page.locator('[data-computed="font-size"]').inputValue(), '16px');
     assert.equal(await page.locator('[data-box]').innerText(), initialBox);
   });
+  await run('22-stage1-structure-redo-viewport', async ({page,frame,ready,saved,board}) => {
+    const original=await saved('Profile');
+    await frame.locator('#literal').click();
+    await page.locator('[data-structure-action="duplicate"]').click();
+    await pause(); await ready();
+    assert.equal(await frame.locator('#literal-copy').count(),1);
+    await page.locator('#undo').click(); await pause(); await ready();
+    assert.equal(await saved('Profile'),original);
+    await page.locator('#redo').click(); await pause(); await ready();
+    assert.equal(await frame.locator('#literal-copy').count(),1);
+    await page.getByLabel('缩放百分比',{exact:true}).fill('25');
+    await page.getByLabel('缩放百分比',{exact:true}).press('Tab');
+    assert.equal(await page.evaluate(()=>window.designEditor.features.viewport.view.k),0.25);
+    await page.locator('#zoomFit').click();
+    assert.ok(await page.evaluate(()=>window.designEditor.features.viewport.frameCount<=4));
+    await board('Layout');
+    assert.equal(await page.evaluate(()=>window.designEditor.state.board),'Layout.dc.html');
+    await page.locator('#undo').click(); await pause(); await ready();
+    assert.equal(await saved('Profile'),original);
+    assert.equal(await page.evaluate(()=>window.designEditor.state.board),'Profile.dc.html');
+  });
+  await run('23-stage2-clipboard-notes-guides', async ({page,frame,ready,saved}) => {
+    const original=await saved('Profile');
+    await frame.locator('#literal').click();await page.locator('[data-clipboard-action="copy"]').click();
+    await page.waitForFunction(()=>window.designEditor.features.clipboard.internal && !window.designEditor.features.clipboard.busy);
+    await page.locator('#clipboard-internal').click();await pause();await ready();
+    assert.equal(await frame.locator('#literal-copy').count(),1);
+    await page.locator('#undo').click();await pause();await ready();assert.equal(await saved('Profile'),original);
+    await page.locator('#addNote').click();await pause();
+    assert.equal(await page.locator('[data-note]').count(),1);
+    await page.locator('.annotation-panel').getByLabel('文字',{exact:true}).fill('Review spacing');
+    await page.getByRole('button',{name:'保存便签',exact:true}).click();await pause();
+    assert.equal(await page.locator('.note-text').innerText(),'Review spacing');
+    await page.getByRole('button',{name:'新增参考线',exact:true}).click();await pause();
+    assert.equal(await page.locator('.canvas-guide').count(),1);
+    await page.locator('#mode').click();assert.equal(await page.locator('.canvas-note').isVisible(),false);
+    await page.locator('#mode').click();assert.equal(await page.locator('.canvas-note').isVisible(),true);
+    await page.locator('#undo').click();await pause();await ready();assert.equal(await page.locator('.canvas-guide').count(),0);
+    assert.equal(await page.locator('.note-text').innerText(),'Review spacing');
+  });
+  await run('24-history-response-keeps-new-board', async ({page,frame,field,board,ready}) => {
+    await frame.locator('#heading').click();await field('color').fill('#aa1133');await pause();
+    await page.route('**/api/undo',async route=>{await pause(800);await route.continue();});
+    await page.locator('#undo').click();await board('Layout');await pause(1200);await ready();
+    assert.equal(await page.evaluate(()=>window.designEditor.state.board),'Layout.dc.html');
+  });
 } finally {
   await browser.close();
   if (output) await writeFile(path.join(output, 'results.json'), JSON.stringify(results, null, 2));

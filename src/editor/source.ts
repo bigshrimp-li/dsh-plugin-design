@@ -12,6 +12,7 @@
  * 标签的形状沿用 `src/check/canvas-check.ts` 里那份（同一套正则常量），保证两侧看到的是同一种 HTML。
  */
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
 const ATTRS = String.raw`((?:[^>"']|"[^"]*"|'[^']*')*)`;
 const TAG = new RegExp(String.raw`<!--[\s\S]*?(?:-->|$)|<(\/?)([A-Za-z][A-Za-z0-9:-]*)` + ATTRS + '>', 'g');
@@ -51,6 +52,54 @@ export interface SourceElement {
   styleSpan: [number, number] | null;
   /** 元素里第一段纯文字（去掉子元素与标签后），用于面板上的标题。 */
   text: string;
+}
+
+/** A tid is meaningful only inside this exact source revision. */
+export interface SourceRef {
+  canvas: string;
+  board: string;
+  revision: string;
+  tid: number;
+}
+
+export interface SourceContext {
+  canvas: string;
+  board: string;
+}
+
+export function createSourceRef(source: string, context: SourceContext, tid: number): SourceRef {
+  if (!Number.isSafeInteger(tid) || tid < 0 || elementAt(source, tid) === null) {
+    throw new Error('源码中找不到指定元素');
+  }
+  return { ...context, revision: createHash('sha256').update(source).digest('hex'), tid };
+}
+
+/** Re-check against freshly read source, never against the browser's last DOM. */
+export function validateSourceRef(source: string, ref: unknown, expected: SourceContext): SourceElement {
+  const candidate = ref as Partial<SourceRef> | null;
+  if (!candidate || candidate.canvas !== expected.canvas || candidate.board !== expected.board) {
+    throw new Error('元素来源与目标画板不一致，请重新选择');
+  }
+  const revision = createHash('sha256').update(source).digest('hex');
+  if (typeof candidate.revision !== 'string' || candidate.revision !== revision) {
+    throw new Error('元素来源版本已过期，请刷新后重新选择');
+  }
+  if (!Number.isSafeInteger(candidate.tid) || candidate.tid! < 0) throw new Error('元素编号不合法');
+  const element = elementAt(source, candidate.tid!);
+  if (!element) throw new Error('源码中找不到指定元素');
+  if (['dc-import', 'x-import', 'sc-for', 'sc-if', 'helmet', 'script', 'style'].includes(element.tag)) {
+    throw new Error('该元素是组件、控制节点或元数据，不支持直接编辑');
+  }
+  // Slotted children can be rendered inside a different template boundary.
+  const elements = listElements(source);
+  let parent = element.parentTid;
+  while (parent !== null) {
+    const ancestor = elements[parent];
+    if (!ancestor) throw new Error('无法确认元素父级来源');
+    if (['dc-import', 'x-import'].includes(ancestor.tag)) throw new Error('导入组件内部来源尚未确认');
+    parent = ancestor.parentTid;
+  }
+  return element;
 }
 
 /** 属性串切成 name/value，并记下每个值在整份源码里的绝对区间。 */

@@ -11,6 +11,7 @@ if [ ! -x "$harness" ]; then
 fi
 (cd "$here" && npm run build)
 
-ELECTRON_RUN_AS_NODE=1 "$harness" --test "$here/test/client-boot.test.mjs"
-ELECTRON_RUN_AS_NODE=1 "$harness" --test "$here/test/editor-source.test.mjs" "$here/test/editor-server.test.mjs" "$here/test/editor-host.test.mjs"
+# client-*: 浏览器入口与它与宿主之间的桥；editor-*: 编辑器本体。
+ELECTRON_RUN_AS_NODE=1 "$harness" --test --test-timeout=15000 "$here"/test/client-*.test.mjs
+ELECTRON_RUN_AS_NODE=1 "$harness" --test --test-timeout=15000 "$here"/test/editor-*.test.mjs
 ELECTRON_RUN_AS_NODE=1 "$harness" --expose-internals "$here/test/run.mjs"

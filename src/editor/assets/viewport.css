@@ -1,0 +1,17 @@
+.canvaswrap.spatial-viewport { overflow: hidden; padding: 0; touch-action: none; }
+.spatial-viewport .canvasinner { position: absolute; left: 0; top: 0; margin: 0; width: 0; height: 0; transform-origin: 0 0; }
+.spatial-viewport #board { position: absolute; transform: none; z-index: 2; }
+.spatial-board { position: absolute; background: white; box-shadow: 0 1px 3px #0003; color: #666; }
+.spatial-board-placeholder { position: absolute; inset: 0; display: grid; place-items: center; font-size: 18px; border: 1px dashed #999; }
+.spatial-board iframe { border: 0; position: absolute; inset: 0; pointer-events: none; width: 100%; height: 100%; }
+.spatial-board-hit { position: absolute; inset: 0; border: 0; background: transparent; cursor: pointer; width: 100%; padding: 0; }
+.spatial-board-title { position: absolute; left: 0; top: -26px; height: 24px; max-width: 100%; border: 0; padding: 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--panel); color: var(--ink); font: 12px system-ui; cursor: pointer; }
+.spatial-board.active { outline: 2px solid var(--accent); background: transparent; pointer-events: none; }
+.spatial-board.active .spatial-board-title { pointer-events: auto; color: var(--accent); }
+.spatial-overlay-layer { position: absolute; inset: 0; width: 0; height: 0; z-index: 5; pointer-events: none; }
+.spatial-overlay-layer > * { pointer-events: auto; }
+.spatial-percent { width: 68px; font: inherit; padding: 4px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+.spatial-viewport[data-panning="true"], .spatial-viewport[data-space="true"] { cursor: grab; }
+.spatial-viewport[data-panning="true"] { cursor: grabbing; }
+.spatial-viewport[data-panning="true"] .spatial-board-hit { cursor: grabbing; }
+.spatial-board [hidden], .spatial-viewport #board[hidden] { display: none; }

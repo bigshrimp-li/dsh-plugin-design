@@ -8,4 +8,8 @@ node_modules/
 .design-preview/
 *.tmp
 
+# 实现过程中的临时工作区：ticket 草稿、实现日志、契约笔记。
+# 它们是过程材料，不是交付物；写功能时随手放在这里，别提交。
+.scratch/
+
 .DS_Store

@@ -16,7 +16,8 @@ const CLIENT_ID = Math.random().toString(36).slice(2);
 
 const state = {
   root: '', canvases: [], canvas: null, board: null,
-  declared: { w: 0, h: 0 }, elements: [], selectedTid: null, canUndo: false,
+  declared: { w: 0, h: 0 }, elements: [], selectedTid: null, canUndo: false, canRedo: false,
+  revision: null, canvasIndex: null, indexRevision: null, selectionInfo: null,
 };
 
 /** 属性面板上的字段。分组的顺序就是面板上的顺序。 */
@@ -39,9 +40,14 @@ function toast(message, bad) {
 const api = async (route, options) => {
   const res = await fetch(route, options);
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(body.error ?? `HTTP ${res.status}`), { body });
+  if (!res.ok) throw Object.assign(new Error(body.error ?? `HTTP ${res.status}`), { body, status:res.status });
   return body;
 };
+
+const editorEvents = new EventTarget();
+const emit = (type, detail) => editorEvents.dispatchEvent(new CustomEvent(type, { detail }));
+const inspectorExtensions = [];
+const shortcutHandlers = [];
 
 const bridge = () => el.board.contentWindow?.__designEditor ?? null;
 
@@ -61,6 +67,7 @@ function fitZoom() {
 }
 
 function applyZoom() {
+  if (window.designEditor?.features.viewport) return window.designEditor.features.viewport.applyZoom();
   const k = fitZoom();
   const w = state.declared.w || 0;
   const h = state.declared.h || 0;
@@ -74,19 +81,27 @@ function applyZoom() {
 
 let loadGeneration = 0;
 async function loadBoard(canvasRel, boardRel, keepSelection = false, skipFlush = false) {
+  if ((canvasRel !== state.canvas || boardRel !== state.board) && bridge()?.isInteracting) throw new Error('请先结束当前拖动');
   const generation = ++loadGeneration;
   if (!skipFlush) {
     bridge()?.finishTextEdit();
+    await editor.features.selection?.waitPending?.();
     await flushWrites();
   }
   const data = await api(`/api/board?canvas=${encodeURIComponent(canvasRel)}&board=${encodeURIComponent(boardRel)}`);
   if (generation !== loadGeneration) return;
+  if (keepSelection && revisions.get(boardKey(canvasRel, boardRel)) !== data.revision) keepSelection=false;
   revisions.set(boardKey(canvasRel, boardRel), data.revision);
   state.canvas = canvasRel;
   state.board = boardRel;
   state.declared = data.declared ?? { w: 0, h: 0 };
   state.elements = data.elements ?? [];
-  state.canUndo = data.canUndo === true;
+  state.revision = data.revision;
+  state.canvasIndex = data.canvasIndex;
+  state.indexRevision = data.indexRevision;
+  state.source = data.source;
+  state.selectionInfo = null;
+  applyHistory(data);
   if (!keepSelection) state.selectedTid = null;
   delete el.inspector.dataset.built;
   renderInspector();
@@ -96,21 +111,28 @@ async function loadBoard(canvasRel, boardRel, keepSelection = false, skipFlush =
   el.empty.style.display = 'none';
   el.board.src = boardUrl();
   el.undo.disabled = !state.canUndo;
+  emit('board', data);
 }
 
 el.board.addEventListener('load', () => {
   // 桥挂载可能比 load 稍晚（要等画板运行时把 #dc-root 建出来）
   let tries = 0;
+  const loadedDocument = el.board.contentDocument;
+  const generation = loadGeneration;
   const timer = setInterval(() => {
+    if (generation !== loadGeneration || loadedDocument !== el.board.contentDocument) { clearInterval(timer); return; }
     const b = bridge();
     if (b && b.ready) {
       clearInterval(timer);
       // 把源码里的行内样式原文交给桥当基准（DOM 里那份已被 CSSOM 规范化过）
-      b.registerSources(Object.fromEntries(state.elements.map((e) => [e.tid, e])));
+      b.registerSources(Object.fromEntries(state.elements.map((e) => [e.tid, e])), {canvas:state.canvas,board:state.board,revision:state.revision});
       renderLayers();
       b.setMode(el.mode.getAttribute('aria-pressed') === 'true' ? 'select' : 'browse');
       if (state.selectedTid !== null) b.select(state.selectedTid, false);
+      delete el.inspector.dataset.built;
       renderInspector();
+      emit('bridge-ready', {bridge:b,canvas:state.canvas,board:state.board});
+      bindShortcuts(el.board.contentDocument);
     } else if (++tries > 60) clearInterval(timer);
   }, 100);
 });
@@ -125,24 +147,30 @@ window.__editorHost = {
     else toast('目标画板不在当前设计稿清单中', true);
   },
   onSelect(info) {
+    if (info?.sourceRef && (info.sourceRef.canvas !== state.canvas || info.sourceRef.board !== state.board)) return;
+    state.selectionInfo = info;
     state.selectedTid = info ? info.tid : null;
     renderLayers();
     renderInspector(info);
+    emit('selection', info);
   },
   onPreview(info) {
     if (info) {
       state.selectedTid = info.tid;
       renderInspector(info, { previewOnly: true });
+      emit('preview', info);
     }
   },
-  async onCommit(tid, style, kind) {
+  async onCommit(tid, style, kind, sourceRef) {
+    if (sourceRef && (sourceRef.canvas !== state.canvas || sourceRef.board !== state.board || sourceRef.revision !== state.revision)) return;
     if (kind === 'move' || kind === 'resize') toast('已改尺寸/位置，正在写回…');
     await commit(tid, style);
   },
-  onTextCommit(tid, text) {
+  onTextCommit(tid, text, sourceRef) {
+    if (sourceRef && (sourceRef.canvas !== state.canvas || sourceRef.board !== state.board || sourceRef.revision !== state.revision)) return;
     const target = { canvas: state.canvas, board: state.board };
     flushPending();
-    enqueueWrite({ ...target, tid, text });
+    enqueueWrite({ ...target, tid, text, sourceRef:bridge()?.describe(tid)?.sourceRef });
     return writeChain.then(async () => {
       if (sameBoard(target)) await reloadBoard(true, true);
     });
@@ -172,20 +200,23 @@ function enqueueWrite(job) {
   writeChain = writeChain.then(async () => {
     try {
       if (job.epoch !== (epochs.get(key) ?? 0)) return;
+      const currentRevision = revisions.get(key);
+      const sourceRef = job.sourceRef ? {...job.sourceRef, revision:currentRevision} : undefined;
       const out = await api('/api/edit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...job, revision: revisions.get(key), origin: CLIENT_ID }),
+        body: JSON.stringify({ ...job, sourceRef, revision: currentRevision, origin: CLIENT_ID }),
       });
       revisions.set(key, out.revision);
       if (sameBoard(job)) {
-        state.canUndo = out.canUndo === true;
-        el.undo.disabled = !state.canUndo;
-        if (typeof job.style === 'string') bridge()?.acceptCommitted(job.tid, out.style);
+        state.revision = out.revision;
+        applyHistory(out);
+        if (typeof job.style === 'string') bridge()?.acceptCommitted(job.tid, out.style, {canvas:job.canvas,board:job.board,revision:out.revision});
         const element = state.elements.find(e => e.tid === job.tid);
         if (element && typeof out.style === 'string') element.style = out.style;
         renderLayers();
         renderInspector();
       }
+      emit('saved', {...out, canvas:job.canvas,board:job.board});
     } catch (e) {
       saveError = true;
       epochs.set(key, (epochs.get(key) ?? 0) + 1);
@@ -218,7 +249,8 @@ async function flushWrites() {
 function commit(tid, style, delay = 0) {
   saveError = false;
   // Capture the board now: navigation must never redirect a pending write.
-  const job = { canvas: state.canvas, board: state.board, tid, style, epoch: epochs.get(boardKey(state.canvas, state.board)) ?? 0 };
+  if (bridge()?.describe(tid)?.writable === false) { toast('该元素来源不能安全确认，已停止保存', true); return; }
+  const job = { canvas: state.canvas, board: state.board, tid, style, sourceRef:bridge()?.describe(tid)?.sourceRef, epoch: epochs.get(boardKey(state.canvas, state.board)) ?? 0 };
   const key = JSON.stringify([job.canvas, job.board, tid]);
   clearTimeout(pendingWrites.get(key)?.timer);
   const timer = setTimeout(() => {
@@ -300,6 +332,8 @@ function renderInspector(info, opts = {}) {
     const g0 = group('选中');
     g0.appendChild(div('who', `<${src?.tag ?? '?'}>  #${tid}`));
     if (src?.text) g0.appendChild(div('snippet', src.text));
+    const source = document.createElement('small'); source.dataset.sourceRef = '1'; g0.appendChild(source);
+    for (const render of inspectorExtensions) { const seat = document.createElement('div'); g0.appendChild(seat); render(seat,live || {tid, writable:false, readonlyReason:"画板正在加载"}); }
     const up = document.createElement('button');
     up.type = 'button';
     up.className = 'btn';
@@ -359,6 +393,12 @@ function renderInspector(info, opts = {}) {
     box.dataset.box = '1';
     gBox.appendChild(box);
   }
+
+  const provenance = el.inspector.querySelector('[data-source-ref]');
+  if (provenance) provenance.textContent = live?.readonlyReason || `${state.board} · #${tid}${live?.instance ? ` · 实例 ${live.instance.index + 1}/${live.instance.count}` : ''}`;
+  const readonly = live?.writable === false;
+  el.textBtn.disabled = readonly;
+  for (const control of el.inspector.querySelectorAll('input:not([readonly]), select, .add button')) control.disabled = readonly;
 
   // Computed styles and geometry must refresh after preview and iframe reload too.
   for (const input of el.inspector.querySelectorAll('input[data-computed]')) {
@@ -470,6 +510,7 @@ async function boot() {
   const ws = await api('/api/workspace');
   state.root = ws.root;
   state.canvases = ws.canvases;
+  emit('workspace', ws);
   el.canvas.textContent = '';
   for (const c of ws.canvases) {
     const o = document.createElement('option');
@@ -499,6 +540,7 @@ el.mode.addEventListener('click', () => {
   const on = el.mode.getAttribute('aria-pressed') !== 'true';
   el.mode.setAttribute('aria-pressed', String(on));
   bridge()?.setMode(on ? 'select' : 'browse');
+  emit('mode', on ? 'select' : 'browse');
   toast(on ? '编辑模式：点击只用来选中元素' : '浏览模式：画板自己的按钮可以点');
 });
 
@@ -509,34 +551,97 @@ el.textBtn.addEventListener('click', () => {
   toast('直接改画板里的字，按 Esc 或点别处结束');
 });
 
-el.undo.addEventListener('click', async () => {
-  try {
-    bridge()?.finishTextEdit();
-    await flushWrites();
-    const out = await api('/api/undo', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ canvas: state.canvas, board: state.board, origin: CLIENT_ID }),
-    });
-    state.canUndo = out.canUndo === true;
-    el.undo.disabled = !state.canUndo;
-    if (!out.changed) { toast('没有可撤销的改动了'); return; }
-    toast('已撤销');
-    await reloadBoard(true);
-  } catch (e) { toast(e.message, true); }
-});
+el.undo.addEventListener('click', () => historyAction('undo').catch(e => toast(e.message,true)));
 
-el.reload.addEventListener('click', () => reloadBoard(true));
+el.reload.addEventListener('click', async () => { try { await reloadBoard(true); saveError=false; updateSaveState(); } catch(e) {toast(e.message,true);} });
 
 // 外部改动（agent 或别处）→ 提示并重载
 const events = new EventSource('/api/events');
 events.addEventListener('message', (ev) => {
   let data = null;
   try { data = JSON.parse(ev.data); } catch { return; }
+  emit('external-change', data);
   if (data?.origin === CLIENT_ID) return; // 自己改的：不用提示，也不用重载
-  if (data?.type === 'edited' && data.canvas === state.canvas && data.board === state.board && !pendingWrites.size && !writing) {
+  if (data?.type === 'edited' && data.canvas === state.canvas && (data.board === state.board || !data.board || data.files?.includes(state.board)) && !pendingWrites.size && !writing) {
     toast('这份画板在别处被改过（可能是 agent），已重新加载');
     reloadBoard(true);
   }
 });
 
+function applyHistory(out) {
+  state.canUndo = out.canUndo === true;
+  state.canRedo = out.canRedo === true;
+  el.undo.disabled = !state.canUndo;
+  el.undo.title = out.history?.undoLabel || out.undoLabel || '撤销上一次设计稿操作';
+  emit('history', out);
+}
+async function beforeAction() {
+  bridge()?.finishTextEdit();
+  await editor.features.selection?.waitPending?.();
+  await flushWrites();
+  if (saveError) throw new Error('存在保存失败，请重新加载并确认后再操作');
+}
+async function historyAction(kind) {
+  const target={canvas:state.canvas,board:state.board};
+  await beforeAction();
+  if (!sameBoard(target)) throw new Error('画板已切换，请在目标设计稿重新操作');
+  const out = await editor.post('/api/' + kind, target);
+  for(const [file,rev] of Object.entries(out.revisions || {})) {
+    const key=boardKey(target.canvas,file); epochs.set(key,(epochs.get(key)||0)+1); revisions.set(key,rev);
+  }
+  if (state.canvas !== target.canvas) return;
+  applyHistory(out);
+  if (!out.changed) { toast(kind === 'undo' ? '没有可撤销的改动了' : '没有可重做的改动了'); return; }
+  if (!sameBoard(target)) {
+    if (out.files?.includes(state.board) || out.files?.includes('canvas.json')) await loadBoard(state.canvas,state.board,false);
+    emit('saved',{...out,...target});return;
+  }
+  const affected = out.files?.find(file => file.endsWith('.dc.html'));
+  toast((kind === 'undo' ? '已撤销' : '已重做') + (out.label ? '：' + out.label : ''));
+  const keepSelection = sameBoard(target) && (!affected || affected===target.board) && ['修改样式','修改文字','批量修改样式','批量移动'].includes(out.label);
+  await loadBoard(target.canvas, affected || target.board, keepSelection);
+  emit('saved', {...out,...target,board:affected || target.board});
+}
+function bindShortcuts(doc) {
+  if (!doc || doc.__editorKeys) return;
+  doc.__editorKeys = true;
+  doc.addEventListener('keydown', event => {
+    if (event.isComposing || event.defaultPrevented || el.mode.getAttribute('aria-pressed') !== 'true') return;
+    const target = event.target;
+    if (target?.closest?.('input,textarea,select,[contenteditable="true"]')) return;
+    for (const handler of shortcutHandlers) if (handler(event)) {event.preventDefault();event.stopPropagation();break;}
+  });
+}
+const editor = {
+  state, el, events:editorEvents, features:{}, host:window.__editorHost,
+  bridge,api,toast,flushWrites,beforeAction,loadBoard,reloadBoard,applyHistory,historyAction,
+  renderLayers,renderInspector,applyZoom,
+  revision:(canvas=state.canvas,board=state.board)=>revisions.get(boardKey(canvas,board)),
+  post:(url,body)=>api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,origin:CLIENT_ID})}),
+  addButton(id,label,handler,title='') {
+    const button=document.createElement('button');button.type='button';button.id=id;button.className='btn';button.textContent=label;button.title=title;
+    button.addEventListener('click',()=>Promise.resolve().then(handler).catch(e=>toast(e.message,true)));
+    document.querySelector('.bar').appendChild(button);return button;
+  },
+  registerShortcut(handler){shortcutHandlers.push(handler);return()=>{const i=shortcutHandlers.indexOf(handler);if(i>=0)shortcutHandlers.splice(i,1);};},
+  registerInspector(render){inspectorExtensions.push(render);delete el.inspector.dataset.built;},
+  async acceptMutation(out,{reload=true,focusTid,canvas=out.canvas || state.canvas,board=out.board || state.board}={}) {
+    for(const [file,rev] of Object.entries(out.revisions || {})) {
+      const key=boardKey(canvas,file);epochs.set(key,(epochs.get(key)||0)+1);revisions.set(key,rev);
+    }
+    if(canvas===state.canvas) applyHistory(out);
+    if(canvas===state.canvas && board===state.board) {
+      const rev=out.revision || out.revisions?.[board];
+      if(rev){state.revision=rev;revisions.set(boardKey(canvas,board),rev);}
+      state.selectedTid=focusTid ?? null;
+      if(reload)await reloadBoard(true);
+    }
+    emit('saved',{...out,canvas,board});
+  },
+};
+window.designEditor = editor;
+bindShortcuts(document);
+// Modules are installed before boot so every module sees the initial board.
+const featureModules = ['/composer.js', '/redo.js', '/viewport.js', '/structure.js', '/selection.js', '/clipboard.js', '/notes.js', '/annotations.js'];
+for (const module of featureModules) (await import(module)).install(editor);
 boot().catch((e) => toast(`启动失败：${e.message}`, true));

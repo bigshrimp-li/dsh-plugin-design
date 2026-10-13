@@ -296,7 +296,7 @@ console.log('\n编辑器 · 服务');
     const h1 = board.elements.find((e) => e.tag === 'h1');
     const editRes = await fetch(new URL('/api/edit', ed.url), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: h1.tid, style: 'font-size: 44px' }),
+      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: h1.tid, revision: board.revision, style: 'font-size: 44px' }),
     });
     check('写入成功', editRes.status === 200, `HTTP ${editRes.status}`);
     check('源码真的变了', (await readFile(file, 'utf8')).includes('font-size: 44px'));
@@ -311,7 +311,7 @@ console.log('\n编辑器 · 服务');
     // 有子元素的节点不能原地改字（tid 3 是画板根 div）
     const badRes = await fetch(new URL('/api/edit', ed.url), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: 3, text: 'x' }),
+      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: 3, revision: board.revision, text: 'x' }),
     });
     check('改有子元素的节点被拒绝', badRes.status === 409 || badRes.status === 422, `HTTP ${badRes.status}`);
     check('被拒绝后文件没被动过', (await readFile(file, 'utf8')) === before);
@@ -319,7 +319,7 @@ console.log('\n编辑器 · 服务');
     // 纯文字节点则可以
     const okText = await fetch(new URL('/api/edit', ed.url), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: h1.tid, text: 'Choose your drink' }),
+      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: h1.tid, revision: board.revision, text: 'Choose your drink' }),
     });
     check('纯文字节点可以原地改字', okText.status === 200 && (await readFile(file, 'utf8')).includes('Choose your drink'));
     await fetch(new URL('/api/undo', ed.url), {
