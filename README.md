@@ -286,12 +286,17 @@ design_export <设计稿目录>          # 每块画板一个自包含 HTML
 
 ## 可视化编辑器
 
-```sh
-design_editor <设计稿目录>
-→ http://127.0.0.1:17321/
-```
+在 **DeepSeek Harness 内**使用：
 
-人在浏览器里直接改：**点选画板上的元素 → 改样式 → 写回源码**。拖动、拉手柄改尺寸、双击原地改文字都在。
+1. 打开有工作区的会话。
+2. 展开右侧边栏，选择「新标签页 → 设计稿编辑器」。插件自动连接当前会话的工作区，无需先调用工具。
+3. 选择设计稿和画板，点选元素后修改属性、拖动、调整尺寸或改文字。修改直接写回 `.dc.html`，可用「撤销」恢复。
+
+插件通过 Harness 宿主接口读取会话的真实工作目录，按工作区复用编辑服务，并取得动态端口。不同工作区不会串到同一个固定地址；连接失败时显示原因和「重新连接」。关闭插件时释放服务。原生自动连接当前适用于本机 Harness Desktop；远程 Web Host 尚未验证。
+
+`design_editor` 工具保留给需要指定目录、取得独立编辑地址的场景，不是打开原生标签页的前提。
+
+客户端通过 `window.__ModuleLoader__` 加载，并通过 `sidebarRightTabs` 注册标签页。不要向 `rightbar.session` 注册组件：这是宿主独占的槽位，争用会导致宿主侧边栏启动失败。
 
 ![编辑器](docs/images/editor.png)
 
@@ -309,8 +314,8 @@ design_editor <设计稿目录>
 
 - **行内样式的真源是源码文本，不是 DOM。** 画板由 React 挂出来，React 走 CSSOM 应用 style，读回来已被规范化
   （`margin: 8px 0 0` → `8px 0px 0px`）。拿 DOM 当基准，改一个 `font-size` 会把整个 `style` 属性的写法改掉。
-  所以编辑器把源码原文注册为基准，**没动过的声明一个字符都不变**。
-- **每次写入前重新读盘。** 人和 agent 改的是同一份文件，永远基于磁盘上的当前内容改。
+  所以编辑器把源码原文注册为基准，保留未修改属性的值，避免 CSSOM 改写数值；属性间的空白会被规范化。
+- **写入前比较源码版本。** 浏览器提交读取时的版本摘要；磁盘内容已变化时拒绝保存并重新加载。本服务对同一设计稿的编辑和撤销串行处理，避免并发覆盖。版本检查不等于对其他程序的文件锁。
 - **写完自己跑一遍 `design_check`，不过就回滚并报错。** 编辑器不会产出不合法的画板。撤销同样先比对：
   文件在编辑器之外被改过（多半是 agent）就拒绝撤销，而不是把那些改动抹掉。
 
@@ -377,9 +382,16 @@ design_editor <设计稿目录>
 ## 开发
 
 ```sh
-npm run build      # tsc -p tsconfig.json  ->  dist/
-./test.sh          # 63 项端到端断言（用 DSH 自带的 Electron Node）
+npm run build      # 编译 TypeScript，同时复制编辑器 HTML/JS/CSS 到 dist/
+./test.sh          # 自动构建，9 项回归测试 + 83 项端到端断言
+npm run test:browser # 自动构建，21 个真实浏览器交互用例
 ```
+
+浏览器测试使用 `playwright-core` 和本机 Chrome/Chromium，测试前需安装开发依赖。也可用 `DSH_DESIGN_PLAYWRIGHT=/path/to/playwright-core/index.mjs` 指向已有安装。设置 `DSH_DESIGN_TEST_OUTPUT=/path/to/results` 可保存每个用例的截图与 `results.json`。
+
+`test/editor-fixtures/simple-ui` 包含个人资料卡、布局块和重复列表三块画板。每个用例都复制到独立临时目录，测试不会修改原设计稿。覆盖编辑/浏览模式、连续属性修改、切换元素/画板、文字提交、拖动/缩放、重复实例、数据绑定、慢速保存、冲突、撤销、画板链接、窄侧边栏和无效 CSS。跨文件 `dc-import`、复杂旋转/缩放变换及结构编辑不在本轮验证范围内。
+
+保存期间顶栏显示「保存中…」。切换画板和撤销会等待当前写入结束；关闭仍有未保存改动的页面时，浏览器会提示。编辑模式拦截画板按钮和链接，切换到浏览模式后可以测试画板交互。原地改字后按 Esc 或点击编辑区域外部提交。
 
 `test.sh` 用 `module.registerHooks` 把 `@deepseek-ai/dsh-tools` 指向安装目录里的**真实实现**，构造一个假的 `ctx.tools`，然后拿 fixture 跑通六个工具（含各类错误路径）。必须用 Electron 的 Node（`ELECTRON_RUN_AS_NODE=1`），因为 `defineTool` 在 `app.asar` 里。
 

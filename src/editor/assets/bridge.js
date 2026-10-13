@@ -38,6 +38,7 @@
   }
 
   function elOf(tid) {
+    if (selected && selected.isConnected && tidOf(selected) === tid) return selected;
     return document.querySelector('[data-dc-tpl="' + tid + '"]');
   }
 
@@ -102,23 +103,26 @@
     for (var i = 0; i < all.length; i++) {
       delete all[i].__dcBaseStyle;
       delete all[i].__dcDecls;
+      delete all[i].__dcRenderedStyle;
     }
   }
 
   /** 写回成功后：源码现在就是这一串，把它接成新的基准，不必整页重载。 */
   function acceptCommitted(tid, style) {
-    sources[tid] = style;
     var list = document.querySelectorAll('[data-dc-tpl="' + tid + '"]');
     for (var i = 0; i < list.length; i++) {
+      var committed = currentStyle(list[i]) === style;
       list[i].__dcBaseStyle = style;
-      delete list[i].__dcDecls;
+      if (committed) delete list[i].__dcDecls;
+      if (committed) list[i].__dcRenderedStyle = list[i].getAttribute('style') || '';
     }
+    sources[tid] = Object.assign({}, sources[tid], { style: style });
   }
 
   function baseStyleOf(el) {
     if (el.__dcBaseStyle === undefined) {
       var tid = tidOf(el);
-      var fromSource = tid !== null && Object.prototype.hasOwnProperty.call(sources, tid) ? sources[tid] : null;
+      var fromSource = tid !== null && Object.prototype.hasOwnProperty.call(sources, tid) ? sources[tid].style : null;
       el.__dcBaseStyle = fromSource !== null ? fromSource : (el.getAttribute('style') || '');
     }
     return el.__dcBaseStyle;
@@ -126,18 +130,30 @@
 
   /** 行内 style → 对象。只读行内，继承来的值不在这里。 */
   function inlineDecls(el) {
-    return declsToObject(parseDeclsRaw(baseStyleOf(el)));
+    return Object.assign({}, el.__dcDecls || declsToObject(parseDeclsRaw(baseStyleOf(el))));
   }
 
   function setPreview(el, decls) {
-    baseStyleOf(el);
-    el.__dcDecls = decls;
-    el.setAttribute('style', serialize(el.__dcBaseStyle, decls));
+    // Repeated instances share source styles, but retain their own resolved bindings.
+    var list = document.querySelectorAll('[data-dc-tpl="' + tidOf(el) + '"]');
+    for (var i = 0; i < list.length; i++) {
+      var item = list[i];
+      var base = declsToObject(parseDeclsRaw(baseStyleOf(item)));
+      if (item.__dcRenderedStyle === undefined) item.__dcRenderedStyle = item.getAttribute('style') || '';
+      item.__dcDecls = Object.assign({}, decls);
+      item.setAttribute('style', item.__dcRenderedStyle);
+      Object.keys(base).forEach(function (key) { if (!(key in decls)) item.style.removeProperty(key); });
+      Object.keys(decls).forEach(function (key) {
+        if (decls[key] === base[key]) return;
+        var value = decls[key];
+        item.style.setProperty(key, value.replace(/\s*!important\s*$/, ''), /!important\s*$/.test(value) ? 'important' : '');
+      });
+    }
   }
 
   function clearPreview(el) {
     if (!el || el.__dcBaseStyle === undefined) return;
-    el.setAttribute('style', el.__dcBaseStyle);
+    el.setAttribute('style', el.__dcRenderedStyle || el.__dcBaseStyle);
     delete el.__dcBaseStyle;
     delete el.__dcDecls;
   }
@@ -145,7 +161,7 @@
   /** 待写回的样式串；用工作时的那份声明，而不是从 CSSOM 读回来的。 */
   function currentStyle(el) {
     if (el.__dcDecls !== undefined) return serialize(baseStyleOf(el), el.__dcDecls);
-    return (el.getAttribute('style') || '').replace(/\s*;\s*$/, '');
+    return baseStyleOf(el);
   }
 
   // ---------- 覆盖层 ----------
@@ -281,9 +297,9 @@
       /** 有没有子元素：有的话不能原地改字 */
       hasChildren: el.children.length > 0,
       /** 内容是不是纯文字（没有子元素、也不是 void） */
-      editableText: el.children.length === 0 && !/^(img|input|br|hr|svg|path|link|meta)$/.test(el.tagName.toLowerCase()),
+      editableText: sources[tid]?.editableText === true,
       /** 内容里有没有 {{hole}}：有就不能原地改字 */
-      hasHole: /\{\{/.test(el.textContent || ''),
+      hasHole: sources[tid]?.hasHole === true,
       parentTid: parentTid,
       /** sc-for 展开出来的实例数：改一个 = 改全部 */
       instances: document.querySelectorAll('[data-dc-tpl="' + tid + '"]').length,
@@ -307,7 +323,7 @@
       if (!pending.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
       pending.moved = true;
       drag = { kind: 'move', el: pending.el, startX: pending.startX, startY: pending.startY,
-               base: pending.base, absolute: pending.absolute };
+               base: pending.base, absolute: pending.absolute, left: pending.left, top: pending.top };
     }
     if (drag) return onDragMove(e);
     if (mode !== 'select') return;
@@ -316,6 +332,7 @@
   }
 
   function onMouseDown(e) {
+    if (e.button !== 0) return;
     if (mode === 'text') {
       // 正在原地改字：点到自己身上就继续编辑，点到别处就提交并退出
       if (selected && (e.target === selected || selected.contains(e.target))) return;
@@ -333,7 +350,12 @@
         kind: 'resize', index: Number(handleIdx), el: selected,
         startX: e.clientX, startY: e.clientY,
         base: inlineDecls(selected), box: boxOf(selected),
+        absolute: getComputedStyle(selected).position === 'absolute',
+        css: getComputedStyle(selected),
+        left: parseFloat(getComputedStyle(selected).left) || 0,
+        top: parseFloat(getComputedStyle(selected).top) || 0,
       };
+      selected.setPointerCapture(e.pointerId);
       return;
     }
     var tid = hitTest(e.clientX, e.clientY);
@@ -341,13 +363,18 @@
     // 编辑模式下，按下只用来选中：不让画板自己的按钮/链接响应
     e.preventDefault();
     e.stopPropagation();
-    select(tid, true);
+    var target = e.target.closest('[data-dc-tpl]');
+    select(tid, true, target);
     // 选中之后把拖动挂上，移动超过阈值才真的拖
     var el = elOf(tid);
     pending = {
       el: el, startX: e.clientX, startY: e.clientY, base: inlineDecls(el),
       absolute: getComputedStyle(el).position === 'absolute', moved: false,
+      css: getComputedStyle(el),
+      left: parseFloat(getComputedStyle(el).left) || 0,
+      top: parseFloat(getComputedStyle(el).top) || 0,
     };
+    el.setPointerCapture(e.pointerId);
   }
 
   function onDragMove(e) {
@@ -356,17 +383,18 @@
     var decls = Object.assign({}, drag.base);
     if (drag.kind === 'move') {
       if (drag.absolute) {
-        var left = parseFloat(drag.base.left || '0') || 0;
-        var top = parseFloat(drag.base.top || '0') || 0;
+        var left = drag.left;
+        var top = drag.top;
         decls.left = Math.round(left + dx) + 'px';
         decls.top = Math.round(top + dy) + 'px';
+        delete decls.right; delete decls.bottom;
       } else {
         // 流式布局里直接改坐标会重排兄弟元素，所以用 transform 做纯视觉偏移
-        decls.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+        decls.transform = 'translate(' + dx + 'px, ' + dy + 'px)' +
+          (drag.base.transform && drag.base.transform !== 'none' ? ' ' + drag.base.transform : '');
       }
     } else {
       var i = drag.index;
-      var horiz = [0, 1, 2, 3, 4, 5, 6, 7].map(function (n) { return [0, 1, 2, 3, 4, 5, 6, 7][n]; });
       var west = i === 0 || i === 6 || i === 7;
       var east = i === 2 || i === 3 || i === 4;
       var north = i === 0 || i === 1 || i === 2;
@@ -375,13 +403,15 @@
       var h = drag.box.h + (south ? dy : north ? -dy : 0);
       w = Math.max(MIN_SIZE, Math.round(w));
       h = Math.max(MIN_SIZE, Math.round(h));
-      if (east || west) decls.width = w + 'px';
-      if (north || south) decls.height = h + 'px';
+      var cs = drag.css;
+      var extraW = cs.boxSizing === 'border-box' ? 0 : parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+      var extraH = cs.boxSizing === 'border-box' ? 0 : parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+      if (east || west) decls.width = Math.max(0, w - extraW) + 'px';
+      if (north || south) decls.height = Math.max(0, h - extraH) + 'px';
       if (drag.absolute) {
-        if (west) decls.left = Math.round((parseFloat(drag.base.left || '0') || 0) + (drag.box.w - w)) + 'px';
-        if (north) decls.top = Math.round((parseFloat(drag.base.top || '0') || 0) + (drag.box.h - h)) + 'px';
+        if (east || west) { decls.left = Math.round(drag.left + (west ? drag.box.w - w : 0)) + 'px'; delete decls.right; }
+        if (north || south) { decls.top = Math.round(drag.top + (north ? drag.box.h - h : 0)) + 'px'; delete decls.bottom; }
       }
-      void horiz;
     }
     drag.decls = decls;
     setPreview(drag.el, decls);
@@ -401,7 +431,7 @@
       var style = currentStyle(d.el);
       if (HOST && HOST.__editorHost) HOST.__editorHost.onCommit(tidOf(d.el), style, d.kind);
     }
-    clearPreview(d.el);
+    // Keep the preview until the host acknowledges the write; a failed write reloads it.
     showSelection();
   }
 
@@ -440,8 +470,9 @@
 
   // ---------- 对外 ----------
 
-  function select(tid, notify) {
-    selected = tid === null || tid === undefined ? null : elOf(tid);
+  function select(tid, notify, target) {
+    if (mode === 'text') finishTextEdit();
+    selected = tid === null || tid === undefined ? null : target || elOf(tid);
     showSelection();
     if (notify && HOST && HOST.__editorHost) {
       HOST.__editorHost.onSelect(tid === null || tid === undefined ? null : describe(tid));
@@ -449,6 +480,7 @@
   }
 
   function setMode(next) {
+    if (mode === 'text' && next !== 'text') finishTextEdit();
     mode = next;
     document.documentElement.setAttribute('data-dc-editor-mode', mode);
     if (mode === 'text') {
@@ -463,20 +495,22 @@
   function startTextEdit() {
     if (!selected) return { ok: false, reason: '先选中一个元素' };
     var d = describe(tidOf(selected));
-    if (!d.editableText) return { ok: false, reason: '这个元素里还有子元素，原地改字只支持纯文字节点' };
     if (d.hasHole) return { ok: false, reason: '这段文字是 {{…}} 数据绑定，要改得改它的 prop' };
+    if (!d.editableText) return { ok: false, reason: '这个元素里还有子元素，原地改字只支持纯文字节点' };
+    selected.__dcOriginalText = selected.textContent || '';
     setMode('text');
     return { ok: true };
   }
 
   function finishTextEdit() {
-    if (!selected) return null;
+    if (!selected || mode !== 'text') return null;
     var el = selected;
     var tid = tidOf(el);
     var text = el.textContent || '';
+    mode = 'select';
     el.removeAttribute('contenteditable');
     setMode('select');
-    if (HOST && HOST.__editorHost) HOST.__editorHost.onTextCommit(tid, text);
+    if (text !== el.__dcOriginalText && HOST && HOST.__editorHost) HOST.__editorHost.onTextCommit(tid, text);
     return text;
   }
 
@@ -485,9 +519,21 @@
     if (!root) return false;
     buildOverlay();
     // 捕获阶段：编辑模式下属画板自己的交互让位给选中
-    document.addEventListener('mousemove', onMouseMove, true);
-    document.addEventListener('mousedown', onMouseDown, true);
-    document.addEventListener('mouseup', onMouseUp, true);
+    document.addEventListener('pointermove', onMouseMove, true);
+    document.addEventListener('pointerdown', onMouseDown, true);
+    document.addEventListener('pointerup', onMouseUp, true);
+    document.addEventListener('click', function (e) {
+      if (mode !== 'browse') { e.preventDefault(); e.stopImmediatePropagation(); return; }
+      var a = e.target.closest('a[href]');
+      if (!a || !HOST?.__editorHost) return;
+      var target = new URL(a.href, location.href);
+      if (target.origin === location.origin && target.pathname.startsWith('/board/') && target.pathname.endsWith('.dc.html')) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        HOST.__editorHost.onNavigate(target.pathname);
+      }
+    }, true);
+    document.addEventListener('focusout', function () { if (mode === 'text') finishTextEdit(); }, true);
+    window.addEventListener('blur', function () { if (mode === 'text') finishTextEdit(); });
     document.addEventListener('dblclick', onDoubleClick, true);
     document.addEventListener('keydown', onKeyDown, true);
     document.addEventListener('mouseleave', function () { showHover(null); }, true);

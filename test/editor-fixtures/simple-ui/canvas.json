@@ -1,0 +1,45 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-13T04:00:00Z"
+  },
+  "title": "Editor interaction tests",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Profile.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 520,
+      "h": 560,
+      "title": "Profile card",
+      "is_interactive": true
+    },
+    "Layout.dc.html": {
+      "x": 560,
+      "y": 0,
+      "w": 520,
+      "h": 560,
+      "title": "Layout controls",
+      "is_interactive": true
+    },
+    "List.dc.html": {
+      "x": 1120,
+      "y": 0,
+      "w": 520,
+      "h": 560,
+      "title": "Repeated list",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Profile.dc.html",
+    "Layout.dc.html",
+    "List.dc.html"
+  ],
+  "notes": {},
+  "designSystems": []
+}

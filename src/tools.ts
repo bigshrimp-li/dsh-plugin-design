@@ -26,7 +26,7 @@ import {
   readDesignSystemJson,
 } from './check/system-layout.ts';
 import { putBlob } from './blobs.ts';
-import { startEditor, type EditorHandle } from './editor/server.ts';
+import { EditorManager } from './editor/manager.ts';
 import { exportCanvas } from './export.ts';
 import { renderCanvas } from './render.ts';
 import { ASSETS_DIR, DESIGN_ASSET_MAX_BYTES, contentTypeOf } from './shared.ts';
@@ -303,24 +303,6 @@ interface SystemImportValue {
   next: string;
 }
 
-/**
- * 可视化编辑器：每个工作目录一个实例，重复调用复用同一个。
- * 端口优先用固定的那个——DSH 侧边栏里的 iframe 只拿得到 URL，两边要靠固定端口对上。
- */
-const editors = new Map<string, Promise<EditorHandle>>();
-const EDITOR_PORT = 17321;
-
-function editorFor(workspaceDir: string): Promise<EditorHandle> {
-  const existing = editors.get(workspaceDir);
-  if (existing !== undefined) return existing;
-  const started = startEditor({ workspaceDir, preferredPort: EDITOR_PORT }).catch((e: unknown) => {
-    editors.delete(workspaceDir); // 起失败就别把坏 promise 留在表里
-    throw e;
-  });
-  editors.set(workspaceDir, started);
-  return started;
-}
-
 async function listEditorCanvases(url: string): Promise<{ path: string; title: string; boards: number }[]> {
   const res = await fetch(new URL('/api/workspace', url));
   const body = (await res.json()) as { canvases?: { path: string; title: string; boards?: unknown[] }[] };
@@ -328,7 +310,7 @@ async function listEditorCanvases(url: string): Promise<{ path: string; title: s
 }
 
 /** 注册七个设计工具。 */
-export function registerDesignTools(ctx: DesignToolContext): void {
+export function registerDesignTools(ctx: DesignToolContext, editors = new EditorManager()): void {
   // ---- design_check ----
   ctx.tools.register(
     defineTool<DesignCheckArgs, DesignCheckValue>({
@@ -826,9 +808,9 @@ export function registerDesignTools(ctx: DesignToolContext): void {
     defineTool<DesignEditorArgs, DesignEditorValue>({
       name: 'design_editor',
       description: [
-        '打开**可视化编辑器**：在一个浏览器页面里直接点选画板上的元素、改行内样式、拖动、拉尺寸、原地改文字，改完写回 `.dc.html` 源码。',
+        '打开**可视化编辑器**：在 DeepSeek Harness 的设计稿编辑器标签页里直接点选画板上的元素、改行内样式、拖动、拉尺寸、原地改文字，改完写回 `.dc.html` 源码。',
         '它和你的分工：人的手在编辑器里改，你继续用 design_check / design_render / 直接改文件；两边改的是**同一份文件**。编辑器每次写入前都会重新读盘，写完自己跑一遍 design_check，校验不过就回滚——所以它不会产出不合法的画板。',
-        '什么时候用：用户说「我要自己调」「打开编辑器」「让我手动改改」「我拖一下」时。调用它把 URL 给用户（在 DSH 的侧边栏 Design 标签页里，或者直接在浏览器打开这个 URL）。',
+        '什么时候用：用户说「我要自己调」「打开编辑器」「让我手动改改」「我拖一下」时。用户可直接打开 DSH 右侧的「设计稿编辑器」标签页，无需先调用工具；本工具用于取得指定目录的独立编辑地址。',
         '注意：编辑器只改**行内样式与文字**，不做增删元素、换序这类结构编辑；它也不理解设计意图，所以视觉上的判断仍然归你和用户。',
       ].join('\n'),
       parameters: {
@@ -868,7 +850,7 @@ export function registerDesignTools(ctx: DesignToolContext): void {
               `design_editor 已在 ${value.url} 上跑起来了（端口 ${value.port}）`,
               `工作目录：${value.workspace}`,
               ...value.canvases.map((c) => `  ${c.title}（${c.path}）· ${c.boards} 块画板`),
-              '在 DSH 的侧边栏 Design 标签页里打开，或者直接在浏览器里访问上面这个 URL。',
+              '当前会话工作区可在 DSH 右侧「设计稿编辑器」中直接编辑；指定子目录也可使用上面的独立地址。',
             ].join('\n'),
           },
         ],
@@ -876,7 +858,7 @@ export function registerDesignTools(ctx: DesignToolContext): void {
       async execute(args, exec) {
         const cwd = sessionCwd(exec);
         const workspace = args.path !== undefined ? await resolveTargetDir(cwd, args.path, '设计稿') : cwd;
-        const handle = await editorFor(workspace);
+        const handle = await editors.open(workspace);
         const listed = await listEditorCanvases(handle.url);
         return {
           url: handle.url,

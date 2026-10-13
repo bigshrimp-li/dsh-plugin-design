@@ -79,6 +79,7 @@ body {
 .canvaswrap { flex: 1 1 auto; min-width: 0; position: relative; overflow: auto; background: var(--stage); padding: 24px; }
 .canvasinner { transform-origin: top left; margin: 0 auto; }
 #board {
+  transform-origin: top left;
   border: 0; background: #fff; display: block;
   box-shadow: 0 1px 3px rgba(0,0,0,.14), 0 8px 28px rgba(0,0,0,.09);
 }
@@ -103,6 +104,7 @@ body {
   border-radius: 5px; background: var(--bg); color: var(--ink);
 }
 .row input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.row input[aria-invalid="true"] { border-color: var(--danger); outline-color: var(--danger); }
 .row input[readonly] { color: var(--dim); background: transparent; border-style: dashed; }
 .hint { margin: 8px 0 0; font-size: 12px; color: var(--dim); }
 .warn { margin: 8px 0 0; font-size: 12px; color: var(--danger); }
@@ -119,3 +121,12 @@ body {
 }
 .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.bad { background: var(--danger); color: #fff; }
+
+/* In a narrow DSH sidebar keep a usable canvas above the two inspector panes. */
+@media (max-width: 800px) {
+  .stage { display: grid; grid-template-columns: minmax(120px, 0.65fr) minmax(230px, 1fr); grid-template-rows: minmax(180px, 1fr) minmax(160px, 0.9fr); }
+  .canvaswrap { grid-column: 1 / -1; grid-row: 1; min-height: 0; }
+  .panel.left, .panel.right { width: auto; min-width: 0; grid-row: 2; border-top: 1px solid var(--line); }
+  .pick { max-width: 100%; }
+  .bar { gap: 5px; padding: 6px 8px; }
+}

@@ -26,20 +26,22 @@
       "platform": "web",
       "immediately": true,
       "inject": [
-        "@deepseek-ai/dsh-client-ui-layout"
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
       ]
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-editor-assets.mjs",
     "watch": "tsc -p tsconfig.json --watch",
-    "test": "./test.sh"
+    "test": "./test.sh",
+    "test:browser": "npm run build && node test/editor-browser.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
     "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
   },
   "devDependencies": {
+    "playwright-core": "^1.58.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   }

@@ -11,6 +11,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { checkCanvas } from '../check/canvas-check.ts';
 import { elementAt, listElements, readBoard, setInlineStyle, setText } from './source.ts';
 
@@ -29,11 +30,7 @@ const mimeOf = (f: string) => MIME[f.split('.').pop()?.toLowerCase() ?? ''] ?? '
 export interface EditorOptions {
   /** 工作目录：这底下的每份设计稿都能打开。 */
   workspaceDir: string;
-  /**
-   * 首选端口。DSH 里的侧边栏面板是一个 iframe，而浏览器里的 iframe 只能拿到 URL、拿不到
-   * "宿主当时选了哪个端口"，所以这里优先用固定端口，让两边不用协商就能对上。
-   * 端口被占就退回随机端口，并把真实 URL 报出来（工具结果里能看到）。
-   */
+  /** 可选首选端口；原生插件使用动态端口并通过宿主接口取得地址。 */
   preferredPort?: number;
 }
 
@@ -53,11 +50,22 @@ function safeJoin(root: string, rel: string): string {
 }
 
 interface UndoEntry { abs: string; before: string; after: string; at: number; label: string }
+const revisionOf = (source: string) => createHash('sha256').update(source).digest('hex');
 
 export async function startEditor(options: EditorOptions): Promise<EditorHandle> {
   const workspace = path.resolve(options.workspaceDir);
   const undo = new Map<string, UndoEntry[]>();
   const clients = new Set<http.ServerResponse>();
+  // Validation reads every board in a canvas, so writes/undo share a canvas lock.
+  const writes = new Map<string, Promise<void>>();
+  const lock = async (key: string) => {
+    const previous = writes.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>(resolve => { release = resolve; });
+    writes.set(key, current);
+    await previous;
+    return () => { release(); if (writes.get(key) === current) writes.delete(key); };
+  };
   const support = await fs.readFile(SUPPORT);
 
   const broadcast = (event: unknown) => {
@@ -112,7 +120,7 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-    const route = decodeURIComponent(url.pathname);
+    let releaseWrite: (() => void) | undefined;
     const json = (code: number, value: unknown) => {
       if (res.headersSent) return;
       res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -120,6 +128,7 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
     };
 
     try {
+      const route = decodeURIComponent(url.pathname);
       // ---- 静态 ----
       if (route === '/' || route === '/index.html') {
         res.writeHead(200, { 'Content-Type': MIME.html! });
@@ -213,10 +222,14 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
           declared: box ? { w: box.w, h: box.h } : null,
           isInteractive: box?.is_interactive === true,
           source,
+          revision: revisionOf(source),
           elements: listElements(source).map((e) => ({
             tid: e.tid, tag: e.tag, depth: e.depth, parentTid: e.parentTid,
             text: e.text, style: e.style, hasStyle: e.styleSpan !== null,
             isVoid: e.isVoid, selfClosing: e.selfClosing,
+            hasHole: /\{\{/.test(source.slice(e.inner[0], e.inner[1])),
+            editableText: !e.isVoid && !e.selfClosing && !['style', 'script', 'helmet'].includes(e.tag)
+              && !/<[A-Za-z]/.test(source.slice(e.inner[0], e.inner[1])),
           })),
           canUndo: (undo.get(abs)?.length ?? 0) > 0,
         });
@@ -231,9 +244,14 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
         if (!Number.isInteger(tid)) { json(400, { error: 'tid 必须是整数' }); return; }
         const dir = safeJoin(workspace, canvasRel);
         const abs = safeJoin(dir, boardRel);
+        releaseWrite = await lock(dir);
 
         // 两个写者（人 + agent）：写入前当场重读，永远基于磁盘上的当前内容改
         const before = await readBoard(abs);
+        if (body.revision !== undefined && body.revision !== revisionOf(before)) {
+          json(409, { error: '画板已在别处修改，本次保存已停止。请重新加载后再编辑。' });
+          return;
+        }
         let after: string;
         try {
           after = typeof body.text === 'string'
@@ -243,14 +261,18 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
           json(409, { error: e instanceof Error ? e.message : String(e) });
           return;
         }
-        if (after === before) { json(200, { changed: false, style: elementAt(after, tid)?.style ?? '' }); return; }
+        if (after === before) {
+          json(200, { changed: false, style: elementAt(after, tid)?.style ?? '', revision: revisionOf(after), canUndo: (undo.get(abs)?.length ?? 0) > 0 });
+          return;
+        }
 
         // 写完先自检：编辑器不该产出不合法的画板
         await fs.writeFile(abs, after);
         const report = await checkCanvas(dir).catch((e) => ({ issues: [{ file: '', message: String(e) }] }));
         const issues = report.issues ?? [];
         if (issues.length > 0) {
-          await fs.writeFile(abs, before); // 回滚
+          // An outside writer is not covered by our lock; never roll its newer bytes back.
+          if (await fs.readFile(abs, 'utf8') === after) await fs.writeFile(abs, before);
           json(422, { error: '这次改动会让设计稿校验不过，已经回滚', problems: issues.slice(0, 6) });
           return;
         }
@@ -263,16 +285,18 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
         const el = elementAt(after, tid);
         // 带上发起方：否则自己的改动会从 SSE 绕回来，被当成"别人改了"而触发一次无谓的重载
         broadcast({ type: 'edited', canvas: canvasRel, board: boardRel, tid, origin: body.origin ?? null });
-        json(200, { changed: true, style: el?.style ?? '', canUndo: true });
+        json(200, { changed: true, style: el?.style ?? '', canUndo: true, revision: revisionOf(after) });
         return;
       }
 
       if (route === '/api/undo' && req.method === 'POST') {
         const body = await readJsonBody(req);
-        const abs = safeJoin(safeJoin(workspace, String(body.canvas ?? '')), String(body.board ?? ''));
+        const dir = safeJoin(workspace, String(body.canvas ?? ''));
+        const abs = safeJoin(dir, String(body.board ?? ''));
+        releaseWrite = await lock(dir);
         const stack = undo.get(abs) ?? [];
-        const entry = stack.pop();
-        if (entry === undefined) { json(200, { changed: false }); return; }
+        const entry = stack.at(-1);
+        if (entry === undefined) { json(200, { changed: false, canUndo: false }); return; }
         // 只有在文件仍是我们写下的那一版时才回退，避免抹掉 agent 之后的改动
         const current = await fs.readFile(abs, 'utf8');
         if (current !== entry.after) {
@@ -280,8 +304,9 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
           return;
         }
         await fs.writeFile(abs, entry.before);
+        stack.pop();
         broadcast({ type: 'edited', canvas: body.canvas, board: body.board, tid: null, origin: body.origin ?? null });
-        json(200, { changed: true, canUndo: stack.length > 0 });
+        json(200, { changed: true, canUndo: stack.length > 0, revision: revisionOf(entry.before) });
         return;
       }
 
@@ -290,6 +315,8 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
       const message = e instanceof Error ? e.message : String(e);
       const code = /ENOENT/.test(message) ? 404 : 500;
       json(code, { error: message });
+    } finally {
+      releaseWrite?.();
     }
   });
 

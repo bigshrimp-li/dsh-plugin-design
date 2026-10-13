@@ -12,6 +12,8 @@
  * 素材导入写 node:fs。
  */
 import { registerDesignTools } from './tools.ts';
+import { EditorManager } from './editor/manager.ts';
+import { registerEditorHost, type EditorHostContext } from './editor/host.ts';
 
 /** Loader 身份。 */
 export const name = 'design-tools';
@@ -26,7 +28,12 @@ export const inject = ['tools'];
 export function apply(ctx: {
   tools: { register: (tool: unknown) => unknown };
   get?: (name: string) => unknown;
-  effect?: (fn: () => void) => void;
+  effect?: (fn: () => (() => void | Promise<void>)) => unknown;
+  inject?: (services: string[], callback: (ctx: EditorHostContext) => void) => unknown;
 }): void {
-  registerDesignTools(ctx);
+  const editors = new EditorManager();
+  ctx.effect?.(() => () => editors.close());
+  registerDesignTools(ctx, editors);
+  // Optional web integration: CLI tools remain available without a web server.
+  ctx.inject?.(['webServer', 'sessions', 'sessionPersistence'], host => registerEditorHost(host, editors));
 }

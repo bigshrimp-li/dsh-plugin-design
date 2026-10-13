@@ -57,7 +57,7 @@ function fitZoom() {
   const avail = el.wrap.clientWidth - 48;
   const availH = el.wrap.clientHeight - 48;
   if (!state.declared.w || !state.declared.h) return 1;
-  return Math.min(1, avail / state.declared.w, availH / state.declared.h);
+  return Math.max(0.05, Math.min(1, avail / state.declared.w, availH / state.declared.h));
 }
 
 function applyZoom() {
@@ -66,20 +66,30 @@ function applyZoom() {
   const h = state.declared.h || 0;
   el.board.style.width = w + 'px';
   el.board.style.height = h + 'px';
-  el.inner.style.transform = `scale(${k})`;
-  el.inner.style.width = w + 'px';
-  el.inner.style.height = h + 'px';
+  el.board.style.transform = `scale(${k})`;
+  el.inner.style.width = w * k + 'px';
+  el.inner.style.height = h * k + 'px';
   el.wrap.style.setProperty('--scaled', String(k));
 }
 
-async function loadBoard(canvasRel, boardRel, keepSelection = false) {
+let loadGeneration = 0;
+async function loadBoard(canvasRel, boardRel, keepSelection = false, skipFlush = false) {
+  const generation = ++loadGeneration;
+  if (!skipFlush) {
+    bridge()?.finishTextEdit();
+    await flushWrites();
+  }
   const data = await api(`/api/board?canvas=${encodeURIComponent(canvasRel)}&board=${encodeURIComponent(boardRel)}`);
+  if (generation !== loadGeneration) return;
+  revisions.set(boardKey(canvasRel, boardRel), data.revision);
   state.canvas = canvasRel;
   state.board = boardRel;
   state.declared = data.declared ?? { w: 0, h: 0 };
   state.elements = data.elements ?? [];
   state.canUndo = data.canUndo === true;
   if (!keepSelection) state.selectedTid = null;
+  delete el.inspector.dataset.built;
+  renderInspector();
   renderTabs();
   renderLayers();
   applyZoom();
@@ -96,7 +106,8 @@ el.board.addEventListener('load', () => {
     if (b && b.ready) {
       clearInterval(timer);
       // 把源码里的行内样式原文交给桥当基准（DOM 里那份已被 CSSOM 规范化过）
-      b.registerSources(Object.fromEntries(state.elements.map((e) => [e.tid, e.style])));
+      b.registerSources(Object.fromEntries(state.elements.map((e) => [e.tid, e])));
+      renderLayers();
       b.setMode(el.mode.getAttribute('aria-pressed') === 'true' ? 'select' : 'browse');
       if (state.selectedTid !== null) b.select(state.selectedTid, false);
       renderInspector();
@@ -106,6 +117,13 @@ el.board.addEventListener('load', () => {
 
 // 桥回调（桥在 iframe 里，通过 window.parent 调过来）
 window.__editorHost = {
+  onNavigate(pathname) {
+    const rel = decodeURIComponent(pathname).replace(/^\/board\//, '');
+    const canvas = state.canvases.find(c => c.boards.some(b => `${c.path}/${b.path}` === rel));
+    const target = canvas?.boards.find(b => `${canvas.path}/${b.path}` === rel);
+    if (target) loadBoard(canvas.path, target.path).catch(e => toast(e.message, true));
+    else toast('目标画板不在当前设计稿清单中', true);
+  },
   onSelect(info) {
     state.selectedTid = info ? info.tid : null;
     renderLayers();
@@ -121,54 +139,104 @@ window.__editorHost = {
     if (kind === 'move' || kind === 'resize') toast('已改尺寸/位置，正在写回…');
     await commit(tid, style);
   },
-  async onTextCommit(tid, text) {
-    try {
-      await api('/api/edit', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canvas: state.canvas, board: state.board, tid, text, origin: CLIENT_ID }),
-      });
-      toast('文字已写回源码');
-      await reloadBoard(true);
-    } catch (e) {
-      toast(e.message, true);
-      await reloadBoard(true);
-    }
+  onTextCommit(tid, text) {
+    const target = { canvas: state.canvas, board: state.board };
+    flushPending();
+    enqueueWrite({ ...target, tid, text });
+    return writeChain.then(async () => {
+      if (sameBoard(target)) await reloadBoard(true, true);
+    });
   },
   onNotice(message) { toast(message); },
 };
 
 // ---------------------------------------------------------------- 写入
 
-let commitTimer = null;
-async function commit(tid, style, delay = 0) {
-  clearTimeout(commitTimer);
-  commitTimer = setTimeout(async () => {
+const pendingWrites = new Map();
+const revisions = new Map();
+const epochs = new Map();
+let writeChain = Promise.resolve();
+let writing = 0;
+let saveError = false;
+const boardKey = (canvas, board) => JSON.stringify([canvas, board]);
+const sameBoard = target => target.canvas === state.canvas && target.board === state.board;
+
+function updateSaveState() {
+  $('saveState').textContent = pendingWrites.size || writing ? '保存中…' : saveError ? '保存失败，请重试' : '已保存';
+}
+function enqueueWrite(job) {
+  const key = boardKey(job.canvas, job.board);
+  job.epoch ??= epochs.get(key) ?? 0;
+  writing++;
+  updateSaveState();
+  writeChain = writeChain.then(async () => {
     try {
+      if (job.epoch !== (epochs.get(key) ?? 0)) return;
       const out = await api('/api/edit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canvas: state.canvas, board: state.board, tid, style, origin: CLIENT_ID }),
+        body: JSON.stringify({ ...job, revision: revisions.get(key), origin: CLIENT_ID }),
       });
-      state.canUndo = out.canUndo === true;
-      el.undo.disabled = !state.canUndo;
-      // 写回成功了：源码现在就是这一串，把它接成新基准（不整页重载，免得丢焦点）
-      if (typeof out.style === 'string') bridge()?.acceptCommitted(tid, out.style);
-      const fresh = await api(`/api/board?canvas=${encodeURIComponent(state.canvas)}&board=${encodeURIComponent(state.board)}`);
-      state.elements = fresh.elements ?? [];
-      renderLayers();
-      return out;
+      revisions.set(key, out.revision);
+      if (sameBoard(job)) {
+        state.canUndo = out.canUndo === true;
+        el.undo.disabled = !state.canUndo;
+        if (typeof job.style === 'string') bridge()?.acceptCommitted(job.tid, out.style);
+        const element = state.elements.find(e => e.tid === job.tid);
+        if (element && typeof out.style === 'string') element.style = out.style;
+        renderLayers();
+        renderInspector();
+      }
     } catch (e) {
+      saveError = true;
+      epochs.set(key, (epochs.get(key) ?? 0) + 1);
+      for (const [pendingKey, pending] of pendingWrites) {
+        if (boardKey(pending.job.canvas, pending.job.board) === key) {
+          clearTimeout(pending.timer);
+          pendingWrites.delete(pendingKey);
+        }
+      }
       toast(e.message + (e.body?.problems ? `（${e.body.problems.length} 个问题）` : ''), true);
-      await reloadBoard(true);
+      if (sameBoard(job)) await loadBoard(job.canvas, job.board, true, true);
+    } finally {
+      writing--;
+      updateSaveState();
     }
+  });
+  return writeChain;
+}
+function flushPending() {
+  for (const [key, pending] of pendingWrites) {
+    clearTimeout(pending.timer);
+    pendingWrites.delete(key);
+    enqueueWrite(pending.job);
+  }
+}
+async function flushWrites() {
+  flushPending();
+  await writeChain;
+}
+function commit(tid, style, delay = 0) {
+  saveError = false;
+  // Capture the board now: navigation must never redirect a pending write.
+  const job = { canvas: state.canvas, board: state.board, tid, style, epoch: epochs.get(boardKey(state.canvas, state.board)) ?? 0 };
+  const key = JSON.stringify([job.canvas, job.board, tid]);
+  clearTimeout(pendingWrites.get(key)?.timer);
+  const timer = setTimeout(() => {
+    pendingWrites.delete(key);
+    enqueueWrite(job);
   }, delay);
-  return commitTimer;
+  pendingWrites.set(key, { job, timer });
+  updateSaveState();
 }
-
-async function reloadBoard(keepSelection) {
-  const tid = keepSelection ? state.selectedTid : null;
-  state.selectedTid = tid;
-  await loadBoard(state.canvas, state.board, true);
+async function reloadBoard(keepSelection, skipFlush = false) {
+  if (!state.canvas || !state.board) return;
+  await loadBoard(state.canvas, state.board, keepSelection, skipFlush);
 }
+window.addEventListener('beforeunload', e => {
+  if (!pendingWrites.size && !writing) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
 
 // ---------------------------------------------------------------- 图层树
 
@@ -216,6 +284,7 @@ function renderLayers() {
 function renderInspector(info, opts = {}) {
   const tid = state.selectedTid;
   if (tid === null || tid === undefined) {
+    delete el.inspector.dataset.built;
     el.inspector.innerHTML = '<p class="dim pad">在画板里点一个元素</p>';
     return;
   }
@@ -265,6 +334,7 @@ function renderInspector(info, opts = {}) {
     add.type = 'button'; add.className = 'btn'; add.textContent = '加';
     add.addEventListener('click', () => {
       if (!val.value.trim()) return;
+      if (!validCss(sel.value, val.value.trim())) { toast('CSS 属性值无效，尚未保存', true); return; }
       const decls = { ...currentDecls(tid) };
       decls[sel.value] = val.value.trim();
       push(tid, decls);
@@ -280,14 +350,24 @@ function renderInspector(info, opts = {}) {
       const r = document.createElement('div');
       r.className = 'row';
       const l = document.createElement('label'); l.textContent = k;
-      const i = document.createElement('input'); i.readOnly = true; i.value = comp[k];
+      const i = document.createElement('input'); i.readOnly = true; i.dataset.computed = k; i.value = comp[k];
       r.append(l, i);
       gComp.appendChild(r);
     }
     const gBox = group('盒子');
-    const b = live?.box;
-    if (b) gBox.appendChild(div('hint', `${Math.round(b.w)} × ${Math.round(b.h)} px，位于 (${Math.round(b.x)}, ${Math.round(b.y)})`));
+    const box = div('hint', '');
+    box.dataset.box = '1';
+    gBox.appendChild(box);
   }
+
+  // Computed styles and geometry must refresh after preview and iframe reload too.
+  for (const input of el.inspector.querySelectorAll('input[data-computed]')) {
+    input.value = live?.computed?.[input.dataset.computed] ?? '';
+  }
+  const box = el.inspector.querySelector('[data-box]');
+  const b = live?.box;
+  if (box) box.textContent = b
+    ? `${Math.round(b.w)} × ${Math.round(b.h)} px，位于 (${Math.round(b.x)}, ${Math.round(b.y)})` : '';
 
   // 值随时刷新
   for (const input of el.inspector.querySelectorAll('input[data-prop]')) {
@@ -304,7 +384,7 @@ function currentDecls(tid) {
 /** 改一条 → 画板里立刻预览 → 防抖写回源码。 */
 function push(tid, decls) {
   const b = bridge();
-  if (b) b.preview(tid, decls);
+  if (b) { b.preview(tid, decls); renderInspector(b.describe(tid)); }
   // 让桥来序列化：它按**原始写法**重建，没动过的声明一个字符都不变
   const style = b?.styleString(tid)
     ?? Object.entries(decls).map(([k, v]) => `${k}: ${v}`).join('; ');
@@ -312,6 +392,7 @@ function push(tid, decls) {
 }
 
 const INHERITED = new Set(['font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing', 'color', 'text-align']);
+const validCss = (prop, value) => !value || CSS.supports(prop, value.replace(/\s*!important\s*$/, ''));
 
 function field(tid, prop) {
   const row = document.createElement('div');
@@ -326,6 +407,10 @@ function field(tid, prop) {
   input.spellcheck = false;
   input.placeholder = '未设置';
   input.addEventListener('input', () => {
+    const valid = validCss(prop, input.value.trim());
+    input.setCustomValidity(valid ? '' : 'CSS 属性值无效，尚未保存');
+    input.setAttribute('aria-invalid', String(!valid));
+    if (!valid) return;
     const decls = currentDecls(tid);
     if (input.value.trim() === '') delete decls[prop];
     else decls[prop] = input.value.trim();
@@ -426,10 +511,14 @@ el.textBtn.addEventListener('click', () => {
 
 el.undo.addEventListener('click', async () => {
   try {
+    bridge()?.finishTextEdit();
+    await flushWrites();
     const out = await api('/api/undo', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ canvas: state.canvas, board: state.board, origin: CLIENT_ID }),
     });
+    state.canUndo = out.canUndo === true;
+    el.undo.disabled = !state.canUndo;
     if (!out.changed) { toast('没有可撤销的改动了'); return; }
     toast('已撤销');
     await reloadBoard(true);
@@ -444,7 +533,7 @@ events.addEventListener('message', (ev) => {
   let data = null;
   try { data = JSON.parse(ev.data); } catch { return; }
   if (data?.origin === CLIENT_ID) return; // 自己改的：不用提示，也不用重载
-  if (data?.type === 'edited' && data.canvas === state.canvas && data.board === state.board) {
+  if (data?.type === 'edited' && data.canvas === state.canvas && data.board === state.board && !pendingWrites.size && !writing) {
     toast('这份画板在别处被改过（可能是 agent），已重新加载');
     reloadBoard(true);
   }

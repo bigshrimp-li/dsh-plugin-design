@@ -9,6 +9,8 @@ if [ ! -x "$harness" ]; then
   echo "找不到 DeepSeek Harness：$harness" >&2
   exit 1
 fi
-[ -f "$here/dist/index.js" ] || (cd "$here" && tsc -p tsconfig.json)
+(cd "$here" && npm run build)
 
+ELECTRON_RUN_AS_NODE=1 "$harness" --test "$here/test/client-boot.test.mjs"
+ELECTRON_RUN_AS_NODE=1 "$harness" --test "$here/test/editor-source.test.mjs" "$here/test/editor-server.test.mjs" "$here/test/editor-host.test.mjs"
 ELECTRON_RUN_AS_NODE=1 "$harness" --expose-internals "$here/test/run.mjs"

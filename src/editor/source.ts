@@ -14,7 +14,7 @@
 import { readFile } from 'node:fs/promises';
 
 const ATTRS = String.raw`((?:[^>"']|"[^"]*"|'[^']*')*)`;
-const TAG = new RegExp(String.raw`<(\/?)([A-Za-z][A-Za-z0-9:-]*)` + ATTRS + '>', 'g');
+const TAG = new RegExp(String.raw`<!--[\s\S]*?(?:-->|$)|<(\/?)([A-Za-z][A-Za-z0-9:-]*)` + ATTRS + '>', 'g');
 const VOID_ELEMENTS = new Set([
   'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
   'link', 'meta', 'param', 'source', 'track', 'wbr',
@@ -27,6 +27,7 @@ export interface SourceAttr {
   value: string | null;
   /** 值的 [from, to)，不含引号；没有值时为 null。 */
   valueSpan: [number, number] | null;
+  span: [number, number];
 }
 
 export interface SourceElement {
@@ -77,7 +78,7 @@ function parseAttrs(raw: string, offset: number): SourceAttr[] {
         valueSpan = [at, at + m[5]!.length];
       }
     }
-    out.push({ name, value, valueSpan });
+    out.push({ name, value, valueSpan, span: [offset + m.index, offset + m.index + m[0].length] });
     if (m.index === re.lastIndex) re.lastIndex += 1;
   }
   return out;
@@ -101,6 +102,7 @@ export function listElements(source: string): SourceElement[] {
     TAG.lastIndex = cursor;
     const m = TAG.exec(source);
     if (m === null || m.index >= to) break;
+    if (m[0].startsWith('<!--')) { cursor = m.index + m[0].length; continue; }
     const [whole, slash, name, rawAttrs] = [m[0]!, m[1]!, m[2]!, m[3] ?? ''];
     const tag = name.toLowerCase();
     const closing = slash === '/';
@@ -136,7 +138,7 @@ export function listElements(source: string): SourceElement[] {
       attrs,
       selfClosing,
       isVoid,
-      style: styleAttr?.value ?? '',
+      style: decodeAttribute(styleAttr?.value ?? ''),
       styleSpan: styleAttr?.valueSpan ?? null,
       text: '',
     };
@@ -181,6 +183,18 @@ export function elementAt(source: string, tid: number): SourceElement | null {
   return listElements(source).find((el) => el.tid === tid) ?? null;
 }
 
+function decodeAttribute(value: string): string {
+  const named: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' };
+  return value.replace(/&(#x[\da-f]+|#\d+|amp|quot|apos|lt|gt);/gi, (whole, entity: string) => {
+    if (!entity.startsWith('#')) return named[entity.toLowerCase()] ?? whole;
+    const code = entity[1]?.toLowerCase() === 'x' ? parseInt(entity.slice(2), 16) : Number(entity.slice(1));
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+  });
+}
+function encodeAttribute(value: string, quote: string): string {
+  return value.replace(/&/g, '&amp;').replace(quote === "'" ? /'/g : /"/g, quote === "'" ? '&#39;' : '&quot;');
+}
+
 /** 替换（或插入）某个元素的 `style` 属性。style 传空串 = 去掉这个属性。 */
 export function setInlineStyle(source: string, tid: number, style: string): string {
   const el = elementAt(source, tid);
@@ -189,20 +203,19 @@ export function setInlineStyle(source: string, tid: number, style: string): stri
   if (el.styleSpan !== null) {
     if (trimmed === '') {
       // 连属性一起删掉（含前面的空白）
-      const before = source.slice(0, el.styleSpan[0]);
-      const quoteAt = Math.max(before.lastIndexOf('"'), before.lastIndexOf("'"));
-      const attrStart = Math.max(before.lastIndexOf(' ', quoteAt), before.lastIndexOf('\n', quoteAt), before.lastIndexOf('\t', quoteAt));
-      const after = source.slice(el.styleSpan[1]);
-      const closeQuote = after.search(/["']/);
-      return source.slice(0, attrStart < el.startTag[0] ? el.styleSpan[0] : attrStart) + after.slice(closeQuote + 1);
+      const attr = el.attrs.find(a => a.name.toLowerCase() === 'style')!;
+      let start = attr.span[0];
+      while (start > el.startTag[0] && /\s/.test(source[start - 1]!)) start--;
+      return source.slice(0, start) + source.slice(attr.span[1]);
     }
-    return source.slice(0, el.styleSpan[0]) + trimmed + source.slice(el.styleSpan[1]);
+    const quote = source[el.styleSpan[0] - 1]!;
+    return source.slice(0, el.styleSpan[0]) + encodeAttribute(trimmed, quote) + source.slice(el.styleSpan[1]);
   }
   if (trimmed === '') return source;
   // 没有 style：插在开始标签末尾，保持引号风格与源码一致
   const at = el.selfClosing ? el.startTag[1] - 2 : el.startTag[1] - 1;
   const pad = at > 0 && /\s/.test(source[at - 1]!) ? '' : ' ';
-  return `${source.slice(0, at)}${pad}style="${trimmed}"${source.slice(at)}`;
+  return `${source.slice(0, at)}${pad}style="${encodeAttribute(trimmed, '"')}"${source.slice(at)}`;
 }
 
 /** 把某个元素的**纯文字内容**换掉。元素里有子元素时拒绝（那属于结构编辑）。 */
@@ -210,6 +223,7 @@ export function setText(source: string, tid: number, text: string): string {
   const el = elementAt(source, tid);
   if (el === null) throw new Error(`源码里没有 tid ${tid} 这个元素`);
   if (el.isVoid || el.selfClosing) throw new Error(`<${el.tag}> 没有内容，改不了文字`);
+  if (['script', 'style', 'helmet'].includes(el.tag)) throw new Error('样式和脚本不是可编辑文字');
   const inner = source.slice(el.inner[0], el.inner[1]);
   if (/<[A-Za-z][A-Za-z0-9:-]*/.test(inner)) {
     throw new Error(`<${el.tag}> 里还有子元素，原地改文字只支持纯文字节点`);

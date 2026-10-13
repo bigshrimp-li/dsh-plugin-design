@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Repeated list</title>
+<script src="./support.js"></script>
+</head><body><x-dc>
+<helmet><style>body{margin:0}button,input{font:inherit}</style></helmet>
+<div style="position: relative; width: 520px; height: 560px; box-sizing: border-box; padding: 36px; background: #ffffff; color: #16324f; font-family: sans-serif">
+<h1 id="heading" style="margin: 0; font-size: 28px; color: #16324f">Repeated list</h1>
+<p id="subtitle" style="margin: 12px 0; font-size: 16px">Select the second item</p>
+<sc-for list="{{items}}" as="item">
+<button type="button" class="item" style="display: block; width: 200px; height: 44px; margin: 14px 0; background: #d8e8f6; border: 0">{{item.name}}</button>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":520,"height":560}}'>
+class Component extends DCLogic {
+renderVals() {
+return { count: (this.state && this.state.count) || 0,
+increment: function () { this.setState({ count: ((this.state && this.state.count) || 0) + 1 }); }.bind(this),
+items: [{name:'First item'}, {name:'Second item'}, {name:'Third item'}] };
+}
+}
+</script></body></html>

@@ -54,6 +54,7 @@ fi
 
 echo "构建中…"
 (cd "$HERE" && "$TSC" -p tsconfig.json)
+(cd "$HERE" && node scripts/copy-editor-assets.mjs)
 [ -f "$HERE/dist/index.js" ] || { echo "构建没有产出 dist/index.js" >&2; exit 1; }
 
 # 3. skills -> <dsh home>/skills
