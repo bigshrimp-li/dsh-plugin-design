@@ -242,6 +242,101 @@ renderVals() { return {}; }
   await rm(canvas, { recursive: true, force: true });
 }
 
+// ---- 编辑器的源码映射（tid ↔ 源码位置）----
+console.log('\n编辑器 · 源码映射');
+{
+  const { listElements, setInlineStyle, setText, elementAt } =
+    await import(pathToFileURL(path.join(ROOT, 'dist/editor/source.js')).href);
+  const src = await readFile(path.join(ROOT, 'examples/order-flow/Main.dc.html'), 'utf8');
+  const els = listElements(src);
+
+  check('解析出元素并按 tid 编号', els.length > 20 && els[0].tag === 'helmet', `${els.length} 个，第一个是 ${els[0]?.tag}`);
+  check('helmet 的 link/style 是 1/2，根 div 是 3',
+    els[1]?.tag === 'link' && els[2]?.tag === 'style' && els[3]?.tag === 'div',
+    els.slice(0, 4).map((e) => e.tid + ':' + e.tag).join(' '));
+
+  const h1 = els.find((e) => e.tag === 'h1');
+  const edited = setInlineStyle(src, h1.tid, h1.style.replace('30px', '44px'));
+  check('改一条声明写回源码', edited.includes('font-size: 44px') && edited !== src);
+  check('没动过的声明按原样保留（不被 CSSOM 规范化）', edited.includes('margin: 8px 0 0'), '出现了 8px 0px 0px 之类的规范化');
+  check('设回原值即字节复原', setInlineStyle(edited, h1.tid, h1.style) === src);
+  check('去掉 style 属性后仍是合法结构', elementAt(setInlineStyle(src, h1.tid, ''), h1.tid).style === '');
+
+  const withText = setText(src, h1.tid, 'Coffee & tea <today>');
+  check('改文字会转义 HTML', withText.includes('Coffee &amp; tea &lt;today&gt;'));
+
+  const container = els.find((e) => !e.isVoid && !e.selfClosing && /<[A-Za-z]/.test(src.slice(e.inner[0], e.inner[1])));
+  let refused = false;
+  try { setText(src, container.tid, 'x'); } catch { refused = true; }
+  check('有子元素时拒绝原地改字', refused, `<${container.tag}> 应该被拒绝`);
+
+  let holeRefused = false;
+  try { setText('x<x-dc>\n<p>{{ title }}</p>\n</x-dc>', 0, 'x'); } catch { holeRefused = true; }
+  check('内容是 {{…}} 绑定时拒绝原地改字', holeRefused);
+}
+
+// ---- 编辑器服务 ----
+console.log('\n编辑器 · 服务');
+{
+  const { startEditor } = await import(pathToFileURL(path.join(ROOT, 'dist/editor/server.js')).href);
+  const ws = path.join(dir, 'editor');
+  await mkdir(ws, { recursive: true });
+  await cp(path.join(ROOT, 'examples/order-flow'), path.join(ws, 'order-flow'), { recursive: true });
+  const file = path.join(ws, 'order-flow/Main.dc.html');
+  const before = await readFile(file, 'utf8');
+
+  const ed = await startEditor({ workspaceDir: ws });
+  try {
+    const list = await (await fetch(new URL('/api/workspace', ed.url))).json();
+    check('发现工作目录下的设计稿', list.canvases?.length === 1 && list.canvases[0].path === 'order-flow', JSON.stringify(list.canvases));
+
+    const board = await (await fetch(new URL('/api/board?canvas=order-flow&board=Main.dc.html', ed.url))).json();
+    check('读出画板与元素表', board.elements?.length > 20 && board.declared?.w === 390);
+
+    const h1 = board.elements.find((e) => e.tag === 'h1');
+    const editRes = await fetch(new URL('/api/edit', ed.url), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: h1.tid, style: 'font-size: 44px' }),
+    });
+    check('写入成功', editRes.status === 200, `HTTP ${editRes.status}`);
+    check('源码真的变了', (await readFile(file, 'utf8')).includes('font-size: 44px'));
+
+    const undoRes = await fetch(new URL('/api/undo', ed.url), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html' }),
+    });
+    check('撤销成功', (await undoRes.json()).changed === true);
+    check('撤销后字节复原', (await readFile(file, 'utf8')) === before);
+
+    // 有子元素的节点不能原地改字（tid 3 是画板根 div）
+    const badRes = await fetch(new URL('/api/edit', ed.url), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: 3, text: 'x' }),
+    });
+    check('改有子元素的节点被拒绝', badRes.status === 409 || badRes.status === 422, `HTTP ${badRes.status}`);
+    check('被拒绝后文件没被动过', (await readFile(file, 'utf8')) === before);
+
+    // 纯文字节点则可以
+    const okText = await fetch(new URL('/api/edit', ed.url), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html', tid: h1.tid, text: 'Choose your drink' }),
+    });
+    check('纯文字节点可以原地改字', okText.status === 200 && (await readFile(file, 'utf8')).includes('Choose your drink'));
+    await fetch(new URL('/api/undo', ed.url), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canvas: 'order-flow', board: 'Main.dc.html' }),
+    });
+    check('改字也能撤销', (await readFile(file, 'utf8')) === before);
+
+    // 路径逃逸
+    const esc = await fetch(new URL('/api/board?canvas=..&board=../../etc/passwd', ed.url));
+    check('挡住路径逃逸', esc.status >= 400, `HTTP ${esc.status}`);
+  } finally {
+    await ed.close();
+  }
+  await rm(ws, { recursive: true, force: true });
+}
+
 await rm(dir, { recursive: true, force: true });
 
 console.log(`\n${failures.length === 0 ? 'PASS' : 'FAIL'}: ${pass} passed, ${failures.length} failed`);

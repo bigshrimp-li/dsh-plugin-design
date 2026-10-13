@@ -11,6 +11,8 @@ Written for this plugin, no third-party rights attached beyond the repository's 
 |---|---|
 | `src/render.ts` | serves a design canvas, drives headless Chrome, collects the artboard's self-reported size and errors |
 | `src/export.ts` | turns `.dc.html` into a self-contained viewable HTML |
+| `src/editor/` | the visual editor: `source.ts` (tid ↔ source position), `server.ts`, and the UI under `assets/` |
+| `client.js` | the DSH client half (sidebar tab) |
 | `src/index.ts` | the plugin entry |
 | `test/` | the test suite and fixtures |
 | `install.sh`, `build-support.sh` | tooling |

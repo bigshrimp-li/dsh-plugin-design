@@ -2,16 +2,18 @@
   "name": "@local/dsh-plugin-design",
   "version": "0.1.0",
   "private": true,
-  "description": "Design tools for DeepSeek Harness — validate, render and export design canvases and design systems",
+  "description": "Design tools for DeepSeek Harness \u2014 validate, render and export design canvases and design systems",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js",
+    "./client": "./client.js",
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
-    "vendor"
+    "vendor",
+    "client.js"
   ],
   "engines": {
     "node": ">=20"
@@ -19,10 +21,17 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-editor-assets.mjs",
     "watch": "tsc -p tsconfig.json --watch",
     "test": "./test.sh"
   },

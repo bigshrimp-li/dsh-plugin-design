@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设计稿编辑器</title>
+<link rel="stylesheet" href="/shell.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">设计稿编辑器</div>
+  <select id="canvas" class="pick" aria-label="选择设计稿"></select>
+  <div id="boards" class="tabs" role="tablist"></div>
+  <div class="spacer"></div>
+  <button id="mode" class="btn" type="button" title="编辑模式下属画板自己的交互让位给选中">编辑模式</button>
+  <button id="textBtn" class="btn" type="button" title="原地改选中元素的文字">改文字</button>
+  <button id="undo" class="btn" type="button">撤销</button>
+  <button id="reload" class="btn" type="button">重新加载画板</button>
+  <select id="zoom" class="pick small" aria-label="缩放">
+    <option value="fit">适应</option>
+    <option value="1">100%</option>
+    <option value="0.75">75%</option>
+    <option value="0.5">50%</option>
+  </select>
+</header>
+
+<main class="stage">
+  <aside class="panel left">
+    <div class="panelhead">图层<span id="layerCount" class="dim"></span></div>
+    <div id="layers" class="layers"></div>
+  </aside>
+
+  <section class="canvaswrap" id="canvaswrap">
+    <div class="canvasinner" id="canvasinner">
+      <iframe id="board" title="画板" src="about:blank"></iframe>
+    </div>
+    <div id="empty" class="empty">左侧选一份设计稿</div>
+  </section>
+
+  <aside class="panel right">
+    <div class="panelhead">属性</div>
+    <div id="inspector" class="inspector"><p class="dim pad">在画板里点一个元素</p></div>
+  </aside>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="/shell.js"></script>
+</body>
+</html>
