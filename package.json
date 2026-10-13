@@ -2,7 +2,7 @@
   "name": "@local/dsh-plugin-design",
   "version": "0.1.0",
   "private": true,
-  "description": "BaoCut 的 design / design-system 工具：校验设计稿与设计系统、导入素材",
+  "description": "Design tools for DeepSeek Harness — validate, render and export design canvases and design systems",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
@@ -10,8 +10,12 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "vendor"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -19,13 +23,15 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "watch": "tsc -p tsconfig.json --watch"
+    "watch": "tsc -p tsconfig.json --watch",
+    "test": "./test.sh"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
     "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   }
 }

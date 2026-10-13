@@ -32,13 +32,28 @@ if [ -z "$DSH_BIN" ]; then
 fi
 echo "dsh: $DSH_BIN"
 
-# 2. build
-if ! command -v tsc >/dev/null 2>&1; then
-  echo "找不到 tsc。先装 TypeScript：npm i -g typescript" >&2
-  exit 1
+# 2. build dependencies, then the build
+#    一次全新 clone 没有任何 node_modules，而 tsconfig 需要 @types/node —— 所以先装再编译。
+if [ ! -d "$HERE/node_modules/typescript" ] || [ ! -d "$HERE/node_modules/@types/node" ]; then
+  echo "安装构建依赖（typescript、@types/node）…"
+  if command -v npm >/dev/null 2>&1; then
+    (cd "$HERE" && npm install --no-audit --no-fund --loglevel=error)
+  elif command -v pnpm >/dev/null 2>&1; then
+    (cd "$HERE" && pnpm install --silent)
+  else
+    echo "找不到 npm 或 pnpm。" >&2
+    exit 1
+  fi
 fi
+
+# 用仓库里那份 tsc；没有才退回 PATH 上的
+TSC="$HERE/node_modules/.bin/tsc"
+if [ ! -x "$TSC" ]; then
+  TSC=$(command -v tsc) || { echo "找不到 tsc。" >&2; exit 1; }
+fi
+
 echo "构建中…"
-(cd "$HERE" && tsc -p tsconfig.json)
+(cd "$HERE" && "$TSC" -p tsconfig.json)
 [ -f "$HERE/dist/index.js" ] || { echo "构建没有产出 dist/index.js" >&2; exit 1; }
 
 # 3. skills -> <dsh home>/skills

@@ -27,7 +27,7 @@
 
 ## 快速开始
 
-前置：**Node ≥ 20**、**TypeScript**（`npm i -g typescript`）、**Chrome / Chromium / Edge**（渲染用）。
+前置：**Node ≥ 20**、**npm**、**Chrome / Chromium / Edge**（只给 `design_render` 用；没有也能跑其余五个工具）。构建依赖由 `install.sh` 自动安装。
 
 ```sh
 git clone <this repo> && cd dsh-plugin-design
