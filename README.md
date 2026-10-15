@@ -63,9 +63,9 @@ git clone <this repo> && cd dsh-plugin-design
 | **右侧栏** | 设计稿编辑器标签页 |
 | **给 agent** | 七个 `design_*` 工具 + 两个 skill |
 
-![在 Harness 里](docs/images/design-space.png)
+![在 Harness 里](docs/images/harness-design-space.png)
 
-<sub>Design 空间主面板。图截自插件的浏览器测试环境 —— 中间的标签栏、画布、图层与属性面板都是插件真实界面；两侧的导航是测试宿主提供的，正式使用时是 Harness 自己的侧栏与对话。</sub>
+<sub>真实的 Harness 窗口：左侧栏多了「Design 空间」和「设计区」，主区域是画布（图层／画布／属性三栏），右侧是这段设计稿绑定的对话。</sub>
 
 换句话说：**它是一个让 Harness 里的 agent 去画界面、并且你就在同一个窗口里看着改的工具** —— 不用切到别的设计软件，也不用把图导来导去。
 
