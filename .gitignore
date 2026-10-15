@@ -8,6 +8,10 @@ node_modules/
 .design-preview/
 *.tmp
 
+# 锁文件不提交：它会把当前机器的 registry（内部 bnpm）写进 56 条 resolved URL，
+# 换台机器或给外部的人就会装不上。install.sh 每次跑 npm install，不依赖锁文件。
+package-lock.json
+
 # 实现过程中的临时工作区：ticket 草稿、实现日志、契约笔记。
 # 它们是过程材料，不是交付物；写功能时随手放在这里，别提交。
 .scratch/

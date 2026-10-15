@@ -38,7 +38,7 @@ function toast(message, bad) {
 }
 
 const api = async (route, options) => {
-  const res = await fetch(route, options);
+  const res = await fetch(route, options?.method==='POST' && (options.body?.length||0)<60000 ? {...options,keepalive:true}:options);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(body.error ?? `HTTP ${res.status}`), { body, status:res.status });
   return body;
@@ -193,6 +193,7 @@ function updateSaveState() {
   $('saveState').textContent = pendingWrites.size || writing ? '保存中…' : saveError ? '保存失败，请重试' : '已保存';
 }
 function enqueueWrite(job) {
+  emit('edit-intent',{...job,revision:revisions.get(boardKey(job.canvas,job.board))});
   const key = boardKey(job.canvas, job.board);
   job.epoch ??= epochs.get(key) ?? 0;
   writing++;
@@ -216,7 +217,7 @@ function enqueueWrite(job) {
         renderLayers();
         renderInspector();
       }
-      emit('saved', {...out, canvas:job.canvas,board:job.board});
+      emit('saved', {...out, canvas:job.canvas,board:job.board,committedJob:job});
     } catch (e) {
       saveError = true;
       epochs.set(key, (epochs.get(key) ?? 0) + 1);
@@ -258,6 +259,7 @@ function commit(tid, style, delay = 0) {
     enqueueWrite(job);
   }, delay);
   pendingWrites.set(key, { job, timer });
+  emit('edit-intent',{...job,revision:state.revision});
   updateSaveState();
 }
 async function reloadBoard(keepSelection, skipFlush = false) {
@@ -522,7 +524,9 @@ async function boot() {
     el.empty.textContent = '这个工作目录里还没有设计稿（没找到 canvas.json）';
     return;
   }
-  const first = ws.canvases[0];
+  const requested=new URLSearchParams(location.search).get('canvas');
+  const first = requested===null?ws.canvases[0]:ws.canvases.find(c=>c.path===requested);
+  if(!first)throw new Error('指定设计稿不存在或不在当前目录中，请重新选择');
   el.canvas.value = first.path;
   await loadBoard(first.path, first.boards[0]?.path ?? 'Main.dc.html');
 }
@@ -561,6 +565,7 @@ events.addEventListener('message', (ev) => {
   let data = null;
   try { data = JSON.parse(ev.data); } catch { return; }
   emit('external-change', data);
+  if(data?.external && (pendingWrites.size || writing || el.board.contentDocument?.querySelector('[contenteditable=\"true\"]'))){toast('设计稿已被外部修改；请先完成当前输入，再重新加载。保存时会核对版本。',true);return;}
   if (data?.origin === CLIENT_ID) return; // 自己改的：不用提示，也不用重载
   if (data?.type === 'edited' && data.canvas === state.canvas && (data.board === state.board || !data.board || data.files?.includes(state.board)) && !pendingWrites.size && !writing) {
     toast('这份画板在别处被改过（可能是 agent），已重新加载');
@@ -642,6 +647,6 @@ const editor = {
 window.designEditor = editor;
 bindShortcuts(document);
 // Modules are installed before boot so every module sees the initial board.
-const featureModules = ['/composer.js', '/redo.js', '/viewport.js', '/structure.js', '/selection.js', '/clipboard.js', '/notes.js', '/annotations.js'];
+const featureModules = ['/embedded.js','/composer.js', '/redo.js', '/viewport.js', '/structure.js', '/selection.js', '/clipboard.js', '/notes.js', '/annotations.js'];
 for (const module of featureModules) (await import(module)).install(editor);
 boot().catch((e) => toast(`启动失败：${e.message}`, true));

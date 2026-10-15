@@ -208,6 +208,7 @@ export function install(editor) {
   const observer = new ResizeObserver(() => draw()); observer.observe(el.wrap);
   editor.features.viewport = {
     applyZoom, fit, zoomAt, clientToWorld, worldToClient, layer, boardRect, activate, refresh,
+    restore(value){if(value && [value.k,value.x,value.y].every(Number.isFinite)){view={...value,k:Math.max(.1,Math.min(4,value.k))};refresh();}},
     get view() { return { ...view }; }, get page() { return page; }, get frameCount() { return 1 + [...cards.values()].filter(c => c.frame).length; },
     get budget() { return budget; }, get isPanning() { return !!drag; },
   };

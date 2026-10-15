@@ -130,3 +130,7 @@ body {
   .pick { max-width: 100%; }
   .bar { gap: 5px; padding: 6px 8px; }
 }
+
+body.embedded .bar .brand,body.embedded .bar #canvas{display:none}
+body.embedded .panel.left{width:176px}body.embedded .panel.right{width:232px}
+body.embedded .bar{gap:4px;padding:5px 8px}body.embedded .bar .btn{padding:4px 7px;font-size:12px}

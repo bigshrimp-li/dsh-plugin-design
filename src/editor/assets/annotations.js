@@ -55,7 +55,7 @@ export function install(editor) {
       const result=await editor.post('/api/annotations/resolve',{canvas:state.canvas,board:state.board,targets:targets.map(({sourceRef,instance})=>({sourceRef,instance}))});ensureContext(context);
       const m=memory(),item={id:id??m.nextId++,note,targets:result.targets,runtime:targets.map(t=>t.runtime),stale:null};
       const at=m.items.findIndex(entry=>entry.id===id);if(at<0)m.items.push(item);else m.items[at]=item;
-      clearDraft();render();drawMarkers();editor.toast('标注已保留，可插入会话草稿');
+      clearDraft();render();drawMarkers();events.dispatchEvent(new Event('annotations-changed'));editor.toast('标注已保留，可插入会话草稿');
     }finally{busy=false;render();}
   }
   function openItem(item){editingId=item.id;input.value=item.note;draftTargets=item.targets.map((t,i)=>({...t,runtime:item.runtime[i]}));panel.hidden=false;render();input.focus();}
@@ -66,7 +66,7 @@ export function install(editor) {
     for(const item of memory().items){
       if(item.stale)continue;
       for(let i=0;i<item.targets.length;i++){
-        const t=item.targets[i],r=item.runtime[i];
+        const t=item.targets[i],r=item.runtime?.[i];if(!r){changed=stale(item,'标注定位已失效，请重新选择')||changed;break;}
         if(t.sourceRef.board!==state.board){if(t.instance.count>1)changed=stale(item,'重复实例已离开当前画板，需要重新选择后确认')||changed;continue;}
         if(t.sourceRef.revision!==state.revision){changed=stale(item,'源码版本已变化，请重新选择')||changed;break;}
         if(!runtimeReady())continue;
@@ -155,9 +155,9 @@ export function install(editor) {
   events.addEventListener('session-changed',()=>{activeKey=key();clearDraft();markers.replaceChildren();render();});
   events.addEventListener('external-change',({detail})=>{
     if(detail?.canvas!==state.canvas)return;
-    for(const item of memory().items)if(item.targets.some(t=>detail.files?.includes(t.sourceRef.board)||detail.board===t.sourceRef.board))stale(item,'画板发生外部或历史修改，请重新选择');
+    for(const item of memory().items)if(item.targets.some(t=>detail.external||detail.files?.includes(t.sourceRef.board)||detail.board===t.sourceRef.board))stale(item,'画板发生外部或历史修改，请重新选择');
     render();drawMarkers();
   });
   tick=setInterval(drawMarkers,900);window.addEventListener('pagehide',()=>clearInterval(tick));
-  editor.features.annotations={pick,save:saveNote,export:exportNotes,get items(){return memory().items.map(({runtime,...item})=>item);},get panel(){return panel;},validate:validateRuntime};
+  editor.features.annotations={snapshot:()=>JSON.parse(JSON.stringify([...memories],(k,v)=>k==='node'?undefined:v)),restore:(entries)=>{if(!Array.isArray(entries))return;for(const [k,v] of entries)memories.set(k,v);validateRuntime();render();drawMarkers();},pick,save:saveNote,export:exportNotes,get items(){return memory().items.map(({runtime,...item})=>item);},get panel(){return panel;},validate:validateRuntime};
 }

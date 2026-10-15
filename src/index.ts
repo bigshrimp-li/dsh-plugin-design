@@ -12,6 +12,7 @@
  * 素材导入写 node:fs。
  */
 import { registerDesignTools } from './tools.ts';
+import { registerDesignSpaceHost } from './design-space/host.ts';
 import { EditorManager } from './editor/manager.ts';
 import { registerEditorHost, type EditorHostContext } from './editor/host.ts';
 
@@ -35,5 +36,5 @@ export function apply(ctx: {
   ctx.effect?.(() => () => editors.close());
   registerDesignTools(ctx, editors);
   // Optional web integration: CLI tools remain available without a web server.
-  ctx.inject?.(['webServer', 'sessions', 'sessionPersistence'], host => registerEditorHost(host, editors));
+  ctx.inject?.(['webServer', 'sessions', 'sessionPersistence'], host => { registerEditorHost(host, editors); registerDesignSpaceHost(host, editors); });
 }

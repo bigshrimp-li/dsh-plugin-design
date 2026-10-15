@@ -80,6 +80,32 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
     }
   };
 
+  // Observe only opened canvases. Hash source bytes so atomic replacement and same-size edits are detected.
+  const observed = new Map<string,{dir:string; signature:Record<string,string>; seen:number}>();
+  async function fingerprint(dir:string):Promise<Record<string,string>>{
+    const raw=await fs.readFile(path.join(dir,'canvas.json'),'utf8');
+    const index=JSON.parse(raw);const files:string[]=Array.isArray(index.order)?index.order:[];
+    const values:Record<string,string>={'canvas.json':revisionOf(raw)!};
+    for(const file of files.slice(0,200)){
+      const target=safeJoin(dir,file);const real=await fs.realpath(target);safeJoin(dir,path.relative(dir,real));
+      values[file]=revisionOf(await fs.readFile(real))!;
+    }
+    const assets=path.join(dir,'assets'),assetStats:string[]=[];
+    try{for(const name of (await fs.readdir(assets)).slice(0,1000)){const stat=await fs.stat(path.join(assets,name));assetStats.push(name+':'+stat.size+':'+stat.mtimeMs);}}catch{/* no assets */}
+    values['$assets']=revisionOf(assetStats.sort().join('\0'))!;return values;
+  }
+  const signatureKey=(value:Record<string,string>)=>JSON.stringify(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)));
+  // Acknowledge only bytes written by this transaction, never an unrelated concurrent external edit.
+  const acknowledge=(canvas:string,result:{revisions?:Record<string,string|null>})=>{const item=observed.get(canvas);if(!item)return;for(const [file,revision] of Object.entries(result.revisions||{})){if(file!=='canvas.json'&&!file.endsWith('.dc.html'))continue;if(revision===null)delete item.signature[file];else item.signature[file]=revision;}};
+  let checking=false,mutating=0,mutationEpoch=0;
+  const observer=setInterval(async()=>{
+    if(checking||mutating||clients.size===0)return;checking=true;const epoch=mutationEpoch;
+    try{for(const [canvas,item]of observed){
+      try{const signature=await fingerprint(item.dir);if(mutating||epoch!==mutationEpoch)continue;if(signatureKey(signature)!==signatureKey(item.signature)){item.signature=signature;broadcast({type:'edited',canvas,external:true});}}
+      catch{/* A writer may be replacing a file; retry on the next tick without discarding local input. */}
+    }}finally{checking=false;}
+  },1500);observer.unref();
+
   /** 工作目录下所有带 canvas.json 的设计稿。 */
   const listCanvases = async () => {
     const out: { path: string; title: string; boards: { path: string; w: number; h: number; title?: string }[] }[] = [];
@@ -131,8 +157,10 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
       res.end(JSON.stringify(value));
     };
 
+    let mutation=false;
     try {
       const route = decodeURIComponent(url.pathname);
+      if(req.method==='POST'&&route.startsWith('/api/')){mutation=true;mutating++;mutationEpoch++;}
       // ---- 静态 ----
       if (route === '/' || route === '/index.html') {
         res.writeHead(200, { 'Content-Type': MIME.html! });
@@ -169,7 +197,7 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
         html = html.split('"/_blob/').join(`"/_blob/${canvasRel}/`);
         html = html.split("'/_blob/").join(`'/_blob/${canvasRel}/`);
         // 编辑器桥：注入到 head 最前面，赶在画板运行时之前
-        const bridge = `<script src="/bridge.js"></script>`;
+        const bridge = url.searchParams.get('preview')==='1'?'':`<script src="/bridge.js"></script>`;
         const head = /<head[^>]*>/i.exec(html);
         html = head
           ? html.slice(0, head.index + head[0].length) + bridge + html.slice(head.index + head[0].length)
@@ -219,6 +247,8 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
         const dir = canvasDir(canvasRel);
         const indexSource = await fs.readFile(path.join(dir, 'canvas.json'), 'utf8');
         const index = JSON.parse(indexSource);
+        observed.delete(canvasRel);observed.set(canvasRel,{dir,signature:await fingerprint(dir),seen:Date.now()});
+        if(observed.size>60)observed.delete(observed.keys().next().value!);
         const abs = await boardPath(dir, boardRel);
         const source = await fs.readFile(abs, 'utf8');
         const box = index.boards?.[boardRel];
@@ -269,12 +299,14 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
               return { [boardRel]: after };
             },
           });
+          if(out.changed)acknowledge(canvasRel,out);
           if (out.changed) broadcast({type:'edited',canvas:canvasRel,board:boardRel,tid,files:out.files,origin:body.origin});
           json(200, {...out, style:elementAt(after,tid)?.style ?? '', revision:revisionOf(after)});
           return;
         }
         if (route === '/api/undo' || route === '/api/redo') {
           const out = await transactions[route === '/api/undo' ? 'undo' : 'redo'](dir);
+          if(out.changed)acknowledge(canvasRel,out);
           if (out.changed) broadcast({type:'edited',canvas:canvasRel,files:out.files,origin:body.origin});
           json(200, {...out, revision:out.revisions[boardRel]});
           return;
@@ -282,7 +314,7 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
         const ctx = {workspace,canvasDir,boardPath,transactions,broadcast,origin:body.origin};
         for (const handler of [handleStructure, handleClipboard, handleNotes, handleMultiSelect, handleAnnotations]) {
           const result = await handler(route,body,ctx);
-          if (result !== undefined) { json(200,result); return; }
+          if (result !== undefined) { acknowledge(canvasRel,result as {revisions?:Record<string,string|null>});json(200,result); return; }
         }
       }
 
@@ -292,6 +324,8 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
       const error = e as TransactionError;
       const code = error.status ?? (/ENOENT/.test(message) ? 404 : 500);
       json(code, { error: message, code:error.code, problems:error.problems });
+    } finally {
+      if(mutation){mutating--;mutationEpoch++;}
     }
   });
 
@@ -320,6 +354,7 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
     url: `http://127.0.0.1:${port}/`,
     port,
     close: () => new Promise<void>((resolve) => {
+      clearInterval(observer);
       for (const res of clients) { try { res.end(); } catch { /* 已经断了 */ } }
       clients.clear();
       server.close(() => resolve());

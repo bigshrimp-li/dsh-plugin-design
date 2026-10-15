@@ -14,6 +14,7 @@
 
 - [快速开始](#快速开始)
 - [能做什么](#能做什么)
+- [Design 空间](docs/design-space.md)
 - [可视化编辑器](#可视化编辑器)
 - [提示词](#提示词)
 - [需要知道的事](#需要知道的事)
@@ -87,6 +88,8 @@ git clone <this repo> && cd dsh-plugin-design
 ## 可视化编辑器
 
 除了让 agent 改，你也可以自己上手。
+
+新增 [Design 空间](docs/design-space.md)：在 Harness 主区域编辑设计稿，管理设计目录与页签，并关联原生会话。原有右侧栏入口继续保留。构建后需完全退出并重启 Harness。
 
 **在 Harness 里**
 
