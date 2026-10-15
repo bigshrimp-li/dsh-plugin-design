@@ -94,7 +94,11 @@ git clone <this repo> && cd dsh-plugin-design
 | `design` | 「做一版……界面 / 网页 / 海报 / 图表 / 示意图 / 原型」 |
 | `design-system` | 「把品牌色、字阶、间距整理成设计系统」 |
 
-自动路由，不用点名。`design` 管文件协议和标注定位，`design-system` 管 tokens、素材与布局。细节见 [skills/README.md](skills/README.md)。
+自动路由，不用点名。
+
+`design` 除了文件协议，还带四份**怎么做才好看**的参考，按任务类型读：**界面基本功**（层级、字号阶梯、间距刻度、颜色、状态、可点击区域）、**印刷品**（纸张尺寸、安全边距、正文下限、信息密度）、**图表与示意图**（图型选择、节点与连线、数据真实性）、**品牌色与字体**（怎么定中性阶、验对比度、选字阶模数）。
+
+`design-system` 管 tokens、素材与布局。细节见 [skills/README.md](skills/README.md)。
 
 ### 五份可跑的示例
 
