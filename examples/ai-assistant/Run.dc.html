@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Nimbus — 一次运行</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4f46e5}a:hover{color:#4338ca}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 100%; height: 100vh; display: flex; overflow: hidden; background: #ffffff; color: #16161a; font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', sans-serif; font-size: 13px">
+
+<aside style="flex: 0 0 264px; box-sizing: border-box; background: #fafafa; border-right: 1px solid #e8e8ec; display: flex; flex-direction: column; min-height: 0">
+<div style="flex: 0 0 auto; display: flex; align-items: center; gap: 9px; padding: 16px 16px 12px">
+<span style="width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: block"></span>
+<span style="font-size: 14px; font-weight: 650; letter-spacing: -0.01em">Nimbus</span>
+</div>
+<div style="flex: 0 0 auto; padding: 0 12px 12px">
+<button type="button" style="width: 100%; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid #e8e8ec; border-radius: 9px; background: #ffffff; color: #16161a; font-size: 13px; font-weight: 500; cursor: pointer">
+<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#71717a" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg>
+新对话
+</button>
+</div>
+<div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 8px 8px">
+<p style="margin: 6px 8px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: #a1a1aa">今天</p>
+<div style="display: flex; flex-direction: column; gap: 1px">
+<div style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 9px; border-radius: 8px; background: #f0f0f3; color: #16161a; font-weight: 550">
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">重构结算流程的错误处理</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 9px; border-radius: 8px; color: #52525b">
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">把周报数据整理成图表</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 9px; border-radius: 8px; color: #52525b">
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">这份合同里有哪些风险条款</span>
+</div>
+</div>
+</div>
+<div style="flex: 0 0 auto; border-top: 1px solid #e8e8ec; padding: 10px 12px; display: flex; align-items: center; gap: 9px">
+<span style="width: 24px; height: 24px; border-radius: 9999px; background: #e4e4e7; display: grid; place-items: center; font-size: 11px; font-weight: 650; color: #52525b">林</span>
+<span style="flex: 1 1 auto; font-size: 12px; color: #52525b">林一鸣</span>
+<span style="font-size: 11px; color: #a1a1aa">Pro</span>
+</div>
+</aside>
+
+<main style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; background: #ffffff">
+
+<div style="flex: 0 0 auto; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 20px; border-bottom: 1px solid #e8e8ec">
+<button type="button" aria-label="返回对话" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background: none; cursor: pointer">
+<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="#52525b" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"></path></svg>
+</button>
+<span style="font-size: 13px; font-weight: 600">运行 · 合并结算重试逻辑</span>
+<span style="padding: 2px 7px; border-radius: 9999px; background: #eef2ff; font-size: 11px; font-weight: 550; color: #4f46e5">进行中</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 12px; color: #a1a1aa">已用 2 分 14 秒</span>
+<button type="button" style="height: 28px; padding: 0 12px; border: 1px solid #e8e8ec; border-radius: 7px; background: #ffffff; color: #16161a; font-size: 12px; font-weight: 500; cursor: pointer">停止</button>
+</div>
+
+<div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 22px 0">
+<div style="width: 700px; max-width: 100%; margin: 0 auto; padding: 0 24px">
+
+<div style="display: flex; flex-direction: column">
+
+<div style="display: flex; gap: 12px">
+<div style="flex: 0 0 auto; display: flex; flex-direction: column; align-items: center">
+<span style="width: 22px; height: 22px; border-radius: 9999px; background: #dcfce7; display: grid; place-items: center; font-size: 11px; color: #15803d; font-weight: 700">1</span>
+<span style="flex: 1 1 auto; width: 1px; background: #e8e8ec; margin: 4px 0"></span>
+</div>
+<div style="flex: 1 1 auto; min-width: 0; padding-bottom: 18px">
+<div style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">读取结算相关文件</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11px; color: #a1a1aa">0.8 秒</span>
+</div>
+<p style="margin: 5px 0 0; font-size: 12.5px; line-height: 1.65; color: #52525b">读了 3 个文件，其中 <code style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px">retry.ts</code> 和 <code style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px">settle.ts</code> 里各有一份重试实现。</p>
+<div style="margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px">
+<span style="padding: 3px 8px; border-radius: 6px; background: #f4f4f5; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #3f3f46">retry.ts</span>
+<span style="padding: 3px 8px; border-radius: 6px; background: #f4f4f5; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #3f3f46">settle.ts</span>
+<span style="padding: 3px 8px; border-radius: 6px; background: #f4f4f5; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #3f3f46">queue.ts</span>
+</div>
+</div>
+</div>
+
+<div style="display: flex; gap: 12px">
+<div style="flex: 0 0 auto; display: flex; flex-direction: column; align-items: center">
+<span style="width: 22px; height: 22px; border-radius: 9999px; background: #dcfce7; display: grid; place-items: center; font-size: 11px; color: #15803d; font-weight: 700">2</span>
+<span style="flex: 1 1 auto; width: 1px; background: #e8e8ec; margin: 4px 0"></span>
+</div>
+<div style="flex: 1 1 auto; min-width: 0; padding-bottom: 18px">
+<div style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">比较两处退避策略</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11px; color: #a1a1aa">0.3 秒</span>
+</div>
+<p style="margin: 5px 0 0; font-size: 12.5px; line-height: 1.65; color: #52525b">发现两处间隔一致，可以直接合并；<code style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px">queue.ts</code> 那处不同。</p>
+</div>
+</div>
+
+<div style="display: flex; gap: 12px">
+<div style="flex: 0 0 auto; display: flex; flex-direction: column; align-items: center">
+<span style="width: 22px; height: 22px; border-radius: 9999px; background: #dcfce7; display: grid; place-items: center; font-size: 11px; color: #15803d; font-weight: 700">3</span>
+<span style="flex: 1 1 auto; width: 1px; background: #e8e8ec; margin: 4px 0"></span>
+</div>
+<div style="flex: 1 1 auto; min-width: 0; padding-bottom: 18px">
+<div style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">改写并跑测试</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11px; color: #a1a1aa">1 分 02 秒</span>
+</div>
+<p style="margin: 5px 0 0; font-size: 12.5px; line-height: 1.65; color: #52525b">合并了前两处，<code style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px">retry.ts</code> 新增一个导出。测试 41 项通过。</p>
+<div style="margin-top: 10px; border: 1px solid #e8e8ec; border-radius: 9px; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 11px; background: #fafafa; border-bottom: 1px solid #e8e8ec">
+<span style="font-size: 12px; font-weight: 550">41 项通过</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11px; color: #a1a1aa">2 个文件</span>
+</div>
+<div style="padding: 9px 11px; display: flex; flex-direction: column; gap: 5px">
+<div style="display: flex; align-items: center; gap: 8px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #3f3f46">
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">retry.ts</span>
+<span style="color: #15803d">+18</span>
+<span style="color: #a1a1aa">−0</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #3f3f46">
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">settle.ts</span>
+<span style="color: #15803d">+0</span>
+<span style="color: #b91c1c">−24</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; gap: 12px">
+<div style="flex: 0 0 auto; display: flex; flex-direction: column; align-items: center">
+<span style="width: 22px; height: 22px; border-radius: 9999px; border: 1.5px solid #f59e0b; background: #fffbeb; display: grid; place-items: center; font-size: 11px; color: #b45309; font-weight: 700">4</span>
+</div>
+<div style="flex: 1 1 auto; min-width: 0">
+<div style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">等你决定要不要动 queue.ts</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11px; color: #b45309">等待确认</span>
+</div>
+<p style="margin: 5px 0 0; font-size: 12.5px; line-height: 1.65; color: #52525b">合并会改掉线上的重试间隔（1s / 4s / 16s → 1s / 2s / 4s），所以停下来问你。</p>
+<div style="margin-top: 11px; display: flex; gap: 8px">
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: #4f46e5; color: #ffffff; font-size: 12.5px; font-weight: 550; cursor: pointer">只保留前两处</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #ffffff; color: #16161a; font-size: 12.5px; cursor: pointer">连 queue.ts 一起改</button>
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

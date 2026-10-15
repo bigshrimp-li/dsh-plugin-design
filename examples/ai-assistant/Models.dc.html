@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Nimbus — 模型与限额</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4f46e5}a:hover{color:#4338ca}
+button{font-family:inherit}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 100%; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #f4f4f5; color: #16161a; font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', sans-serif; font-size: 13px; padding: 40px 0">
+
+<div style="width: 700px; max-width: 100%; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto">
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 2px 14px">
+<button type="button" aria-label="返回" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background: none; cursor: pointer">
+<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="#52525b" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"></path></svg>
+</button>
+<h1 style="margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em">模型与限额</h1>
+<span style="flex: 1 1 auto"></span>
+<button type="button" style="height: 30px; padding: 0 13px; border: 0; border-radius: 8px; background: #16161a; color: #ffffff; font-size: 12.5px; font-weight: 550; cursor: pointer">保存</button>
+</div>
+
+<div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px">
+
+<section style="border: 1px solid #e8e8ec; border-radius: 13px; background: #ffffff; overflow: hidden">
+<div style="padding: 14px 16px 12px; border-bottom: 1px solid #e8e8ec">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600">这个对话用哪个模型</h2>
+<p style="margin: 4px 0 0; font-size: 12px; color: #71717a">只影响新消息，已经发出的不变</p>
+</div>
+<div style="padding: 8px">
+
+<label style="display: flex; align-items: flex-start; gap: 11px; padding: 11px 12px; border: 1.5px solid #4f46e5; border-radius: 10px; background: #eef2ff; cursor: pointer">
+<input type="radio" name="model" checked style="margin: 3px 0 0">
+<span style="flex: 1 1 auto; min-width: 0">
+<span style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">Nimbus Pro</span>
+<span style="padding: 2px 7px; border-radius: 9999px; background: #ffffff; font-size: 11px; font-weight: 550; color: #4f46e5">当前</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11.5px; color: #71717a">32K 上下文</span>
+</span>
+<span style="display: block; margin-top: 4px; font-size: 12px; line-height: 1.6; color: #52525b">复杂重构、多文件改动。慢一些，但一次能做对。</span>
+</span>
+</label>
+
+<label style="display: flex; align-items: flex-start; gap: 11px; margin-top: 6px; padding: 11px 12px; border: 1px solid #e8e8ec; border-radius: 10px; background: #ffffff; cursor: pointer">
+<input type="radio" name="model" style="margin: 3px 0 0">
+<span style="flex: 1 1 auto; min-width: 0">
+<span style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">Nimbus Flash</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11.5px; color: #71717a">128K 上下文</span>
+</span>
+<span style="display: block; margin-top: 4px; font-size: 12px; line-height: 1.6; color: #52525b">问答、查找、改写。快，长文档更划算。</span>
+</span>
+</label>
+
+<label style="display: flex; align-items: flex-start; gap: 11px; margin-top: 6px; padding: 11px 12px; border: 1px solid #e8e8ec; border-radius: 10px; background: #ffffff; cursor: pointer">
+<input type="radio" name="model" style="margin: 3px 0 0">
+<span style="flex: 1 1 auto; min-width: 0">
+<span style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">Nimbus Local</span>
+<span style="padding: 2px 7px; border-radius: 9999px; background: #f4f4f5; font-size: 11px; font-weight: 550; color: #52525b">本机</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11.5px; color: #71717a">8K 上下文</span>
+</span>
+<span style="display: block; margin-top: 4px; font-size: 12px; line-height: 1.6; color: #52525b">代码不出本机。适合不能外发的仓库。</span>
+</span>
+</label>
+
+</div>
+</section>
+
+<section style="border: 1px solid #e8e8ec; border-radius: 13px; background: #ffffff; overflow: hidden">
+<div style="padding: 14px 16px 12px; border-bottom: 1px solid #e8e8ec">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600">本月用量</h2>
+</div>
+<div style="padding: 16px">
+
+<div style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 22px; font-weight: 650; letter-spacing: -0.02em">1,284</span>
+<span style="font-size: 12.5px; color: #71717a">/ 2,000 次请求</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 12px; color: #71717a">剩 12 天</span>
+</div>
+<div style="margin-top: 10px; height: 8px; border-radius: 9999px; background: #f0f0f3; overflow: hidden">
+<span style="display: block; width: 64%; height: 8px; border-radius: 9999px; background: #4f46e5"></span>
+</div>
+
+<div style="margin-top: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px">
+<div style="padding: 11px 12px; border: 1px solid #e8e8ec; border-radius: 10px">
+<p style="margin: 0; font-size: 11.5px; color: #71717a">Pro</p>
+<p style="margin: 4px 0 0; font-size: 15px; font-weight: 600">612</p>
+</div>
+<div style="padding: 11px 12px; border: 1px solid #e8e8ec; border-radius: 10px">
+<p style="margin: 0; font-size: 11.5px; color: #71717a">Flash</p>
+<p style="margin: 4px 0 0; font-size: 15px; font-weight: 600">604</p>
+</div>
+<div style="padding: 11px 12px; border: 1px solid #e8e8ec; border-radius: 10px">
+<p style="margin: 0; font-size: 11.5px; color: #71717a">Local</p>
+<p style="margin: 4px 0 0; font-size: 15px; font-weight: 600">68</p>
+</div>
+</div>
+
+</div>
+</section>
+
+<section style="border: 1px solid #e8e8ec; border-radius: 13px; background: #ffffff; overflow: hidden">
+<div style="padding: 14px 16px 12px; border-bottom: 1px solid #e8e8ec">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600">能做到哪一步</h2>
+<p style="margin: 4px 0 0; font-size: 12px; color: #71717a">默认替你决定，越往上越需要你点头</p>
+</div>
+<div style="padding: 8px">
+
+<label style="display: flex; align-items: flex-start; gap: 11px; padding: 11px 12px; border-radius: 10px; cursor: pointer">
+<input type="radio" name="perm" style="margin: 3px 0 0">
+<span style="flex: 1 1 auto; min-width: 0">
+<span style="font-size: 13px; font-weight: 550">只读</span>
+<span style="display: block; margin-top: 3px; font-size: 12px; line-height: 1.6; color: #52525b">可以读文件和搜索，不能改任何东西</span>
+</span>
+</label>
+
+<label style="display: flex; align-items: flex-start; gap: 11px; padding: 11px 12px; border: 1.5px solid #4f46e5; border-radius: 10px; background: #eef2ff; cursor: pointer">
+<input type="radio" name="perm" checked style="margin: 3px 0 0">
+<span style="flex: 1 1 auto; min-width: 0">
+<span style="display: flex; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">改代码</span>
+<span style="flex: 1 1 auto"></span>
+<span style="font-size: 11.5px; color: #4f46e5">默认</span>
+</span>
+<span style="display: block; margin-top: 3px; font-size: 12px; line-height: 1.6; color: #52525b">能改工作区里的文件；跑命令、装依赖、发布需要你确认</span>
+</span>
+</label>
+
+<label style="display: flex; align-items: flex-start; gap: 11px; padding: 11px 12px; border-radius: 10px; cursor: pointer">
+<input type="radio" name="perm" style="margin: 3px 0 0">
+<span style="flex: 1 1 auto; min-width: 0">
+<span style="font-size: 13px; font-weight: 550">完全放行</span>
+<span style="display: block; margin-top: 3px; font-size: 12px; line-height: 1.6; color: #52525b">不再逐项确认。只在一次性任务里用</span>
+<span style="display: inline-block; margin-top: 7px; padding: 3px 8px; border-radius: 6px; background: #fef2f2; font-size: 11px; font-weight: 550; color: #b91c1c">风险自担</span>
+</span>
+</label>
+
+</div>
+</section>
+
+</div>
+
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1040}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
