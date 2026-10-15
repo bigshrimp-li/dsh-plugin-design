@@ -6,10 +6,10 @@
 
 | 文档 | 讲什么 |
 |---|---|
-| [baocut-dependency-audit.md](baocut-dependency-audit.md) | **与 BaoCut 的关系**：哪些代码是搬来的、哪些是自有的、要「移出依赖」分别意味着什么、各自的工作量 |
+| [baocut-dependency-audit.md](baocut-dependency-audit.md) | **独立化记录**：本地运行时、派生模块替换、保留的通用依赖与测试入口 |
 | [design-space.md](design-space.md) | **Design 空间**（主区域设计面板）的使用、状态、外部修改处理与限制 |
-| [feature-parity.md](feature-parity.md) | **与 Claude Design 的功能对比**：已有 / 欠缺 / 值得补什么 |
-| [baocut-design-port.md](baocut-design-port.md) | **架构参考**：四层拆解（提示词 / 格式 / 工具 / 编辑器）、各层的接口契约、移植时的风险清单 |
+| [feature-parity.md](feature-parity.md) | **历史功能对比**：不代表迁移后的运行时兼容范围 |
+| [baocut-design-port.md](baocut-design-port.md) | **历史架构参考**：旧移植方案，当前以独立化记录为准 |
 | `images/` | README 用的图 |
 
 ## 历史（已实现或已被取代）

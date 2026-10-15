@@ -34,7 +34,7 @@ echo "dsh: $DSH_BIN"
 
 # 2. build dependencies, then the build
 #    一次全新 clone 没有任何 node_modules，而 tsconfig 需要 @types/node —— 所以先装再编译。
-if [ ! -d "$HERE/node_modules/typescript" ] || [ ! -d "$HERE/node_modules/@types/node" ]; then
+if [ ! -d "$HERE/node_modules/typescript" ] || [ ! -d "$HERE/node_modules/@types/node" ] || [ ! -d "$HERE/node_modules/esbuild" ]; then
   echo "安装构建依赖（typescript、@types/node）…"
   if command -v npm >/dev/null 2>&1; then
     (cd "$HERE" && npm install --no-audit --no-fund --loglevel=error)
@@ -54,6 +54,7 @@ fi
 
 echo "构建中…"
 (cd "$HERE" && "$TSC" -p tsconfig.json)
+(cd "$HERE" && node scripts/build-runtime.mjs)
 (cd "$HERE" && node scripts/copy-editor-assets.mjs)
 [ -f "$HERE/dist/index.js" ] || { echo "构建没有产出 dist/index.js" >&2; exit 1; }
 

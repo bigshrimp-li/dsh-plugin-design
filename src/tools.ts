@@ -1,16 +1,4 @@
-/**
- * 七个设计工具：design_check / design_render / design_export / design_editor /
- * design_import_asset / design_system_check / design_system_import_asset。
- *
- * 前四个搬运自 BaoCut @ 7aa049e8 的 `packages/runtime-core/src/agent-tools/design-tools.ts`(221) 与
- * `design-system-tools.ts`(290)，把 ToolSet/ToolScope 框架换成 DSH 的 defineTool：
- *   - 工具的 description 原样保留（原文件标了 i18n-ignore：它们直接写给模型看，把画板格式规则都编码进去了）
- *   - 作用域与审批（scope.authorize / scope.confirm）去掉：DSH 侧没有等价物，见 README
- *   - 素材导入改为直接写 node:fs（DSH 的 ctx.fs 只有 writeText，写不了二进制）
- *
- * `design_render` 是这里新增的：BaoCut 靠编辑器提供预览，DSH 没有编辑器，所以用随包的画板运行时
- * （`vendor/support.js`）+ 无头 Chrome 自己渲染出 PNG，并把图作为 image 内容块交回会话。
- */
+/** DeepSeek Harness tool adapters for local design files, assets and previews. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { defineTool } from '@deepseek-ai/dsh-tools';
@@ -41,8 +29,7 @@ const MAX_RENDERED_IMAGES = 4;
 const DESIGN_ASSET_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg', 'woff2', 'woff', 'ttf', 'otf']);
 
 /**
- * 设计系统能导入的类型（原版 `BLOB_STORAGE_MIME_TYPES`）：没有 avif、mov 与 ico——
- * 原版上传不收，导进来编辑器也存不回去。
+ * 设计系统素材上传支持的文件扩展名。
  */
 const DESIGN_SYSTEM_ASSET_EXTENSIONS = new Set([
   'png',
@@ -315,11 +302,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
   ctx.tools.register(
     defineTool<DesignCheckArgs, DesignCheckValue>({
       name: 'design_check',
-      description: [
-        '按设计稿格式的规则校验一份设计稿，返回问题清单。只看文件，不渲染、不截图。',
-        '检查 canvas.json（v 为 3；boards 每项的 x、y、w、h 与可选字段；order、pages、notes、launch、designSystems 与 ds/<folder>/），boards 与 order 的路径都有文件，ds/ 以外的每个 .dc.html 都登记在 boards 里；每个画板的 support.js 头行、<x-dc>、唯一的 data-dc-script 块（class Component extends DCLogic，没有 import/export）、单引号的 data-props 是合法 JSON 且 $preview 等于 boards 的 w/h；标签闭合、属性加引号、不自闭合、不用大写标签名，{{ }} 只是点号路径；脚本不拼界面、不装全局按键处理、不连网；图片与 url() 用 /_blob/<id>，素材都在 assets/ 里；没有 iframe/object/embed，网上的样式只认 Google Fonts；路径段规则与文件数、大小上限。',
-        '画板脚本能不能跑、排版对不对不在检查范围内。写完或改完设计稿必须调用一次。issues 为 0 时说明这份设计稿通过了校验；有问题时按说明改文件再调用。',
-      ].join('\n'),
+      description: "检查设计稿的索引、模板语法、画板尺寸、资源引用和脚本约束。返回带相对文件路径的问题列表。\n这是静态检查；交互行为和视觉布局需要再用 design_render 或编辑器验证。",
       parameters: {
         path: { type: 'string', required: true, description: '设计稿目录（里面有 canvas.json），相对工作目录的路径' },
       },
@@ -381,12 +364,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
   ctx.tools.register(
     defineTool<DesignRenderArgs, DesignRenderValue>({
       name: 'design_render',
-      description: [
-        '把设计稿的画板渲染成 PNG，并把图交回会话。用一个真正的浏览器跑：起一个只读本地服务，用无头 Chrome 逐个画板截图。',
-        '每块画板报回：声明的 frame（canvas.json 的 w/h）、实际挂载出来的尺寸、有没有超出 frame（会被裁切）、页面里的报错、PNG 写到哪了。挂载尺寸为 null 或 mounted 为 false，说明画板没渲染出来（运行时没启动、或画板是空的）。',
-        '这是唯一能看见设计的手段——design_check 只看文件、不渲染。渲染出来的图能看出排版、留白、字重、对齐、颜色的实际问题，这些 design_check 一条都查不出来。',
-        '需要本机有一个 Chrome/Chromium/Edge（找不到时用 DSH_DESIGN_CHROME 指出可执行文件的位置）。PNG 默认写到设计稿旁边的 .design-preview/<设计稿名>/ 下。',
-      ].join('\n'),
+      description: "在本机浏览器引擎中运行设计稿，生成 PNG，并报告运行错误、挂载情况和尺寸。\n默认按 order 渲染全部画板；board 可限定一块画板，scale 控制像素密度。",
       parameters: {
         path: { type: 'string', required: true, description: '设计稿目录（里面有 canvas.json），相对工作目录的路径' },
         board: { type: 'string', description: '只渲染这一块画板（canvas.json 里的路径，如 Main.dc.html）；不给时按 order 全渲染' },
@@ -494,11 +472,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
   ctx.tools.register(
     defineTool<DesignExportArgs, DesignExportValue>({
       name: 'design_export',
-      description: [
-        '把设计稿导出成**自包含的 HTML**：一个文件，双击就能在浏览器里打开，可以滚动、缩放、选中文字、发给别人看。',
-        '为什么需要它：`.dc.html` 是**源格式**，不是网页。直接双击它打开会坏三件事——`<script src="./support.js">` 那个运行时不在了，`{{hole}}` 不会被替换（`background: {{accent}}` 被浏览器当非法值丢掉，色块变透明、白字白底看不见），`/_blob/<id>` 也没有服务去映射。这个工具把运行时内联、相对样式表与脚本内联、`/_blob/<id>` 换成 data: URI，产出一份真能打开的网页。',
-        '不改设计稿本身一个字节：导出写到设计稿旁边的 .design-preview/<名字>/view/ 下。要判断做得对不对仍然看 design_render 的 PNG——这个 HTML 是给人看的成品。',
-      ].join('\n'),
+      description: "生成可离线打开的 HTML，内嵌本地运行时、设计组件和素材。\n不会修改源设计稿。外部字体会使用备用字体；缺失资源或循环组件导入会报错。",
       parameters: {
         path: { type: 'string', required: true, description: '设计稿目录（里面有 canvas.json），相对工作目录的路径' },
         board: { type: 'string', description: '只导出这一块画板；不给时按 order 每块画板导出一个 HTML' },
@@ -559,11 +533,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
   ctx.tools.register(
     defineTool<DesignImportArgs, DesignImportValue>({
       name: 'design_import_asset',
-      description: [
-        '把工作目录里的一张图片或一个字体拷进设计稿的 assets/，返回写进画板的地址。',
-        `按内容寻址，同一份只存一份；返回的 src 形如 /_blob/<id>，原样写进 <img src="…">、<helmet><style> 里的 url(…) 或 @font-face。只收 png、jpg、jpeg、gif、webp、avif、svg 与 woff2、woff、ttf、otf，不超过 ${formatBytes(DESIGN_ASSET_MAX_BYTES)}。`,
-        'canvas 与 path 都相对工作目录，不能用 .. 或符号链接指到外面；canvas 里要先有 canvas.json。',
-      ].join('\n'),
+      description: "将工作区内的图片或字体存入设计稿的素材库。内容相同的文件共用一个素材 ID。\n返回 src，可用于图片属性或样式表。素材不超过 20 MiB；路径必须位于工作区内。",
       parameters: {
         canvas: { type: 'string', required: true, description: '设计稿目录（里面有 canvas.json），相对工作目录的路径' },
         path: {
@@ -621,11 +591,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
   ctx.tools.register(
     defineTool<SystemCheckArgs, SystemCheckValue>({
       name: 'design_system_check',
-      description: [
-        '按设计系统格式的规则校验一个设计系统，返回问题清单。只看文件，不渲染、不截图。',
-        '检查 design-system.json（v 为 3、layout 为 "files"、createdOnFiles 或 convertedFrom 标记，各字段的形状，namespace，libraries，assetGroups 与 blobs 里的记录都有上传或文件）；tokens.json 的语法与上限；路径规则、文件数与大小；每个 preview.html 的 @dsCard 头行、不用 iframe/object/embed/noscript、不链接 bundle.js 与库；bundle.js 是经典脚本、赋值 window.<namespace>、不 import、不连网、不含 </script 与 <!--；fonts/ 里的字体与 tokens.json 的 type.fonts 对得上；预览与 components/lib/ 里不从网上加载脚本、样式与图片；/_blob/<id> 都在 _blobs/ 里。',
-        'manifest.json、tokens.css、api/ 由编辑器保存时生成，不查（notChecked）。组件能不能渲染不在检查范围内。写完或改完设计系统必须调用一次。problems 为 0 时说明通过了校验；notes 是不用改的说明。',
-      ].join('\n'),
+      description: "检查设计系统的索引、tokens、文档、素材和本地组件文件，列出错误及说明。\n此工具不执行组件代码，也不验证组件的视觉效果。",
       parameters: {
         path: { type: 'string', required: true, description: '设计系统目录（里面有 design-system.json），相对工作目录的路径' },
       },
@@ -686,7 +652,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
           ...(problems > 0 ? { issues: result.issues.slice(0, MAX_LISTED_ISSUES) } : {}),
           ...(result.notes.length > 0 ? { notes: result.notes.slice(0, MAX_LISTED_NOTES) } : {}),
           ...(problems > MAX_LISTED_ISSUES ? { more: `另有 ${problems - MAX_LISTED_ISSUES} 条没列出：先改这些再校验` } : {}),
-          notChecked: `${result.notChecked.join('、')} 由编辑器保存时生成，没有检查；组件能不能渲染、视觉效果没有检查（不渲染）。`,
+          notChecked: `${result.notChecked.join('、')} 属于派生文件，本次没有检查；组件交互和视觉效果需要单独验证。`,
           next:
             problems > 0
               ? '按 issues 改文件（file 是相对设计系统目录的路径，"." 是整个目录），再调用 design_system_check，直到 problems 为 0。notes 不用改。'
@@ -700,11 +666,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
   ctx.tools.register(
     defineTool<SystemImportArgs, SystemImportValue>({
       name: 'design_system_import_asset',
-      description: [
-        '把工作目录里的一张图片、一段视频、一份 PDF 或一个字体拷进设计系统的 _blobs/，返回它的地址与要写进 design-system.json 的记录。',
-        `按内容寻址，同一份只存一份；返回的 src 形如 /_blob/<id>，可以原样写进 README.md、preview.html 等文件；record 是 {name, blob, size, type}，按 indexPath 写进索引（给了 group 时是 assetGroups.<groupKey>.files.<key>，素材显示在 assets/<group>/ 里；不给时是 blobs.<key>）。只收 png、jpg、jpeg、gif、webp、svg、mp4、webm、pdf、woff2、woff、ttf、otf；SVG 不超过 ${formatBytes(designSystemUploadLimit('image/svg+xml'))}，其余不超过 ${formatBytes(designSystemUploadLimit('application/octet-stream'))}。`,
-        'system 与 path 都相对工作目录，不能用 .. 或符号链接指到外面；system 是设计系统的目录：新建的设计系统先建好空目录，素材先导入，design-system.json 最后写。',
-      ].join('\n'),
+      description: "把图片、视频、PDF 或字体保存到设计系统素材库，返回素材记录及索引写入位置。\ngroup 指定素材组；省略时写入 blobs 记录。SVG 上限 2 MiB，其他素材上限 20 MiB。",
       parameters: {
         system: { type: 'string', required: true, description: '设计系统目录（里面有 design-system.json），相对工作目录的路径' },
         path: {
@@ -753,7 +715,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
           throw new ToolFailure('INVALID_GROUP', 'group 要是素材组的文件夹名：至多 80 个字符，不含 / \\ 与控制字符，首尾没有空白，不是 . 或 ..');
         }
         const dir = await resolveTargetDir(cwd, args.system, '设计系统');
-        // 还没有 design-system.json 的目录是正在新建的设计系统（原版里空的设计系统也能上传）。有这个文件的，
+        // 还没有 design-system.json 的目录是正在新建的设计系统（允许先导入素材，再写索引）。有这个文件的，
         // 必须要是带迁移标记的索引：没有标记的编辑器只读打开，skill 也说不往里写。
         if ((await fs.lstat(path.join(dir, DESIGN_SYSTEM_FILE)).catch(() => null)) !== null) {
           const index = await readDesignSystemJson(dir);
@@ -776,7 +738,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
         if (bytes.byteLength !== file.size) throw new ToolFailure('FILE_CHANGED', '文件在读取期间被改了：重新调用一次');
         const uploaded = await putBlob(path.join(dir, BLOBS_DIR), bytes, type);
         const base = path.basename(file.path);
-        // 记录还原到的路径（原版 `restoreFilesFromIndex`）：组里的是 assets/<组>/<name>；
+        // 记录还原到的路径：组里的是 assets/<组>/<name>；
         // blobs 里的 name 就是路径，字体放 fonts/，其余放 assets/。
         const name =
           args.group !== undefined ? base : `${type.startsWith('font/') ? DESIGN_SYSTEM_PATHS.fontsDir : DESIGN_SYSTEM_PATHS.assetsDir}${base}`;
@@ -807,12 +769,7 @@ export function registerDesignTools(ctx: DesignToolContext, editors = new Editor
   ctx.tools.register(
     defineTool<DesignEditorArgs, DesignEditorValue>({
       name: 'design_editor',
-      description: [
-        '打开**可视化编辑器**：在 DeepSeek Harness 的设计稿编辑器标签页里直接点选画板上的元素、改行内样式、拖动、拉尺寸、原地改文字，改完写回 `.dc.html` 源码。',
-        '它和你的分工：人的手在编辑器里改，你继续用 design_check / design_render / 直接改文件；两边改的是**同一份文件**。编辑器每次写入前都会重新读盘，写完自己跑一遍 design_check，校验不过就回滚——所以它不会产出不合法的画板。',
-        '什么时候用：用户说「我要自己调」「打开编辑器」「让我手动改改」「我拖一下」时。用户可直接打开 DSH 右侧的「设计稿编辑器」标签页，无需先调用工具；本工具用于取得指定目录的独立编辑地址。',
-        '注意：编辑器只改**行内样式与文字**，不做增删元素、换序这类结构编辑；它也不理解设计意图，所以视觉上的判断仍然归你和用户。',
-      ].join('\n'),
+      description: "打开当前工作区的设计稿编辑器，支持画板浏览、元素编辑、撤销和标注。\npath 可指定包含设计稿的目录；省略时使用当前会话的工作目录。",
       parameters: {
         path: {
           type: 'string',

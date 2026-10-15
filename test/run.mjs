@@ -188,7 +188,7 @@ console.log('\ndesign_export');
   check('文件在磁盘上', (await stat(f.html)).size === f.bytes, f?.html);
   const html = await readFile(f.html, 'utf8');
   check('不再指向 ./support.js', !html.includes('src="./support.js"'), '仍然是外部引用');
-  check('运行时整段内联（>1MB）', html.length > 1_000_000, `${html.length} 字节`);
+  check('独立运行时内联且不含框架', html.includes('dsh-dom-1') && !html.includes('ReactVersion'), `${html.length} 字节`);
   // $& 事故：字符串形式的 replace 会把 $& 展开成整个匹配，把运行时改坏
   check('运行时没有被 $& 替换事故改坏', !html.includes('src="./support.js"></script>/'), '脚本里又出现了 support.js 那一行');
   check('记录了内联了什么', (f.notes ?? []).length > 0, JSON.stringify(f?.notes));

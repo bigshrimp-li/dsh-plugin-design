@@ -1,3 +1,5 @@
+> 历史记录：运行时和派生实现已迁移，当前状态以 [独立化记录](baocut-dependency-audit.md) 为准。本文保留原方案，不作为当前能力承诺。
+
 # 把 BaoCut 的 design / design-system 移植到自己的 Agent
 
 分析对象：`JimLiu/baocut` @ `7aa049e8`（feat(design): add designs and design systems to sessions，1310 文件 / +534,614 行）

@@ -1,7 +1,8 @@
+import { runtimePath, prepareBoardHtml } from './design-runtime/resource.ts';
 /**
  * 把设计稿的画板渲染成 PNG。
  *
- * 做法：起一个只读本地服务（画板文件 + `/_blob/<id>` → `assets/` + 随包的 `vendor/support.js`），
+ * 做法：起一个只读本地服务（画板文件 + `/_blob/<id>` → `assets/` + 随包的 `dist/design-runtime/support.js`），
  * 用无头 Chrome 逐个画板截图，并把画板自己报回来的尺寸与报错收集起来。
  *
  * 画板 `.dc.html` 里的 `<script src="./support.js"></script>` 会命中服务给出的运行时而挂载真实界面；
@@ -75,9 +76,9 @@ const MIME: Record<string, string> = {
 
 const mimeOf = (file: string): string => MIME[file.split('.').pop()?.toLowerCase() ?? ''] ?? 'application/octet-stream';
 
-/** 随包的画板运行时（`vendor/support.js`）。 */
+/** 随包的画板运行时（`dist/design-runtime/support.js`）。 */
 function supportPath(): string {
-  return fileURLToPath(new URL('../vendor/support.js', import.meta.url));
+  return runtimePath();
 }
 
 /** 无头 Chrome 的候选位置。 */
@@ -124,6 +125,7 @@ function probeScript(board: string): string {
   return `<script>(function(){
 var errs=[];
 window.addEventListener('error',function(e){errs.push(String((e&&e.message)||e));});
+window.addEventListener('design-runtime-error',function(e){errs.push(String(e.detail));});
 window.addEventListener('unhandledrejection',function(e){errs.push('unhandled rejection: '+String(e&&e.reason));});
 function report(){
   // 量的是**画板自己的根元素**（.sc-host 是宿主的包装层，它会撑满窗口，不是画板尺寸——
@@ -196,7 +198,7 @@ export async function renderCanvas(options: RenderOptions): Promise<{ boards: Bo
         res.writeHead(204).end();
         return;
       }
-      if (url === '/support.js') {
+      if (url === '/support.js' || url.endsWith('/support.js')) {
         res.writeHead(200, { 'Content-Type': 'text/javascript' });
         res.end(support);
         return;
@@ -223,7 +225,7 @@ export async function renderCanvas(options: RenderOptions): Promise<{ boards: Bo
       const body = await fs.readFile(file);
       if (rel.endsWith('.dc.html')) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(injectProbe(body.toString('utf8'), rel));
+        res.end(injectProbe(prepareBoardHtml(body.toString('utf8')), rel));
         return;
       }
       res.writeHead(200, { 'Content-Type': mimeOf(rel) });

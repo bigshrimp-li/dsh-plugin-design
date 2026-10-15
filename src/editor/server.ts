@@ -1,3 +1,4 @@
+import { runtimePath, prepareBoardHtml } from '../design-runtime/resource.ts';
 /**
  * 编辑器服务：一个只监听回环地址的小 HTTP 服务。
  *
@@ -21,7 +22,7 @@ import { EditorTransactions, revisionOf, TransactionError } from './transactions
 import { elementAt, listElements, setInlineStyle, setText, validateSourceRef } from './source.ts';
 
 const ASSETS = fileURLToPath(new URL('./assets/', import.meta.url));
-const SUPPORT = fileURLToPath(new URL('../../vendor/support.js', import.meta.url));
+const SUPPORT = runtimePath();
 const MIME: Record<string, string> = {
   html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8',
   css: 'text/css; charset=utf-8', json: 'application/json; charset=utf-8',
@@ -196,6 +197,7 @@ export async function startEditor(options: EditorOptions): Promise<EditorHandle>
         // 素材是内容寻址的绝对路径 `/_blob/<id>`：补上设计稿前缀，不去改设计稿本身
         html = html.split('"/_blob/').join(`"/_blob/${canvasRel}/`);
         html = html.split("'/_blob/").join(`'/_blob/${canvasRel}/`);
+        html = prepareBoardHtml(html);
         // 编辑器桥：注入到 head 最前面，赶在画板运行时之前
         const bridge = url.searchParams.get('preview')==='1'?'':`<script src="/bridge.js"></script>`;
         const head = /<head[^>]*>/i.exec(html);

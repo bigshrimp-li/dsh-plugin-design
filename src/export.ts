@@ -1,193 +1,131 @@
-/**
- * 把设计稿导出成**自包含的 HTML**：双击就能在浏览器里打开，不需要本地服务，也不依赖 `support.js`。
- *
- * `.dc.html` 是**源格式**，不是能直接打开的网页：
- *   1. `<script src="./support.js"></script>` 指向画板运行时——磁盘上没有这个文件，运行时不会加载，
- *      `<x-dc>` 就不会挂载，你看到的是**没挂载的原始 markup**；
- *   2. `{{accent}}` 这类 hole 是运行时替换的，没运行时它就是字面量，浏览器把 `background: {{accent}}`
- *      当非法值丢掉 → 色块变透明 → 白字白底看不见；
- *   3. `/_blob/<id>` 要靠一个把 `<id>` 映射到 `assets/<id>.<ext>` 的服务，`file://` 下它是死链。
- *
- * 这个导出把三件事都补上：运行时内联、相对样式表/脚本内联、`/_blob/<id>` 换成 data: URI。
- * 不改变设计稿本身一个字节——导出是另一份文件。
- */
+/** Produce standalone HTML using the same local runtime as editing and screenshots. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const MIME: Record<string, string> = {
-  svg: 'image/svg+xml',
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-  avif: 'image/avif',
-  ico: 'image/x-icon',
-  woff2: 'font/woff2',
-  woff: 'font/woff',
-  ttf: 'font/ttf',
-  otf: 'font/otf',
-  css: 'text/css',
-  js: 'text/javascript',
-  mp4: 'video/mp4',
-  webm: 'video/webm',
-  pdf: 'application/pdf',
-};
-
-const mimeOf = (file: string): string => MIME[file.split('.').pop()?.toLowerCase() ?? ''] ?? 'application/octet-stream';
-
-/** 随包的画板运行时（`vendor/support.js`）。 */
-function supportPath(): string {
-  return fileURLToPath(new URL('../vendor/support.js', import.meta.url));
-}
-
-/**
- * 把一段 JS 安全地放进 `<script>…</script>` 里。
- *
- * HTML 的 script-data 状态机里有两个序列会提前结束或改变解析：`</script`，以及 `<!--`
- * （它会让解析器进入 escaped 状态，后面的 `</script>` 就不认了）。两者换成 `<\/script` / `<\!--`：
- * JS 里 `\/` 与 `\!` 都是「未知转义」，值仍然是 `/` 和 `!`，所以**字符串与正则的字面值一个字节都不变**。
- * 前提是该序列出现在字符串/正则/注释里——代码正文里的 `<!--` 本来就是语法错误。
- *
- * 另一件必须记住的事：**内联时必须用 `replace(x, () => ...)` 的函数形式**。字符串形式的替换里
- * `$&`、`` $` ``、`$'`、`$1` 都是替换模式——而运行时源码里就有 `'$&/'`（React 的 key 转义），
- * 用字符串形式会把 `$&` 展开成整个匹配到的 `<script src="./support.js"></script>`，静默改坏运行时。
- */
-function safeInlineScript(js: string): string {
-  const escaped = js.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
-  if (/<\/script|<!--/i.test(escaped)) throw new Error('内联脚本里仍有 </script 或 <!--：拒绝导出（会破坏 HTML 解析）');
-  return escaped;
-}
-
-export interface ExportResult {
-  board: string;
-  html: string;
-  bytes: number;
-  /** 导出时替换掉的东西，给模型/用户看的说明。 */
-  notes: string[];
-}
-
-export interface ExportOptions {
-  /** 设计稿目录（绝对路径）。 */
-  canvasDir: string;
-  /** 输出目录；不给时是 `<canvas 的上一级>/.design-preview/<canvas 名>/view/`。 */
-  outDir?: string;
-  /** 只导出这几块画板；不给时按 `canvas.json` 的 `order` 全导出。 */
-  boards?: string[];
-}
-
-/** 把设计稿的画板导出成自包含 HTML。 */
+import { runtimePath, prepareBoardHtml } from './design-runtime/resource.ts';
+import { boardDefinition, parseMarkup, decodeEntities, type MarkupNode } from './design-runtime/markup.ts';
+import { contentTypeOf } from './shared.ts';
+export interface ExportResult { board: string; html: string; bytes: number; notes: string[] }
+export interface ExportOptions { canvasDir: string; outDir?: string; boards?: string[] }
+function inlineScript(source: string): string { return source.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--'); }
+const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c');
+const remote = (value: string) => /^(?:[a-z]+:)?\/\//i.test(value);
 export async function exportCanvas(options: ExportOptions): Promise<{ files: ExportResult[]; outDir: string }> {
-  const { canvasDir } = options;
-  const index = JSON.parse(await fs.readFile(path.join(canvasDir, 'canvas.json'), 'utf8')) as {
-    order: string[];
-    boards: Record<string, { w: number; h: number; expand?: string }>;
-  };
-  const order = options.boards ?? index.order;
-  for (const board of order) {
-    if (index.boards[board] === undefined) throw new Error(`canvas.json 的 boards 里没有这块画板：${board}`);
-  }
-
+  const canvasDir = await fs.realpath(options.canvasDir);
+  const index = JSON.parse(await fs.readFile(path.join(canvasDir, 'canvas.json'), 'utf8'));
+  const order: string[] = options.boards ?? index.order;
+  if (!Array.isArray(order)) throw new Error('canvas.json needs an order list');
   const outDir = options.outDir ?? path.join(path.dirname(canvasDir), '.design-preview', path.basename(canvasDir), 'view');
   await fs.mkdir(outDir, { recursive: true });
-  const runtime = await fs.readFile(supportPath(), 'utf8');
-  const assetsDir = path.join(canvasDir, 'assets');
-
-  /** `/_blob/<id>` → data: URI（同一份只读一次）。 */
-  const blobCache = new Map<string, string>();
-  const blobDataUri = async (id: string): Promise<string | null> => {
-    const cached = blobCache.get(id);
-    if (cached !== undefined) return cached;
-    const names = await fs.readdir(assetsDir).catch(() => [] as string[]);
-    const name = names.find((n) => n.startsWith(`${id}.`) && !n.endsWith('.json'));
-    if (name === undefined) return null;
-    const bytes = await fs.readFile(path.join(assetsDir, name));
-    const uri = `data:${mimeOf(name)};base64,${bytes.toString('base64')}`;
-    blobCache.set(id, uri);
-    return uri;
-  };
-
+  const runtime = await fs.readFile(runtimePath(), 'utf8');
+  async function readLocal(rel: string): Promise<Buffer> {
+    if (path.isAbsolute(rel) || rel.split(/[\\/]/).includes('..')) throw new Error(`Invalid canvas resource path: ${rel}`);
+    const file = await fs.realpath(path.join(canvasDir, rel));
+    if (!file.startsWith(canvasDir + path.sep)) throw new Error(`Resource outside canvas: ${rel}`);
+    return fs.readFile(file);
+  }
+  const assets = await fs.readdir(path.join(canvasDir, 'assets')).catch(() => [] as string[]);
+  const assetCache = new Map<string, string>();
+  async function inlineAssets(source: string): Promise<string> {
+    for (const match of [...source.matchAll(/\/_blob\/([a-f0-9]{32})/g)]) {
+      const id = match[1];
+      if (!assetCache.has(id)) {
+        const name = assets.find(n => n.startsWith(id + '.') && !n.endsWith('.tmp'));
+        if (!name) throw new Error(`Missing export asset: ${id}`);
+        assetCache.set(id, `data:${contentTypeOf(name)};base64,${(await readLocal('assets/' + name)).toString('base64')}`);
+      }
+      source = source.split('/_blob/' + id).join(assetCache.get(id)!);
+    }
+    return source;
+  }
+  async function inlineCss(source: string, rel: string, seen = new Set<string>()): Promise<string> {
+    if (seen.has(rel)) throw new Error(`Circular CSS import: ${rel}`);
+    const next = new Set([...seen, rel]);
+    for (const match of [...source.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*;/gi)]) {
+      if (remote(match[1])) throw new Error(`Export requires a local stylesheet: ${match[1]}`);
+      const target = path.posix.normalize(path.posix.join(path.posix.dirname(rel), match[1]));
+      const css = await inlineCss((await readLocal(target)).toString('utf8'), target, next);
+      source = source.replace(match[0], () => css);
+    }
+    source = await inlineAssets(source);
+    for (const match of [...source.matchAll(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi)]) {
+      const url = match[2].trim();
+      if (url.startsWith('data:') || url.startsWith('#')) continue;
+      if (remote(url)) throw new Error(`Export requires a local CSS asset: ${url}`);
+      const target = path.posix.normalize(path.posix.join(path.posix.dirname(rel), url));
+      const uri = `data:${contentTypeOf(target)};base64,${(await readLocal(target)).toString('base64')}`;
+      source = source.replace(match[0], () => `url("${uri}")`);
+    }
+    return source;
+  }
+  async function materialize(source: string, board: string, notes: string[]): Promise<string> {
+    let html = await inlineAssets(source);
+    html = html.replace(/href=(["'])([^"']*?)\.dc\.html((?:[?#][^"']*)?)\1/gi, (_, q, dest, suffix) => {
+      notes.push('画板链接已改为导出的 HTML'); return `href=${q}${dest}.html${suffix}${q}`;
+    });
+    for (const match of [...html.matchAll(/<link\b[^>]*href=["']([^"']+)["'][^>]*>/gi)]) {
+      if (!/rel=["']stylesheet["']/i.test(match[0])) continue;
+      // Fonts are optional design assets; omit remote styles instead of introducing an offline dependency.
+      if (remote(match[1])) { html = html.replace(match[0], ''); notes.push('移除了远程字体样式表；离线使用设计稿的备用字体'); continue; }
+      const rel = path.posix.normalize(path.posix.join(path.posix.dirname(board), match[1]));
+      const css = await inlineCss((await readLocal(rel)).toString('utf8'), rel);
+      html = html.replace(match[0], () => `<style>${css.replace(/<\/style/gi, '<\\/style')}</style>`);
+    }
+    for (const match of [...html.matchAll(/<script\b[^>]*src=["']([^"']+)["'][^>]*>\s*<\/script>/gi)]) {
+      if (match[1] === './support.js') continue;
+      if (remote(match[1])) throw new Error(`Export refuses a remote script: ${match[1]}`);
+      const rel = path.posix.normalize(path.posix.join(path.posix.dirname(board), match[1]));
+      const script = (await readLocal(rel)).toString('utf8');
+      html = html.replace(match[0], () => `<script>${inlineScript(script)}</script>`);
+    }
+    // Inline styles can contain uploaded assets, already converted above.
+    return html;
+  }
+  function imports(source: string, from: string): string[] {
+    const def = boardDefinition(source), list: string[] = [];
+    function walk(nodes: MarkupNode[]) {
+      for (const node of nodes) {
+        if (node.tag === 'dc-import') {
+          const name = decodeEntities(node.attrs.name ?? '');
+          if (!name || /{{|[?#\\]/.test(name) || remote(name) || name.startsWith('/')) throw new Error('Component imports require static relative paths');
+          list.push(path.posix.normalize(path.posix.join(path.posix.dirname(from), name.endsWith('.dc.html') ? name : name + '.dc.html')));
+        }
+        walk(node.children);
+      }
+    }
+    walk(parseMarkup(def.template).nodes); return list;
+  }
   const files: ExportResult[] = [];
   for (const board of order) {
-    const box = index.boards[board]!;
-    const source = await fs.readFile(path.join(canvasDir, board), 'utf8');
+    if (typeof board !== 'string' || !Object.hasOwn(index.boards, board)) throw new Error(`Unknown export board: ${board}`);
     const notes: string[] = [];
-    let html = source;
-
-    // 1. 运行时：内联，替换掉那一行 <script src="./support.js"></script>。
-    const supportLine = /<script\s+src=["']\.\/support\.js["']\s*>\s*<\/script>/i;
-    if (supportLine.test(html)) {
-      html = html.replace(supportLine, () => `<script>\n${safeInlineScript(runtime)}\n</script>`);
-      notes.push('内联了画板运行时（vendor/support.js）');
-    } else {
-      notes.push('画板里没有 ./support.js 那一行：没内联运行时，导出可能挂载不起来');
-    }
-
-    // 2. `/_blob/<id>`：属性值与 CSS 里的 url() 都换成 data: URI。
-    const ids = new Set<string>();
-    for (const match of source.matchAll(/\/_blob\/([0-9a-f]{32})/g)) ids.add(match[1]!);
-    let inlined = 0;
-    for (const id of ids) {
-      const uri = await blobDataUri(id);
-      if (uri === null) {
-        notes.push(`素材 /_blob/${id} 在 assets/ 里找不到：导出里还是死链`);
-        continue;
+    const source = (await readLocal(board)).toString('utf8');
+    const embedded: Record<string, string> = Object.create(null);
+    async function collect(from: string, raw: string, chain: string[]) {
+      if (chain.length > 32) throw new Error('Component import depth exceeds 32');
+      for (const child of imports(raw, from)) {
+        if (chain.includes(child)) throw new Error(`Circular component import: ${child}`);
+        const rel = path.posix.relative(path.posix.dirname(board), child);
+        if (Object.hasOwn(embedded, rel)) continue;
+        const childSource = (await readLocal(child)).toString('utf8');
+        embedded[rel] = await materialize(childSource, child, notes);
+        await collect(child, childSource, [...chain, child]);
       }
-      html = html.split(`/_blob/${id}`).join(uri);
-      inlined += 1;
     }
-    if (inlined > 0) notes.push(`内联了 ${inlined} 个素材为 data: URI`);
-
-    // 3. 画板之间的原型链接：`X.dc.html` → 导出后的 `X.html`，否则点了跳不过去。
-    //    用函数形式（`$` 在字符串替换里是替换模式，见上）。
-    let links = 0;
-    html = html.replace(/href=(["'])([^"']*?)\.dc\.html\1/gi, (_whole, quote: string, target: string) => {
-      links += 1;
-      return `href=${quote}${target}.html${quote}`;
-    });
-    if (links > 0) notes.push(`把 ${links} 个画板间链接指向导出后的文件名`);
-
-    // 3. 设计稿目录里的相对样式表与脚本：内联（否则 file:// 下取不到）。
-    for (const match of [...html.matchAll(/<link\b[^>]*href=["']([^"']+\.css)["'][^>]*>/gi)]) {
-      const rel = match[1]!;
-      if (/^(?:[a-z]+:)?\/\//i.test(rel)) continue; // 网上的（Google Fonts）留着
-      const css = await fs.readFile(path.resolve(canvasDir, rel), 'utf8').catch(() => null);
-      if (css === null) {
-        notes.push(`样式表 ${rel} 找不到：导出里还是相对链接`);
-        continue;
-      }
-      html = html.replace(match[0], () => `<style>\n${css.replace(/<\/style/gi, '<\\/style')}\n</style>`);
-      notes.push(`内联了样式表 ${rel}`);
-    }
-    for (const match of [...html.matchAll(/<script\b[^>]*src=["']([^"']+\.js)["'][^>]*>\s*<\/script>/gi)]) {
-      const rel = match[1]!;
-      if (/^(?:[a-z]+:)?\/\//i.test(rel) || rel === './support.js') continue;
-      const js = await fs.readFile(path.resolve(canvasDir, rel), 'utf8').catch(() => null);
-      if (js === null) {
-        notes.push(`脚本 ${rel} 找不到：导出里还是相对链接`);
-        continue;
-      }
-      html = html.replace(match[0], () => `<script>\n${safeInlineScript(js)}\n</script>`);
-      notes.push(`内联了脚本 ${rel}`);
-    }
-
-    // 4. 页面底色 + 居中（fill 型画板要铺满窗口，就不套内边距）。
-    const fill = box.expand === 'fill';
-    const shell = [
-      '<style>',
-      'html{background:#EFEEEB}',
-      fill
-        ? '#dc-root{min-height:100vh}'
-        : `#dc-root{display:flex;justify-content:center;padding:32px;box-sizing:border-box;min-height:100vh}`,
-      '</style>',
-    ].join('\n');
-    const head = /<head[^>]*>/i.exec(html);
-    html = head ? `${html.slice(0, head.index + head[0].length)}\n${shell}${html.slice(head.index + head[0].length)}` : shell + html;
-
-    const file = path.join(outDir, `${board.replace(/\.dc\.html$/i, '')}.html`);
+    await collect(board, source, [board]);
+    let html = prepareBoardHtml(await materialize(source, board, notes));
+    const support = /<script\s+src=["']\.\/support\.js["']\s*>\s*<\/script>/i;
+    if (!support.test(html)) throw new Error(`${board}: missing ./support.js`);
+    const registry = Object.keys(embedded).length ? `window.__designSources=Object.fromEntries(Object.entries(${json(embedded)}).map(([k,v])=>[new URL(k,location.href).href,v]));\n` : '';
+    html = html.replace(support, () => `<script>${registry}${inlineScript(runtime)}</script>`);
+    notes.push('内联了本地 DOM 运行时');
+    if (Object.keys(embedded).length) notes.push(`内联了 ${Object.keys(embedded).length} 个设计组件`);
+    const fill = index.boards[board].expand === 'fill';
+    const style = `<style>html{background:#EFEEEB}#dc-root{min-height:100vh;${fill ? '' : 'display:flex;justify-content:center;padding:32px;box-sizing:border-box'}}</style>`;
+    html = html.replace(/<head\b[^>]*>/i, match => match + style);
+    const file = path.join(outDir, board.replace(/\.dc\.html$/, '.html'));
+    await fs.mkdir(path.dirname(file), { recursive: true });
     await fs.writeFile(file, html);
-    files.push({ board, html: file, bytes: Buffer.byteLength(html), notes });
+    files.push({ board, html: file, bytes: Buffer.byteLength(html), notes: [...new Set(notes)] });
   }
   return { files, outDir };
 }

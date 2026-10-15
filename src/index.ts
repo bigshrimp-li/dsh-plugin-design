@@ -1,16 +1,4 @@
-/**
- * DSH Host 插件：BaoCut 的 design / design-system 工具。
- *
- * 提供五个工具：
- *   design_check                  校验一份设计稿（canvas.json + *.dc.html）——只看文件
- *   design_render                 把画板渲染成 PNG 并交回会话——唯一能看见设计的手段（本插件新增）
- *   design_import_asset           把图片/字体导入设计稿的 assets/
- *   design_system_check           校验一个设计系统
- *   design_system_import_asset    把图片/视频/PDF/字体导入设计系统的 _blobs/
- *
- * 校验代码不渲染、不联网、无外部依赖；渲染用随包的画板运行时（vendor/support.js）+ 无头 Chrome；
- * 素材导入写 node:fs。
- */
+/** DeepSeek Harness design plugin: local editing, validation, rendering and export. */
 import { registerDesignTools } from './tools.ts';
 import { registerDesignSpaceHost } from './design-space/host.ts';
 import { EditorManager } from './editor/manager.ts';

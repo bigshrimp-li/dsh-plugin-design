@@ -12,8 +12,9 @@
   },
   "files": [
     "dist",
-    "vendor",
-    "client.js"
+    "client.js",
+    "skills",
+    "NOTICE.md"
   ],
   "engines": {
     "node": ">=20"
@@ -36,11 +37,12 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-editor-assets.mjs",
-    "watch": "tsc -p tsconfig.json --watch",
+    "build": "tsc -p tsconfig.json && node scripts/build-runtime.mjs && node scripts/copy-editor-assets.mjs",
+    "watch": "node scripts/watch.mjs",
     "test": "./test.sh",
     "test:browser": "npm run build && node test/editor-browser.mjs",
-    "test:space": "npm run build && node --test test/editor-design-space.test.mjs && node test/design-space-browser.mjs"
+    "test:space": "npm run build && node --test test/editor-design-space.test.mjs && node test/design-space-browser.mjs",
+    "test:runtime": "npm run build && node --test test/independence.test.mjs && node test/runtime-browser.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
@@ -50,8 +52,6 @@
     "playwright-core": "^1.58.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0",
-    "esbuild": "^0.28.2",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "esbuild": "^0.28.2"
   }
 }

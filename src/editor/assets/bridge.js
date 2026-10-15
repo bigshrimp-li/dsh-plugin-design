@@ -126,16 +126,15 @@
 
   /**
    * 行内样式的**真源**是源码文本，不是 DOM。
-   * 画板是 React 挂出来的，React 走 CSSOM 应用 style，读回来已经被规范化了
+   * 画板运行时通过 DOM 应用 style，CSSOM 读回的值可能已经被规范化了
    * （`margin: 8px 0 0` 会变成 `8px 0px 0px`）。拿它当基准，改一个 font-size 会把整个
    * style 属性的写法改掉。所以外壳把源码里的原文注册进来，以它为准。
    */
   var sources = {};
   var sourceContext = null;
 
-  // Runtime evidence: compileDesignImport creates a nested .sc-host with its own
-  // annotation sequence; compileExternalImport uses .sc-host-x. A tid is local
-  // to ONE template and cannot identify nodes across either boundary.
+  // Component hosts own independent template IDs. Legacy .sc-host-x boundaries
+  // remain read-only too; an ID alone never authorizes editing another template.
   function provenance(el) {
     var blocked = function (reason) { return { writable: false, readonlyReason: reason, sourceRef: null }; };
     if (!el || !el.isConnected) return blocked('元素已离开画板，请重新选择');

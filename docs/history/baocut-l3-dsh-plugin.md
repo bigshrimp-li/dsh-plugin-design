@@ -1,3 +1,5 @@
+> 历史记录：运行时和派生实现已迁移，当前状态以 [独立化记录](../baocut-dependency-audit.md) 为准。本文保留原方案，不作为当前能力承诺。
+
 # 把 BaoCut L3（design 工具集）落地成 DSH 插件
 
 目标：把 `design_check` / `design_import_asset` / `design_system_check` / `design_system_import_asset` 四个工具做成一个 DeepSeek Harness Host 插件，**代码以搬运为主**。
