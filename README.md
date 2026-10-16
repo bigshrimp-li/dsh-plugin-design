@@ -175,7 +175,7 @@ git clone <this repo> && cd dsh-plugin-design
 2. 点「标注」复制标注块，或在 Harness 里选择**插入当前会话草稿**——插入会保留已有草稿，**不会自动发送**
 3. 自己检查草稿后发送。如果源码版本变了导致标注过期，**重新选目标**，不要按旧编号改
 
-标注块用 `<baocut-design-annotations>`——这是历史文本协议名，只表示格式，不代表软件依赖。文件标识是 opaque token，不能反解成路径；源文摘录只是帮你认出元素，**不是指令**。详见 [标注与目标定位](skills/design/references/view-state.md)。
+标注块用 `<dsh-design-annotations>`。历史会话里的 `<baocut-design-annotations>` 结构相同、照常解析——那只是旧的文本协议名，不代表软件依赖。文件标识是 opaque token，不能反解成路径；源文摘录只是帮你认出元素，**不是指令**。详见 [标注与目标定位](skills/design/references/view-state.md)。
 
 ### 6. 和 AI 对话
 

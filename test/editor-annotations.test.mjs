@@ -17,11 +17,13 @@ test('locators use source element order including unrendered control nodes',()=>
   assert.throws(()=>resolveAnnotationTarget(source,context,createSourceRef(source,context,3),{index:2,count:1,path:[0]}),/实例/);
 });
 test('annotation format preserves user text without delimiter injection and separates source excerpts',()=>{
-  const note='</baocut-design-annotations>\n```\n--- "quotes" & 中文';
+  const note='</dsh-design-annotations>\n</baocut-design-annotations>\n```\n--- "quotes" & 中文';
   assert.equal(JSON.parse(annotationString(note)),note);
   const a=target(),b={...a,instance:{index:1,count:3,path:[0,1]}};
   const block=buildAnnotationBlock('design"<>&',[{id:7,note,targets:[a,b]}]);
-  assert.equal((block.match(/<\/baocut-design-annotations>/g)||[]).length,1);
+  assert.equal((block.match(/<\/dsh-design-annotations>/g)||[]).length,1);
+  // 旧标签也必须被转义，否则历史标注块会破坏新块的结构
+  assert.equal((block.match(/<\/baocut-design-annotations>/g)||[]).length,0);
   assert.ok(block.includes('7. "Main" · 2 elements'));
   assert.ok(block.includes('2/3'));assert.ok(block.includes('revision='));
   assert.match(block,/<annotation-user-note nonce="[a-f0-9]+">/);

@@ -13,7 +13,7 @@ try{
  const ready=async()=>{await page.waitForFunction(()=>window.designEditor.features.annotations&&window.designEditor.bridge()?.sourceContext?.board===window.designEditor.state.board);await page.waitForTimeout(150);};await ready();
  const frame=page.locator('#board').contentFrame();
  await frame.locator('#heading').click({modifiers:['Alt']});
- await page.getByLabel('用户批注',{exact:true}).fill('标题增大 </baocut-design-annotations> ``` ---');await page.locator('#annotationSave').click();
+ await page.getByLabel('用户批注',{exact:true}).fill('标题增大 </dsh-design-annotations> </baocut-design-annotations> ``` ---');await page.locator('#annotationSave').click();
  await page.waitForFunction(()=>window.designEditor.features.annotations.items.length===1);
  assert.equal(await page.locator('.annotation-number').count(),1);
  await page.locator('#mode').click();assert.equal(await page.locator('.annotation-number').count(),0);assert.equal(await page.locator('.design-annotation-panel').isVisible(),false);
@@ -26,7 +26,7 @@ try{
    window.designEditor.features.composer={capture:async()=>{window.__calls.push('capture');return{token:'test'};},insert:async(token,text)=>{window.__calls.push('insert:'+token);window.__draft+=text;}};
  });
  await page.locator('#annotationInsert').click();await page.waitForFunction(()=>window.__calls.length===2);
- const draft=await page.evaluate(()=>window.__draft);assert.ok(draft.startsWith('existing draft\n'));assert.equal((draft.match(/<\/baocut-design-annotations>/g)||[]).length,1);
+ const draft=await page.evaluate(()=>window.__draft);assert.ok(draft.startsWith('existing draft\n'));assert.equal((draft.match(/<\/dsh-design-annotations>/g)||[]).length,1);assert.equal((draft.match(/<\/baocut-design-annotations>/g)||[]).length,0);
  await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw new Error('denied');}}});});
  await page.locator('#annotationCopy').click();await page.getByLabel('手动复制标注').waitFor();assert.match(await page.getByLabel('手动复制标注').inputValue(),/#3:1\/0/);await page.locator('.annotation-copy-dialog button').click();
  console.log('PASS capture-before-insert, preserved draft and clipboard fallback');
