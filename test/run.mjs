@@ -78,6 +78,12 @@ const call = async (name, args) => {
 // ---- design_check ----
 console.log('\ndesign_check');
 {
+  const tool = registered.find((t) => t.name === 'design_check');
+  const rootExec = { ...exec, agent: { session: { header: { cwd: path.join(dir, 'good') } } } };
+  check('旧设计稿根目录可用 . 校验', (await tool.execute({ path: '.' }, rootExec)).problems === 0);
+  check('普通工作区根目录仍被拒绝', !!(await call('design_check', { path: '.' })).error);
+}
+{
   const { value } = await call('design_check', { path: 'good' });
   check('合法设计稿 0 问题', value?.problems === 0, JSON.stringify(value?.issues));
   check('返回 title', value?.title === 'Spring Menu Poster', value?.title);

@@ -82,6 +82,9 @@ export function registerDesignSpaceHost(
             case 'discover':
               result = await service.discover(str('id')!);
               break;
+            case 'space':
+              result = await service.space(str('id')!);
+              break;
             case 'describe':
               result = await service.describe(str('id')!, str('rel', true));
               break;

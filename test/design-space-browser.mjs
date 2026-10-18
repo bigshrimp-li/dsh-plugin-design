@@ -20,9 +20,11 @@ const { chromium } = await import(
 const workspace = await fs.realpath(
   await fs.mkdtemp(path.join(os.tmpdir(), 'design-space-browser-')),
 );
+const externalSpace = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'design-space-external-')));
 const service = new DesignSpaceService(path.join(workspace, '.registry.json')),
   editors = new EditorManager();
-const owner = await service.register(workspace, workspace, true);
+const owner = await service.register(workspace);
+await service.rename(owner.id, '测试设计空间');
 const independent = await service.create(
   owner.id,
   'independent',
@@ -30,7 +32,7 @@ const independent = await service.create(
   'mobile',
   'independent-operation',
 );
-await service.register(independent.target, workspace);
+const sessionDirectories = new Map();
 const routes = new Map();
 registerDesignSpaceHost(
   {
@@ -41,7 +43,7 @@ registerDesignSpaceHost(
         return () => {};
       },
     },
-    sessions: { get: () => ({ header: { cwd: workspace } }) },
+    sessions: { get: (id) => ({ header: { cwd: sessionDirectories.get(id) } }) },
     sessionPersistence: {
       open: () => {
         throw new Error('unexpected');
@@ -59,8 +61,16 @@ const fixture = await build({
   nodePaths: runtime ? [runtime] : undefined,
 });
 const client = await fs.readFile(new URL('../client.js', import.meta.url), 'utf8');
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
+  if (pathname === '/fixture/session') {
+    let raw = '';
+    for await (const chunk of req) raw += chunk;
+    const { id, cwd } = JSON.parse(raw);
+    sessionDirectories.set(id, cwd);
+    res.end('{}');
+    return;
+  }
   if (routes.has(pathname)) {
     routes.get(pathname)(req, res);
     return;
@@ -132,7 +142,7 @@ try {
   pass('Host slot contract mounts empty Design Space');
   await page.locator('iframe[title="设计稿缩略图"]').first().waitFor();
   assert.equal(await page.locator('.ds-list > button').count(), 1);
-  pass('overlapping workspaces discover each canonical design once');
+  pass('home discovers only registered design spaces, without importing host workspaces');
   await page
     .locator('iframe[title="设计稿缩略图"]')
     .first()
@@ -143,7 +153,8 @@ try {
   assert.ok((await page.locator('iframe[title="设计稿缩略图"]').count()) <= 4);
   if (output) await page.screenshot({ path: path.join(output, 'space-empty.png') });
   pass('directory list renders bounded sandboxed previews');
-  await page.locator('.ds-directory-open').filter({ hasText: 'independent' }).click();
+  await page.locator('.ds-directory-open').filter({ hasText: '测试设计空间' }).click();
+  await page.locator('.ds-space-design').filter({ hasText: '无会话设计稿' }).click();
   await page.getByRole('tab', { name: '无会话设计稿', exact: true }).waitFor();
   await editorReady();
   assert.equal((await page.evaluate(() => window.fixture.counts())).created, 0);
@@ -437,7 +448,7 @@ try {
     1,
   );
   await closeTab('第一份设计');
-  await page.locator('.ds-directory-open').filter({ hasText: 'first' }).click();
+  await page.locator('.ds-space-design').filter({ hasText: '第一份设计' }).click();
   await editorReady();
   assert.equal(await page.locator('.ds-session-item[data-session-id]').count(), 2);
   assert.equal(await page.getByLabel('测试消息流').innerText(), '会话 B 的消息');
@@ -610,6 +621,69 @@ try {
   assert.ok((await page.locator('.ds-chat-head').boundingBox()).height < 52);
   pass('single-row header starts with one plus and follows host-generated titles and renames');
 
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.evaluate((path) => {
+    window.__DSH_DIRECTORY_PICKER__ = { pick: async () => path };
+    window.fixture.removeWorkspaces();
+  }, externalSpace);
+  await page.getByRole('button', { name: '添加设计空间', exact: true }).click();
+  await page.getByRole('heading', { name: path.basename(externalSpace), exact: true }).waitFor();
+  await create('space-first', '空间中的第一份');
+  assert.equal((await page.evaluate(() => window.fixture.workspaceSnapshot())).items.length, 0);
+  const firstInSpace = (await service.discover((await service.register(externalSpace)).id)).items[0];
+  assert.equal(firstInSpace.target, path.join(externalSpace, 'space-first'));
+  assert.equal(sessionDirectories.get(firstInSpace.sessionId), externalSpace);
+  const rootEntries = await fs.readdir(externalSpace);
+  await page.getByRole('button', { name: '为当前设计稿新建对话', exact: true }).click();
+  await editorReady();
+  assert.deepEqual(await fs.readdir(externalSpace), rootEntries);
+  assert.equal((await page.evaluate(() => window.fixture.workspaceSnapshot())).items.length, 0);
+  await page.getByLabel('测试会话草稿').fill('测试替身首轮消息');
+  await page.getByRole('button', { name: '测试发送', exact: true }).click();
+  await page.getByLabel('测试会话草稿').fill('空间第二段对话的草稿');
+  const spaceSession = await page.locator('[data-conversation-session]').getAttribute('data-conversation-session');
+  await page.evaluate((sid) => window.fixture.rename(sid, '空间对话'), spaceSession);
+  const sidebarSession = page.locator('.ds-space-session').filter({ hasText: '空间对话' });
+  await sidebarSession.waitFor();
+  await create('space-second', '空间中的第二份');
+  assert.ok(await fs.stat(path.join(externalSpace, 'space-second', 'canvas.json')));
+  assert.equal((await service.list()).directories.length, 2, 'designs never become extra space entries');
+  await sidebarSession.click();
+  await editorReady();
+  assert.equal(await page.getByLabel('测试会话草稿').inputValue(), '空间第二段对话的草稿');
+  assert.equal(await page.getByRole('tab', { name: '空间中的第一份', exact: true }).getAttribute('aria-selected'), 'true');
+  const spaceHeader = page.locator('.ds-directory-open').filter({ hasText: path.basename(externalSpace) });
+  await spaceHeader.click();
+  assert.equal(await sidebarSession.count(), 0);
+  await page.reload();
+  await page.getByRole('button', { name: 'Design 空间', exact: true }).click();
+  await editorReady();
+  assert.equal(await spaceHeader.getAttribute('aria-expanded'), 'false');
+  await spaceHeader.click();
+  await sidebarSession.click();
+  await editorReady();
+  assert.equal(await page.getByLabel('测试会话草稿').inputValue(), '空间第二段对话的草稿');
+  await page.getByRole('button', { name: '新建设计稿', exact: true }).first().click();
+  assert.equal(await page.getByLabel('放在哪个设计空间').inputValue(), (await service.register(externalSpace)).id);
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  if (output) await page.screenshot({ path: path.join(output, 'space-folders-and-chats.png') });
+  assert.deepEqual(errors, []);
+  pass('independent spaces own all design folders and chat cwd without creating host workspaces or chat folders');
+  pass('space dropdown opens each design and conversation, follows titles and restores drafts after reload');
+  pass('new design remembers the selected space instead of falling back to a default workspace');
+
+  await page.evaluate((path) => {
+    window.__DSH_DIRECTORY_PICKER__ = { pick: async () => path };
+  }, independent.target);
+  await page.getByRole('button', { name: '添加设计空间', exact: true }).click();
+  await page.getByRole('heading', { name: 'independent', exact: true }).waitFor();
+  await page.getByRole('button', { name: '新建设计稿', exact: true }).first().click();
+  await page.getByText('此目录本身是一份设计稿。要新建其他设计稿，请将它的上级目录添加为设计空间。', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: '创建设计稿', exact: true }).isEnabled(), false);
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  assert.deepEqual(errors, []);
+  pass('legacy canvas directories stay usable and cannot accidentally contain another new design');
+
   await page.route('**/design-space/api', (route) => route.fulfill({ status: 404, body: '' }));
   await page.reload();
   await page.getByRole('button', { name: 'Design 空间', exact: true }).click();
@@ -636,4 +710,5 @@ try {
   await editors.close();
   await new Promise((resolve) => server.close(resolve));
   await fs.rm(workspace, { recursive: true, force: true });
+  await fs.rm(externalSpace, { recursive: true, force: true });
 }

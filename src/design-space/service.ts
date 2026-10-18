@@ -18,6 +18,7 @@ export interface Directory {
   workspace: string;
   label: string;
   hidden?: boolean;
+  legacyWorkspace?: string;
 }
 interface State {
   version: 1;
@@ -154,6 +155,7 @@ export class DesignSpaceService {
           typeof d.id !== 'string' ||
           typeof d.path !== 'string' ||
           typeof d.workspace !== 'string' ||
+          (d.legacyWorkspace !== undefined && typeof d.legacyWorkspace !== 'string') ||
           typeof d.label !== 'string',
       )
     )
@@ -191,6 +193,35 @@ export class DesignSpaceService {
     if ((await fs.realpath(d.path)) !== d.path || (await fs.realpath(d.workspace)) !== d.workspace)
       throw new SpaceError(409, '目录位置已变化，请重新添加');
     return d;
+  }
+  /** Adopt a registered directory as an independent space; keep old files and sessions intact. */
+  async space(id: string) {
+    const d = await this.directory(id);
+    if (d.workspace === d.path) return d;
+    const legacy = await this.links(d.workspace);
+    await this.links(d.path);
+    await updateJSON(this.sidecar(d.path), emptyLinks, (s) => {
+      s.sessions ??= {};
+      for (const key of new Set([...Object.keys(legacy.links), ...Object.keys(legacy.sessions || {})])) {
+        const target = path.resolve(d.workspace, key);
+        if (!inside(d.path, target)) continue;
+        const rel = path.relative(d.path, target) || '.';
+        s.sessions[rel] = [...new Set([
+          ...(s.sessions[rel] || []), ...(s.links[rel] ? [s.links[rel]] : []),
+          ...(legacy.sessions?.[key] || []), ...(legacy.links[key] ? [legacy.links[key]] : []),
+        ])];
+        s.links[rel] ??= legacy.links[key];
+      }
+      // Preserve operation receipts so interrupted creation remains idempotent.
+      for (const [key, value] of Object.entries(legacy.operations)) s.operations[key] ??= value;
+    });
+    await updateJSON(this.stateFile, initial, (s) => {
+      const current = s.directories.find((item) => item.id === id);
+      if (!current) throw new SpaceError(404, '设计空间已移除');
+      current.legacyWorkspace ??= current.workspace;
+      current.workspace = current.path;
+    });
+    return this.directory(id);
   }
   async rename(id: string, label: string) {
     await this.state();
@@ -328,7 +359,6 @@ export class DesignSpaceService {
           ...(await this.describe(id, path.relative(d.path, dir) || '.')),
           rel: path.relative(d.path, dir) || '.',
         });
-        return;
       }
       for (const e of entries)
         if (
@@ -344,9 +374,12 @@ export class DesignSpaceService {
   }
   async bind(id: string, rel: string, sessionId: string, sessionCwd: string, expected?: number) {
     const l = await this.locate(id, rel);
-    if ((await fs.realpath(sessionCwd)) !== l.directory.workspace)
+    const prior = await this.links(l.directory.workspace);
+    const cwd = await fs.realpath(sessionCwd);
+    const legacySession = cwd === l.directory.legacyWorkspace &&
+      [prior.links[l.canvas], ...(prior.sessions?.[l.canvas] || [])].includes(sessionId);
+    if (cwd !== l.directory.workspace && !legacySession)
       throw new SpaceError(409, '此会话不属于设计稿工作区，请选择同工作区的会话');
-    await this.links(l.directory.workspace);
     return updateJSON(
       this.sidecar(l.directory.workspace),
       emptyLinks,
@@ -378,7 +411,13 @@ export class DesignSpaceService {
     };
     const size = sizes[preset];
     if (!size) throw new SpaceError(400, '未知设计预设');
-    const d = await this.directory(id);
+    const d = await this.space(id);
+    const rootCanvas = await fs.lstat(path.join(d.path, 'canvas.json')).catch((e) => {
+      if (absent(e)) return null;
+      throw e;
+    });
+    if (rootCanvas)
+      throw new SpaceError(400, '此目录本身是一份设计稿，请将它的上级目录添加为设计空间，再新建设计稿');
     const target = path.join(d.path, name);
     const file = this.sidecar(d.workspace);
     await this.links(d.workspace);

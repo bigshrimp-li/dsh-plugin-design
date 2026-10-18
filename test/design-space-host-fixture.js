@@ -130,16 +130,17 @@ const contexts = {
   },
   sessions: {
     list: source(catalog),
-    create: async () => {
+    create: async (options) => {
       if (failCreate) {
         failCreate = false;
         throw new Error('测试：会话创建暂时失败');
       }
       created++;
       const id = 'fixture-session-' + created;
+      if (!options?.cwd || options.workspaceId) throw new Error('设计对话必须直接指定空间目录');
+      await fetch('/fixture/session', { method: 'POST', body: JSON.stringify({ id, cwd: options.cwd }) });
       catalog.ids.push(id);
-      catalog.byId[id] = { id, cwd: workspace.path, title: '', blank: true };
-      workspace.sessionIds.push(id);
+      catalog.byId[id] = { id, cwd: options.cwd, title: '', blank: true };
       data(id);
       persistMock();
       return id;
@@ -380,5 +381,7 @@ window.fixture = {
   open: () => contexts.layout.selectPanel('@local/dsh-plugin-design/space'),
   ordinary: () => contexts.layout.selectPanel(null),
   counts: () => ({ created, sends, retains, releases }),
+  workspaceSnapshot: () => contexts.workspaces.list.getSnapshot(),
+  removeWorkspaces: () => contexts.workspaces.list.set({ ...contexts.workspaces.list.getSnapshot(), items: [] }),
   data,
 };

@@ -92,7 +92,10 @@ async function resolveTargetDir(cwd: string, given: string, what: string): Promi
   }
   const base = await fs.realpath(cwd).catch(() => cwd);
   const resolved = path.resolve(base, given);
-  if (resolved === base || !inside(resolved, base)) {
+  // Legacy spaces can open a canvas at their root. A real canvas marker is
+  // required before allowing '.', so an ordinary workspace is still rejected.
+  const rootCanvas = resolved === base && what === '设计稿' && await hasCanvasIndex(base);
+  if ((!rootCanvas && resolved === base) || !inside(resolved, base)) {
     throw new ToolFailure('PATH_OUTSIDE_WORKSPACE', `${what}要是会话工作目录里的目录（相对路径，不含 ..，不经过指向别处的符号链接）`);
   }
   const stat = await fs.lstat(resolved).catch(() => null);

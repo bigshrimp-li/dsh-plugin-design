@@ -210,3 +210,50 @@ test('legacy single-session links migrate to multiple sessions without replacing
   await fs.writeFile(file, JSON.stringify(invalid));
   await assert.rejects(service.bind(entry.id, 'multi', 'third-session', workspace), /损坏/);
 });
+
+test('a nested legacy directory becomes an independent space without moving designs or losing chats', async (t) => {
+  const { service, entry, workspace } = await setup(t);
+  const original = await service.create(entry.id, 'legacy', '原设计稿', 'blank', 'legacy-space-operation');
+  await service.bind(entry.id, 'legacy', 'old-session', workspace);
+  const nested = await service.register(original.target, workspace);
+  const legacyBytes = await fs.readFile(path.join(workspace, '.dsh', 'design-tabs.json'), 'utf8');
+  const sourceBytes = await fs.readFile(path.join(original.target, 'Main.dc.html'), 'utf8');
+  const upgraded = await service.space(nested.id);
+  assert.equal(upgraded.workspace, original.target);
+  assert.equal(upgraded.legacyWorkspace, workspace);
+  assert.deepEqual((await service.describe(nested.id)).sessionIds, ['old-session']);
+  await service.bind(nested.id, '.', 'old-session', workspace); // Existing history stays usable.
+  await assert.rejects(service.bind(nested.id, '.', 'unrelated', workspace), /不属于/);
+  await service.bind(nested.id, '.', 'new-session', original.target);
+  await assert.rejects(service.create(nested.id, 'second', '第二份', 'mobile', 'nested-space-operation'), /上级目录/);
+  await assert.rejects(fs.stat(path.join(original.target, 'second')), { code: 'ENOENT' });
+  assert.equal((await service.discover(nested.id)).items.length, 1);
+  assert.deepEqual((await checkCanvas(original.target)).issues, []);
+  assert.deepEqual((await service.describe(nested.id)).sessionIds, ['old-session', 'new-session']);
+  assert.equal(await fs.readFile(path.join(workspace, '.dsh', 'design-tabs.json'), 'utf8'), legacyBytes);
+  assert.equal(await fs.readFile(path.join(original.target, 'Main.dc.html'), 'utf8'), sourceBytes);
+  const revision = (await service.links(original.target)).revision;
+  await service.space(nested.id);
+  assert.equal((await service.links(original.target)).revision, revision);
+});
+
+test('each canvas keeps render and export products inside its own folder', async (t) => {
+  const { service, entry, workspace } = await setup(t);
+  const { renderCanvas } = await import('../dist/render.js');
+  const { exportCanvas } = await import('../dist/export.js');
+  const first = await service.create(entry.id, 'first', '第一份', 'blank', 'output-first-operation');
+  const second = await service.create(entry.id, 'second', '第二份', 'blank', 'output-second-operation');
+  for (const item of [first, second]) {
+    const rendered = await renderCanvas({ canvasDir: item.target, scale: 1 });
+    assert.equal(rendered.outDir, path.join(item.target, '.design-preview'));
+    assert.equal(rendered.boards[0].mounted, true);
+    assert.ok(rendered.boards[0].pngBytes > 0);
+    assert.ok(rendered.boards[0].png.startsWith(item.target + path.sep));
+    const exported = await exportCanvas({ canvasDir: item.target });
+    assert.equal(exported.outDir, path.join(item.target, '.design-preview', 'view'));
+    assert.ok(exported.files[0].html.startsWith(item.target + path.sep));
+    assert.ok(exported.files[0].bytes > 0);
+    assert.deepEqual((await checkCanvas(item.target)).issues, []);
+  }
+  await assert.rejects(fs.stat(path.join(workspace, '.design-preview')), { code: 'ENOENT' });
+});

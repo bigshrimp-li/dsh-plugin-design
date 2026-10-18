@@ -47,6 +47,9 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
   const saved = persisted();
   let state = {
     directories: [],
+    contents: {},
+    selectedDirectory: saved.selectedDirectory || null,
+    expandedDirectories: saved.expandedDirectories || {},
     tabs: saved.tabs || [],
     active: saved.active || null,
     ratio: Math.min(0.75, Math.max(0.35, saved.sidebarRatio || 0.64)),
@@ -108,6 +111,8 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
           sidebarRatio: state.ratio,
           workspaceCollapsed: state.workspaceCollapsed,
           designCollapsed: state.designCollapsed,
+          selectedDirectory: state.selectedDirectory,
+          expandedDirectories: state.expandedDirectories,
         }),
       );
     } catch {
@@ -141,13 +146,14 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
   const readSessions = () => ctx.sessions.list.getSnapshot();
   const workspaces = () => ctx.workspaces.list.getSnapshot().items || [];
   const sessions = () => ctx.sessions.list.getSnapshot();
-  const ownerFor = (directory) =>
-    workspaces()
-      .filter((w) => directory === w.path || directory.startsWith(w.path + '/'))
-      .sort((a, b) => b.path.length - a.path.length)[0];
   const refresh = async () => {
     const result = await api('list');
-    if (!disposed) set({ directories: result.directories, loaded: true });
+    const contents = { ...state.contents };
+    await Promise.all(result.directories.filter((d) => state.expandedDirectories[d.id]).map(async (d) => {
+      try { contents[d.id] = await api('discover', { id: d.id }); }
+      catch (error) { contents[d.id] = { items: [], error: error.message }; }
+    }));
+    if (!disposed) set({ directories: result.directories, contents, loaded: true });
   };
   const run = async (fn) => {
     if (state.busy) return;
@@ -198,9 +204,10 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
       frameStates.set(state.active, result.view);
     }
   };
-  const open = async (id, rel = '.') => {
+  const open = async (id, rel = '.', sessionId) => {
     await prepare();
     const seq = ++sequence;
+    await api('space', { id });
     const info = await api('open', { id, rel });
     if (seq !== sequence) return;
     const existing = state.tabs.find((t) => t.identity === info.identity);
@@ -214,7 +221,9 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
       tab.sessionId = existing.sessionId;
       tab.linkPending = true;
     }
+    if (sessionId && info.sessionIds?.includes(sessionId)) tab.sessionId = sessionId;
     set({
+      selectedDirectory: info.directory.hidden ? state.selectedDirectory : id,
       tabs: existing
         ? state.tabs.map((t) => (t.identity === tab.identity ? tab : t))
         : [...state.tabs, tab],
@@ -267,30 +276,39 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
     if (!selected) return;
     const directory = typeof selected === 'string' ? selected : selected.path;
     if (!directory) throw new Error('目录选择器没有返回路径');
-    const owner = ownerFor(directory);
-    const entry = await api('register', { path: directory, workspace: owner?.path });
+    const entry = await api('register', { path: directory });
+    if (state.newForm) {
+      await api('space', { id: entry.id });
+      set({ selectedDirectory: entry.id, expandedDirectories: { ...state.expandedDirectories, [entry.id]: true } });
+      await refresh();
+      return;
+    }
     await refresh();
     await selectDirectory(entry);
   };
   const selectDirectory = async (entry) => {
     await prepare();
-    const info = await api('describe', { id: entry.id });
-    if (info.status === 'ready') return open(entry.id);
+    entry = await api('space', { id: entry.id });
     const found = await api('discover', { id: entry.id });
-    set({ browse: { entry, items: found.items, truncated: found.truncated }, newForm: false });
+    set({
+      selectedDirectory: entry.id,
+      expandedDirectories: { ...state.expandedDirectories, [entry.id]: true },
+      contents: { ...state.contents, [entry.id]: found },
+      browse: { entry, items: found.items, truncated: found.truncated }, newForm: false,
+    });
+    await refresh();
     reveal();
   };
   const link = async (tab, choice) => {
     await prepare();
+    await api('space', { id: tab.id });
     const info = await api('open', { id: tab.id, rel: tab.rel });
     if (info.linkError) throw new Error(info.linkError);
     let sid = choice;
     if (choice === 'new') {
       if (tab.sessionId && !Array.isArray(info.sessionIds))
         throw new Error('请重启 Harness 加载多会话服务后再添加对话');
-      const owner = workspaces().find((w) => w.path === info.directory.workspace);
-      if (!owner) throw new Error('请先在 Harness 添加此工作区，再创建对话。设计稿可以继续编辑');
-      sid = await ctx.sessions.create({ workspaceId: owner.workspaceId });
+      sid = await ctx.sessions.create({ cwd: info.directory.path });
     }
     const sessionIds = [
       ...new Set([
@@ -359,6 +377,7 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
 .ds-icon-button{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:var(--dss-muted);cursor:pointer}
 .ds-icon-button:hover,.ds-icon-button[aria-pressed=true]{background:var(--dsw-alias-interactive-bg-hover,#edf3fe);color:inherit}
 .ds-icon-button:focus-visible{outline:2px solid #4176e6;outline-offset:-2px}.ds-empty{flex:1;min-height:0;overflow:auto;padding:clamp(24px,5vw,64px);display:flex;flex-direction:column;gap:16px}.ds-empty h1{font-size:24px;margin:0}.ds-muted{color:var(--dss-muted);font-size:12px}.ds-list{border:1px solid var(--dss-line);border-radius:10px;max-width:900px;overflow:hidden}.ds-list>button{display:flex;width:100%;align-items:center;gap:12px;padding:14px;text-align:left;border:0;border-bottom:1px solid var(--dss-line);background:transparent;color:inherit}.ds-list>button:hover{background:var(--dss-card)}.ds-thumb{width:60px;height:42px;object-fit:contain;background:var(--dss-card);border-radius:4px}.ds-form-wrap{flex:1;min-height:0;overflow:auto;padding:24px;background:var(--dss-card)}.ds-form{max-width:680px;margin:auto;border:1px solid var(--dss-line);border-radius:12px;background:var(--dsw-alias-bg-base,#fff)}.ds-form h2{margin:0}.ds-form-body{padding:24px;display:grid;gap:14px}.ds-form label{display:grid;gap:6px}.ds-form input,.ds-form textarea,.ds-form select,.ds-chat select{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--dss-line);border-radius:7px;color:inherit;background:transparent;font:inherit}.ds-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.ds-presets button{min-height:78px;text-align:left}.ds-presets button[aria-pressed=true]{background:#edf3fe;border-color:#4176e6;color:#244d9f}.ds-form-footer{position:sticky;bottom:0;padding:14px 24px;border-top:1px solid var(--dss-line);background:var(--dsw-alias-bg-base,#fff);display:flex;gap:10px;justify-content:flex-end}.ds-directory{width:100%;min-width:0;padding:6px 8px;box-sizing:border-box;font:13px system-ui;color:var(--dsw-alias-label-primary,#0f1115)}.ds-directory header{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;color:var(--dsw-alias-label-secondary,#61666b)}.ds-directory-list{max-height:min(28vh,260px);overflow:auto}.ds-directory-row{display:flex;align-items:center;border-radius:6px}.ds-directory-row[data-active=true]{background:var(--dsw-alias-bg-selected,#e9ecf2)}.ds-directory-row>button{border:0;background:none;color:inherit;text-align:left;padding:7px 6px;min-width:28px}.ds-directory-open{flex:1;min-width:0;display:flex;gap:6px;align-items:center}.ds-directory-open span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.ds-directory-status{color:var(--dsw-alias-label-secondary,#61666b);font-size:11px;white-space:nowrap}.ds-directory-menu{padding:6px;display:flex;flex-wrap:wrap;gap:4px}.ds-directory-add-icon{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;flex:none;padding:0;border:0;border-radius:var(--dsw-radius-sm,5px);background:transparent;color:var(--dsw-alias-label-secondary,#61666b)}.ds-directory-add-icon:hover{background:var(--dsw-alias-interactive-bg-hover,#edf3fe)}.ds-directory-add-icon:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,#4176e6);outline-offset:-2px}.ds-picker-fallback{padding:20px;border:1px solid var(--dss-line)}
+.ds-space-children{margin:0 4px 6px 14px;padding-left:8px;border-left:1px solid var(--dss-line,#dce0e5)}.ds-space-children button{display:block;width:100%;border:0;border-radius:5px;background:transparent;color:inherit;text-align:left;padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-space-children button:hover,.ds-space-design[aria-current=page]{background:var(--dsw-alias-bg-selected,#e9ecf2)}.ds-space-children .ds-space-session{padding-left:22px;color:var(--dsw-alias-label-secondary,#61666b);font-size:12px}.ds-space-children .ds-space-create{font-size:12px}.ds-directory-open span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-directory-open span:first-child{flex:none}
 .ds-section-toggle{display:flex;align-items:center;gap:6px;min-height:32px;padding:4px 2px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:left}.ds-section-toggle:focus-visible{outline:2px solid var(--dsw-focus-ring-color,#4176e6);outline-offset:1px;border-radius:5px}.ds-section-toggle:hover{color:var(--dsw-alias-label-primary,#0f1115)}.ds-section-chevron{width:12px;display:inline-flex;justify-content:center}.ds-directory header{min-height:36px;padding:0 6px}.ds-directory header>.ds-section-toggle{flex:1}.ds-directory [hidden]{display:none!important}
 [data-ds-sidebar-sections] [data-ds-workspace-region]{flex:0 1 auto;max-height:52%;min-height:38px;overflow:hidden}
 [data-ds-sidebar-sections] [data-ds-workspace-root]{flex:0 1 auto;min-height:0}
@@ -484,6 +503,8 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
     const s = useState(),
       [menu, setMenu] = React.useState(null),
       [label, setLabel] = React.useState('');
+    const catalog = React.useSyncExternalStore(subscribeSessions, readSessions);
+    React.useSyncExternalStore(subscribeWorkspaces, readWorkspaces);
     const anchor = React.useRef(null);
     const workspaceToggle = useWorkspaceSection(anchor, wide, s.workspaceCollapsed);
     React.useEffect(() => {
@@ -521,8 +542,8 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
         ),
         button(h(IconProjectAddOutlineRegular, { size: 16 }), () => run(addDirectory), {
           className: 'ds-directory-add-icon',
-          'aria-label': '添加设计目录',
-          title: '添加设计目录',
+          'aria-label': '添加设计空间',
+          title: '添加设计空间',
           disabled: s.busy,
         }),
       ),
@@ -537,7 +558,7 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
               'div',
               {
                 className: 'ds-directory-row',
-                'data-active': s.tabs.find((t) => t.identity === s.active)?.id === d.id,
+                'data-active': s.selectedDirectory === d.id,
               },
               h(
                 'button',
@@ -545,21 +566,19 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
                   type: 'button',
                   className: 'ds-directory-open',
                   title: d.path,
-                  onClick: () => run(() => selectDirectory(d)),
+                  'aria-expanded': !!s.expandedDirectories[d.id],
+                  onClick: () => run(async () => {
+                    if (s.expandedDirectories[d.id]) {
+                      set({ expandedDirectories: { ...state.expandedDirectories, [d.id]: false } });
+                    } else await selectDirectory(d);
+                  }),
                 },
+                h('span', { 'aria-hidden': true }, s.expandedDirectories[d.id] ? '▾' : '▸'),
                 h('span', {}, d.label),
                 h(
                   'span',
                   { className: 'ds-directory-status' },
-                  d.info?.status === 'ready'
-                    ? `${d.info.count} 张`
-                    : d.info?.status === 'empty'
-                      ? '还没画'
-                      : d.info?.status === 'container'
-                        ? '待选择'
-                        : d.info?.status === 'invalid'
-                          ? '需要修复'
-                          : '不可访问',
+                  s.contents[d.id] ? `${s.contents[d.id].items.length} 份` : '设计空间',
                 ),
               ),
               button(
@@ -570,6 +589,30 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
                 },
                 { 'aria-label': `管理 ${d.label}` },
               ),
+            ),
+            s.expandedDirectories[d.id] && h(
+              'div', { className: 'ds-space-children', role: 'group', 'aria-label': `${d.label} 的设计稿和对话` },
+              button('＋ 新建设计稿', () => run(async () => {
+                await prepare();
+                set({ selectedDirectory: d.id, newForm: true, browse: null });
+                reveal();
+              }), { className: 'ds-space-create', disabled: s.busy, 'aria-label': `在 ${d.label} 新建设计稿` }),
+              s.contents[d.id]?.error && h('p', { role: 'alert' }, s.contents[d.id].error),
+              ...((s.contents[d.id]?.items || []).map((item) => h(
+                'div', { key: item.identity, className: 'ds-space-item' },
+                button(item.title, () => run(() => open(d.id, item.rel)), {
+                  className: 'ds-space-design', title: item.target,
+                  'aria-current': item.identity === s.active ? 'page' : undefined,
+                }),
+                ...visibleSessions(item).map((sid) => button(
+                  catalog.byId[sid]?.blank ? '新对话' : catalog.byId[sid]?.title?.trim() || '未命名对话',
+                  () => run(() => open(d.id, item.rel, sid)),
+                  { key: sid, className: 'ds-space-session', 'data-session-id': sid,
+                    title: `${item.title} · ${catalog.byId[sid]?.title || '新对话'}` },
+                )),
+              ))),
+              !s.contents[d.id]?.items.length && !s.contents[d.id]?.error && h('p', { className: 'ds-muted' }, '还没有设计稿'),
+              s.contents[d.id]?.truncated && h('p', { className: 'ds-muted' }, '仅显示前60份设计稿'),
             ),
             menu === d.id &&
               h(
@@ -1062,47 +1105,36 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
       catalog = React.useSyncExternalStore(subscribeSessions, readSessions);
     const [title, setTitle] = React.useState(''),
       [name, setName] = React.useState(''),
-      [workspaceId, setWorkspaceId] = React.useState(ws.items?.[0]?.workspaceId || ''),
+      [directoryId, setDirectoryId] = React.useState(s.selectedDirectory || (s.directories.length === 1 ? s.directories[0].id : '')),
       [preset, setPreset] = React.useState('blank'),
       [sid, setSid] = React.useState('new'),
       [description, setDescription] = React.useState('');
     const operation = React.useRef(crypto.randomUUID()),
       created = React.useRef(null),
       createdSession = React.useRef(null);
-    const owner = ws.items?.find((w) => w.workspaceId === workspaceId);
+    const owner = s.directories.find((d) => d.id === directoryId);
+    const rootIsCanvas = ['ready', 'invalid'].includes(owner?.info?.status);
+    React.useEffect(() => {
+      if (s.selectedDirectory && !created.current) {
+        setDirectoryId(s.selectedDirectory);
+        setSid('new');
+      }
+    }, [s.selectedDirectory]);
     const submit = () =>
       run(async () => {
         await prepare();
-        if (!owner) throw new Error('请先在 Harness 中添加一个工作区');
+        if (!owner) throw new Error('请先添加或选择一个设计空间');
         if (!created.current) {
-          const root = await api('register', {
-            path: owner.path,
-            workspace: owner.path,
-            hidden: true,
-          });
+          const root = await api('space', { id: owner.id });
           created.current = {
-            ...(await api('create', {
-              id: root.id,
-              name,
-              title,
-              preset,
-              operationId: operation.current,
-            })),
+            ...(await api('create', { id: root.id, name, title, preset, operationId: operation.current })),
             id: root.id,
           };
         }
-        if (!created.current.pinned) {
-          const pinned = await api('register', {
-            path: created.current.target,
-            workspace: created.current.directory.workspace,
-          });
-          created.current.id = pinned.id;
-          created.current.rel = '.';
-          created.current.pinned = true;
-        }
         const item = created.current;
         if (!createdSession.current)
-          createdSession.current = sid === 'new' ? await ctx.sessions.create({ workspaceId }) : sid;
+          createdSession.current = sid === 'new'
+            ? await ctx.sessions.create({ cwd: item.directory.path }) : sid;
         const current = await api('describe', { id: item.id, rel: item.rel });
         await api('bind', {
           id: item.id,
@@ -1148,7 +1180,7 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
           'div',
           { className: 'ds-form-body' },
           h('h2', {}, '新建设计稿'),
-          h('p', { className: 'ds-muted' }, '创建一份设计稿，并选择用于继续设计的对话。'),
+          h('p', { className: 'ds-muted' }, '每份设计稿使用空间内的一个独立文件夹，源码、素材、预览和导出均保存在其中。'),
           field(
             '标题',
             h('input', {
@@ -1172,28 +1204,32 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
           h(
             'span',
             { className: 'ds-muted' },
-            `${owner?.path || '请选择工作区'}/${name || '目录名'}/`,
+            `${owner?.path || '请选择设计空间'}/${name || '目录名'}/`,
           ),
           field(
-            '放在哪个工作区',
+            '放在哪个设计空间',
             h(
               'select',
               {
-                value: workspaceId,
+                value: directoryId,
                 onChange: (e) => {
-                  setWorkspaceId(e.target.value);
+                  setDirectoryId(e.target.value);
+                  set({ selectedDirectory: e.target.value });
                   setSid('new');
                 },
               },
-              ...(ws.items || []).map((w) =>
+              h('option', { value: '', disabled: true }, '请选择设计空间'),
+              ...s.directories.map((w) =>
                 h(
                   'option',
-                  { key: w.workspaceId, value: w.workspaceId },
-                  `${w.title || w.path} — ${w.path}`,
+                  { key: w.id, value: w.id },
+                  `${w.label} — ${w.path}`,
                 ),
               ),
             ),
           ),
+          button('添加设计空间', () => run(addDirectory), { disabled: s.busy || !!created.current }),
+          rootIsCanvas && h('p', { role: 'status' }, '此目录本身是一份设计稿。要新建其他设计稿，请将它的上级目录添加为设计空间。'),
           h('strong', {}, '从哪儿开始'),
           h(
             'div',
@@ -1237,7 +1273,7 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
               { value: sid, onChange: (e) => setSid(e.target.value) },
               h('option', { value: 'new' }, '新开一段对话'),
               ...(catalog.ids || [])
-                .filter((id) => catalog.byId[id]?.cwd === owner?.path)
+                .filter((id) => owner && catalog.byId[id]?.cwd === owner.path && !ws.archivedSessionIds?.includes(id))
                 .map((id) =>
                   h(
                     'option',
@@ -1273,7 +1309,7 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
           button('取消', () => set({ newForm: false })),
           h(
             'button',
-            { type: 'submit', className: 'ds-btn primary', disabled: s.busy },
+            { type: 'submit', className: 'ds-btn primary', disabled: s.busy || !owner || rootIsCanvas },
             created.current
               ? '继续连接'
               : description.trim()
@@ -1376,6 +1412,7 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
   }
   function SpaceRoot({ SessionProvider, renderSlot, useSessionStatus }) {
     const s = useState(),
+      [restoring, setRestoring] = React.useState(true),
       [full, setFull] = React.useState(false),
       [chatOnly, setChatOnly] = React.useState(false),
       [splitSid, setSplitSid] = React.useState(null);
@@ -1393,20 +1430,24 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
       set({ tabs });
     };
     React.useEffect(() => {
+      let live = true;
+      // Restore metadata before mounting an iframe: prepare must never target a
+      // half-loaded editor from the persisted tab while its session is hydrating.
       run(async () => {
         await refresh();
         const current = state.tabs.find((t) => t.identity === state.active);
         if (current) await open(current.id, current.rel);
-      });
+      }).finally(() => { if (live) setRestoring(false); });
+      return () => { live = false; };
     }, []);
     React.useEffect(() => {
       if (s.active || s.newForm) return;
       let live = true;
       // A nested workspace owns its designs before an ancestor workspace does.
-      const roots = [...workspaces()].sort((a, b) => b.path.length - a.path.length);
+      const roots = [...s.directories].sort((a, b) => b.path.length - a.path.length);
       Promise.all(
         roots.map(async (w) => {
-          const d = await api('register', { path: w.path, workspace: w.path, hidden: true });
+          const d = await api('space', { id: w.id });
           const list = await api('discover', { id: d.id });
           return list.items.map((i) => ({ ...i, id: d.id }));
         }),
@@ -1426,7 +1467,7 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
       return () => {
         live = false;
       };
-    }, [s.active, s.newForm]);
+    }, [s.active, s.newForm, s.directories]);
     const active = s.tabs.find((t) => t.identity === s.active);
     React.useEffect(() => {
       setSplitSid(null);
@@ -1679,7 +1720,7 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
                 {},
                 s.browse.items.length
                   ? '请选择此目录中的设计稿'
-                  : '此目录还没有设计稿。新建功能会在所选工作区中创建目录，不会覆盖现有内容。',
+                  : '此空间还没有设计稿。新建后，每份设计稿和它的产物都保存在空间内的独立文件夹。',
               ),
               button('新建设计稿', () => set({ newForm: true, browse: null }), {
                 className: 'ds-btn primary',
@@ -1687,6 +1728,8 @@ function installDesignSpace(React, ctx, createPortal, IconProjectAddOutlineRegul
               h('div', { className: 'ds-list' }, ...s.browse.items.map(row)),
               s.browse.truncated && h('p', {}, '只显示前60份设计稿，请添加更具体的目录。'),
             )
+          : restoring
+            ? h('div', { role: 'status', className: 'ds-empty' }, '正在恢复设计空间…')
           : active
             ? h(ActiveTab, {
                 key: active.identity + ':' + (active.sessionId || ''),

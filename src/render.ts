@@ -38,7 +38,7 @@ export interface BoardRender {
 export interface RenderOptions {
   /** 设计稿目录（绝对路径）。 */
   canvasDir: string;
-  /** 截图输出目录；不给时是 `<canvas 的上一级>/.design-preview/<canvas 名>/`。 */
+  /** 截图输出目录；默认保存在设计稿自己的 `.design-preview/` 内。 */
   outDir?: string;
   /** 只渲染这几块画板；不给时按 `canvas.json` 的 `order` 全渲染。 */
   boards?: string[];
@@ -173,7 +173,7 @@ export async function renderCanvas(options: RenderOptions): Promise<{ boards: Bo
   }
 
   const outDir =
-    options.outDir ?? path.join(path.dirname(canvasDir), '.design-preview', path.basename(canvasDir));
+    options.outDir ?? path.join(canvasDir, '.design-preview');
   await fs.mkdir(outDir, { recursive: true });
   const support = await fs.readFile(supportPath());
   const assetsDir = path.join(canvasDir, 'assets');

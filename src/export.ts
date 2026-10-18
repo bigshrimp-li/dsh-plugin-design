@@ -14,7 +14,7 @@ export async function exportCanvas(options: ExportOptions): Promise<{ files: Exp
   const index = JSON.parse(await fs.readFile(path.join(canvasDir, 'canvas.json'), 'utf8'));
   const order: string[] = options.boards ?? index.order;
   if (!Array.isArray(order)) throw new Error('canvas.json needs an order list');
-  const outDir = options.outDir ?? path.join(path.dirname(canvasDir), '.design-preview', path.basename(canvasDir), 'view');
+  const outDir = options.outDir ?? path.join(canvasDir, '.design-preview', 'view');
   await fs.mkdir(outDir, { recursive: true });
   const runtime = await fs.readFile(runtimePath(), 'utf8');
   async function readLocal(rel: string): Promise<Buffer> {
