@@ -8,6 +8,27 @@ export function registerDesignSpaceHost(
   editors: EditorManager,
   service = new DesignSpaceService(),
 ) {
+  const snapshot = async (sid: string) => {
+    const targets = await service.conversationTargets(sid);
+    if (!targets.length) return;
+    const stored = await ctx.sessionPersistence.open(sid, 'read');
+    try {
+      if (!stored.read) return;
+      const { events } = await stored.read();
+      for (const target of targets) await service.saveConversation(target, sid, stored.header, events);
+    } finally { await stored.close(); }
+  };
+  if (ctx.on) ctx.effect(() => {
+    const timers = new Map<string, ReturnType<typeof setTimeout>>();
+    const off = ctx.on!('session/event', session => {
+      clearTimeout(timers.get(session.id));
+      timers.set(session.id, setTimeout(() => {
+        timers.delete(session.id);
+        snapshot(session.id).catch(error => ctx.logger?.warn(`设计稿对话副本保存失败：${String(error)}`));
+      }, 750));
+    });
+    return () => { off(); for (const timer of timers.values()) clearTimeout(timer); };
+  });
   ctx.effect(() =>
     ctx.webServer.register({
       kind: 'exact',
@@ -57,13 +78,6 @@ export function registerDesignSpaceHost(
             case 'list':
               result = await service.list();
               break;
-            case 'register':
-              result = await service.register(
-                str('path')!,
-                str('workspace', true),
-                body.hidden === true,
-              );
-              break;
             case 'rename':
               result = await service.rename(str('id')!, str('label')!);
               break;
@@ -76,20 +90,15 @@ export function registerDesignSpaceHost(
               result = { ok: true };
               break;
             }
-            case 'remove':
-              result = await service.remove(str('id')!);
-              break;
-            case 'discover':
-              result = await service.discover(str('id')!);
-              break;
-            case 'space':
-              result = await service.space(str('id')!);
+            case 'archive':
+              result = await service.archive(str('id')!);
               break;
             case 'describe':
               result = await service.describe(str('id')!, str('rel', true));
               break;
             case 'open': {
-              const info = await service.describe(str('id')!, str('rel', true));
+              if (str('rel', true) && str('rel') !== '.') throw new SpaceError(400, '设计稿路径无效');
+              const info = await service.ensure(str('id')!);
               if (info.status !== 'ready')
                 throw new SpaceError(422, '此目录没有有效设计稿，请先创建或修复 canvas.json');
               const editor = await editors.open(info.directory.workspace);
@@ -97,13 +106,7 @@ export function registerDesignSpaceHost(
               break;
             }
             case 'create':
-              result = await service.create(
-                str('id')!,
-                str('name')!,
-                str('title')!,
-                str('preset')!,
-                str('operationId')!,
-              );
+              result = await service.create(str('operationId')!, str('name', true), str('preset', true));
               break;
             case 'bind': {
               const sid = str('sessionId')!;
@@ -121,6 +124,7 @@ export function registerDesignSpaceHost(
               if (expected !== undefined && (!Number.isInteger(expected) || expected < 0))
                 throw new SpaceError(400, '配置版本无效');
               result = await service.bind(str('id')!, str('rel')!, sid, cwd, expected);
+              await snapshot(sid).catch(error => ctx.logger?.warn(`设计稿对话副本保存失败：${String(error)}`));
               break;
             }
             default:

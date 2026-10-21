@@ -47,6 +47,7 @@ function persistMock() {
       sends,
       archived: contexts.workspaces.list.getSnapshot().archivedSessionIds,
       catalog,
+      workspaces: contexts.workspaces.list.getSnapshot().items,
       sessions: {
         ...savedMock.sessions,
         ...Object.fromEntries(
@@ -114,8 +115,9 @@ const contexts = {
     },
   },
   workspaces: {
+    create: async () => { throw new Error('设计对话不应注册宿主工作区'); },
     list: source({
-      items: [
+      items: savedMock.workspaces || [
         workspace,
         {
           workspaceId: 'nested-workspace',
@@ -130,17 +132,17 @@ const contexts = {
   },
   sessions: {
     list: source(catalog),
-    create: async (options) => {
+    create: async ({ cwd, workspaceId }) => {
       if (failCreate) {
         failCreate = false;
         throw new Error('测试：会话创建暂时失败');
       }
       created++;
       const id = 'fixture-session-' + created;
-      if (!options?.cwd || options.workspaceId) throw new Error('设计对话必须直接指定空间目录');
-      await fetch('/fixture/session', { method: 'POST', body: JSON.stringify({ id, cwd: options.cwd }) });
       catalog.ids.push(id);
-      catalog.byId[id] = { id, cwd: options.cwd, title: '', blank: true };
+      if (!cwd || workspaceId) throw new Error('设计对话必须直接指定设计区目录');
+      catalog.byId[id] = { id, cwd, title: '', blank: true };
+      contexts.sessions.list.set({ ...catalog });
       data(id);
       persistMock();
       return id;
@@ -297,7 +299,7 @@ function App() {
         'div',
         {
           className: 'fixture_regionArea',
-          style: { display: 'flex', flexDirection: 'column', flex: 1 },
+          style: { display: 'flex', flexDirection: 'column' },
         },
         h(
           'div',
@@ -306,7 +308,7 @@ function App() {
             'div',
             {
               className: 'fixture_sectionHeader',
-              style: { display: 'flex', alignItems: 'center', minHeight: 36 },
+              style: { display: 'flex', alignItems: 'center', minHeight: 36, paddingLeft:4 },
             },
             h('span', { className: 'fixture_sectionLabel' }, '工作区'),
             h('input', {
@@ -381,7 +383,5 @@ window.fixture = {
   open: () => contexts.layout.selectPanel('@local/dsh-plugin-design/space'),
   ordinary: () => contexts.layout.selectPanel(null),
   counts: () => ({ created, sends, retains, releases }),
-  workspaceSnapshot: () => contexts.workspaces.list.getSnapshot(),
-  removeWorkspaces: () => contexts.workspaces.list.set({ ...contexts.workspaces.list.getSnapshot(), items: [] }),
   data,
 };

@@ -11,7 +11,10 @@ export interface EditorHostContext {
   sessions: { get(id: string): { header: { cwd?: string } } | undefined };
   sessionPersistence: { open(id: string, mode: 'read'): Promise<{
     header: { cwd?: string }; close(): Promise<void>;
+    read?(): Promise<{ events: unknown[] }>;
   }> };
+  on?(name: 'session/event', listener: (session: { id: string }) => void): () => void;
+  logger?: { warn(message: string): void };
   effect(fn: () => (() => void)): unknown;
 }
 
