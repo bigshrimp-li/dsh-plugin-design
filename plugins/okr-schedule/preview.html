@@ -1,0 +1,1531 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>目标与日程管理罗盘 (OKR Schedule Navigator) V2.2</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #0b0f19;
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+input, select, textarea { font-family: inherit; outline: none; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.4); }
+
+.nav-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: transparent;
+  transition: all 0.18s ease;
+}
+.nav-tab-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.05); }
+.nav-tab-btn.active {
+  color: #ffffff;
+  background: #2563eb;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+  font-weight: 600;
+}
+
+.dim-pill-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: transparent;
+  transition: all 0.15s ease;
+}
+.dim-pill-btn:hover { color: #ffffff; }
+.dim-pill-btn.active {
+  color: #ffffff;
+  background: #2563eb;
+  font-weight: 600;
+  box-shadow: 0 1px 6px rgba(37, 99, 235, 0.3);
+}
+
+.glass-card {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+.okr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1e293b;
+  color: #cbd5e1;
+  transition: all 0.15s ease;
+}
+.okr-btn:hover { background: #334155; color: #ffffff; }
+.okr-btn-primary {
+  background: linear-gradient(135deg, #2563eb, #6366f1);
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+}
+.okr-btn-primary:hover { filter: brightness(1.1); }
+.okr-btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.okr-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* 飞书日历 24h 容器样式 */
+.week-24h-container {
+  position: relative;
+  height: 640px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: #0d1322;
+}
+.hour-row {
+  height: 60px;
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.hour-label {
+  font-size: 11px;
+  color: #64748b;
+  text-align: right;
+  padding-right: 10px;
+  transform: translateY(-8px);
+  user-select: none;
+}
+.grid-day-col {
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
+  position: relative;
+  cursor: pointer;
+}
+.grid-day-col:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+/* 当前时间红色标尺线 */
+.current-time-line {
+  position: absolute;
+  left: 60px;
+  right: 0;
+  height: 2px;
+  background: #ef4444;
+  z-index: 25;
+  pointer-events: none;
+}
+.current-time-tag {
+  position: absolute;
+  left: -58px;
+  top: -9px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
+}
+
+/* 飞书风格的日程卡片 */
+.week-event-card {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  cursor: pointer;
+  z-index: 20;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.week-event-card:hover {
+  transform: scale(1.02);
+  z-index: 22;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.week-event-in-progress {
+  border-style: dashed !important;
+}
+</style>
+</head>
+<body>
+
+  <!-- ================= 顶部全局导航栏 (增加 padding-left: 96px 避让 macOS 红黄绿交通灯) ================= -->
+  <header style="flex: 0 0 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px 0 96px; background: #0f172a; border-bottom: 1px solid rgba(255, 255, 255, 0.08); z-index: 30; position: sticky; top: 0;">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #06b6d4 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35); font-size: 18px;">
+        🧭
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 15px; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em;">目标日程罗盘</span>
+          <span style="font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 9999px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">OKR+GTD Hybrid</span>
+          <span style="font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 9999px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">DSH 原生插件</span>
+        </div>
+        <p style="margin: 2px 0 0 0; font-size: 11px; color: #94a3b8;">大目标长期牵引 · 小日程敏捷落地 · AI 全程协同与复盘</p>
+      </div>
+
+      <!-- 避让交通灯后的返回按钮 (左侧) -->
+      <button type="button" onclick="exitToDsh()" class="okr-btn" style="background: rgba(255, 255, 255, 0.08); color: #e2e8f0; font-weight: 600; padding: 5px 12px; border-color: rgba(255,255,255,0.15);" title="退出目标日程，返回 DSH 会话工作台">
+        <span>◀ 返回会话</span>
+      </button>
+    </div>
+
+    <!-- 中间主视角切换 Tab (三大核心业务视角) -->
+    <nav style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.7); padding: 3px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08);">
+      <button type="button" id="tab-btn-cal" class="nav-tab-btn active" onclick="switchView('calendar')">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="2"></rect><path d="M2 7h12M5 1.5v3M11 1.5v3"></path></svg>
+        <span>📅 整合日历</span>
+      </button>
+      <button type="button" id="tab-btn-gantt" class="nav-tab-btn" onclick="switchView('gantt')">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="4" height="10" rx="1"></rect><rect x="8" y="3" width="6" height="6" rx="1"></rect><path d="M8 12h6"></path></svg>
+        <span>📊 甘特与看板</span>
+      </button>
+      <button type="button" id="tab-btn-ws" class="nav-tab-btn" onclick="switchView('workspace')">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"></circle><circle cx="8" cy="8" r="2.5"></circle><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14"></path></svg>
+        <span>🎯 O 专属空间</span>
+      </button>
+    </nav>
+
+    <!-- 右侧动作区 -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <!-- 今日打卡提醒 -->
+      <button type="button" onclick="openCheckinModal()" style="position: relative; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; font-weight: 500;">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"></circle><path d="M5.5 8l1.8 1.8L11 6"></path></svg>
+        <span>今日打卡</span>
+        <span style="width: 7px; height: 7px; border-radius: 9999px; background: #fbbf24; position: absolute; top: -2px; right: -2px; box-shadow: 0 0 6px #fbbf24;"></span>
+      </button>
+
+      <!-- AI Copilot 呼起按钮 -->
+      <button type="button" onclick="toggleAiDrawer()" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; background: linear-gradient(135deg, #2563eb, #6366f1); color: #ffffff; font-size: 12px; font-weight: 600; box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.5 3.5 3.5 1.5-3.5 1.5L8 11.5l-1.5-3.5-3.5-1.5 3.5-1.5L8 1.5z"></path></svg>
+        <span>AI Copilot</span>
+      </button>
+
+      <!-- 快捷新建日程 -->
+      <button type="button" onclick="openCreateScheduleModal()" title="新建日程" style="width: 32px; height: 32px; border-radius: 8px; background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); display: grid; place-items: center;">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5v9M3.5 8h9"></path></svg>
+      </button>
+
+      <!-- 优化点 3: 右侧显眼退出按钮，绝不遮挡 -->
+      <button type="button" onclick="exitToDsh()" class="okr-btn" style="background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.25); font-weight: 600; padding: 6px 12px;" title="退出目标日程，返回 DSH 会话">
+        <span>✕ 退出到会话</span>
+      </button>
+    </div>
+  </header>
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5v9M3.5 8h9"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= 主视口内容区 ================= -->
+  <main style="flex: 1 1 auto; padding: 20px 24px; display: flex; flex-direction: column; overflow-y: auto;">
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- 视角 1: 整合日历视图                                           -->
+    <!-- ------------------------------------------------------------- -->
+    <div id="view-calendar" style="display: flex; flex-direction: column; gap: 16px; flex: 1 1 auto;">
+      <!-- 日历控制栏 -->
+      <div class="glass-card" style="padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 id="calendar-date-heading" style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">2026年 10月</h2>
+            <div style="display: flex; align-items: center; background: #1e293b; border-radius: 6px; padding: 2px; border: 1px solid rgba(255, 255, 255, 0.08);">
+              <button type="button" onclick="shiftMonth(-1)" style="width: 24px; height: 22px; display: grid; place-items: center; color: #94a3b8; background: transparent;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 3.5L5.5 8 10 12.5"></path></svg></button>
+              <button type="button" onclick="goToday()" style="padding: 0 8px; height: 22px; font-size: 11px; color: #cbd5e1; background: transparent; font-weight: 500;">今天</button>
+              <button type="button" onclick="shiftMonth(1)" style="width: 24px; height: 22px; display: grid; place-items: center; color: #94a3b8; background: transparent;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3.5l4.5 4.5L6 12.5"></path></svg></button>
+            </div>
+          </div>
+
+          <!-- 多选 O 筛选器 Popover -->
+          <div style="position: relative;">
+            <button type="button" onclick="toggleFilterPopover()" id="btn-filter-popover" class="okr-btn">
+              <span>🎯 目标筛选 (4/4) ▼</span>
+            </button>
+
+            <!-- 浮窗内容 -->
+            <div id="filter-popover-panel" style="display: none; position: absolute; top: calc(100% + 8px); left: 0; width: 280px; background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); z-index: 50;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 8px; font-size: 11px;">
+                <span style="font-weight: 700; color: #94a3b8;">多选展示目标</span>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" onclick="filterSelectAll(true)" style="background: none; border: none; color: #38bdf8; cursor: pointer; padding: 0;">全选</button>
+                  <button type="button" onclick="filterSelectAll(false)" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0;">清空</button>
+                </div>
+              </div>
+              <div id="filter-checkbox-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+            </div>
+          </div>
+
+          <!-- 键盘快捷操作提示 -->
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #64748b;">
+            <span style="padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.05); color: #94a3b8;">↑/↓ 切换尺度</span>
+            <span style="padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.05); color: #94a3b8;">←/→ 翻页</span>
+            <span style="padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.05); color: #94a3b8;">T 今天</span>
+          </div>
+        </div>
+
+        <!-- 维度切换：月 / 周 / 日 -->
+        <div style="display: flex; align-items: center; background: #1e293b; padding: 3px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+          <button type="button" id="btn-dim-month" class="dim-pill-btn active" onclick="setCalendarDim('month')">月视图</button>
+          <button type="button" id="btn-dim-week" class="dim-pill-btn" onclick="setCalendarDim('week')">周视图 (24h)</button>
+          <button type="button" id="btn-dim-day" class="dim-pill-btn" onclick="setCalendarDim('day')">今日聚焦 (日)</button>
+        </div>
+      </div>
+
+      <!-- 1.1 月视图网格容器 -->
+      <div id="dim-month-container" class="glass-card" style="padding: 16px; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 580px;">
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 8px; text-align: center; font-size: 11px; font-weight: 600; color: #64748b;">
+          <div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div style="color: #60a5fa;">周六</div><div style="color: #60a5fa;">周日</div>
+        </div>
+        <div id="month-grid-cells" style="display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 1fr; gap: 8px; flex: 1 1 auto;"></div>
+      </div>
+
+      <!-- 1.2 优化点 2: 飞书日历同款 24h 时间轴周视图容器 -->
+      <div id="dim-week-container" class="glass-card" style="display: none; padding: 16px; flex-direction: column; flex: 1 1 auto;">
+        <!-- 顶部星期表头 (带全天横幅区域) -->
+        <div style="display: grid; grid-template-columns: 60px repeat(7, 1fr); text-align: center; font-size: 12px; font-weight: 600; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+          <div style="color: #64748b; font-size: 11px; display: flex; align-items: center; justify-content: center;">GMT+8</div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 11px; color: #60a5fa;">周日</span>
+            <span style="width: 26px; height: 26px; border-radius: 50%; background: #2563eb; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; box-shadow: 0 2px 6px rgba(37,99,235,0.4);">25</span>
+            <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); margin-top: 2px;">冲刺日</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 11px; color: #94a3b8;">周一</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f8fafc; height: 26px; display: flex; align-items: center;">26</span>
+            <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); margin-top: 2px;">Core评审</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 11px; color: #94a3b8;">周二</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f8fafc; height: 26px; display: flex; align-items: center;">27</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 11px; color: #94a3b8;">周三</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f8fafc; height: 26px; display: flex; align-items: center;">28</span>
+            <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); margin-top: 2px;">Activity Day</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 11px; color: #94a3b8;">周四</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f8fafc; height: 26px; display: flex; align-items: center;">29</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 11px; color: #94a3b8;">周五</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f8fafc; height: 26px; display: flex; align-items: center;">30</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 11px; color: #60a5fa;">周六</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f8fafc; height: 26px; display: flex; align-items: center;">31</span>
+          </div>
+        </div>
+
+        <!-- 24小时滚动网格 (00:00 - 24:00) -->
+        <div id="week-scroll-body" class="week-24h-container" style="margin-top: 10px;">
+          <!-- 实时时间红线 (当前时间 14:58) -->
+          <div id="red-time-line" class="current-time-line" style="top: 898px;">
+            <div class="current-time-tag">
+              <span>●</span>
+              <span>14:58</span>
+            </div>
+          </div>
+
+          <!-- 24 小时行网格 -->
+          <div id="hour-rows-wrapper"></div>
+        </div>
+      </div>
+
+      <!-- 1.3 日视图容器 (今日聚焦 + 反思便签) -->
+      <div id="dim-day-container" style="display: none; grid-template-columns: 2fr 1fr; gap: 16px;">
+        <div class="glass-card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 10px;">
+            <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #ffffff;">今日聚焦待办日程 (2026-10-25)</h4>
+            <button onclick="openCreateScheduleModal('2026-10-25')" class="okr-btn okr-btn-primary">+ 添加今日日程</button>
+          </div>
+          <div id="dayview-schedule-items" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+
+        <div class="glass-card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #ffffff;">📝 每日反思与收获便签</h4>
+          <p style="margin: 0; font-size: 11.5px; color: #94a3b8; line-height: 1.5;">随手记下今日在各目标上的感悟，AI 将自动结构化分流至 ~/.dsh_okr 对应目标的 Markdown 中。</p>
+          <textarea id="daily-note-textarea" rows="8" placeholder="例如：今天 Agent Core 状态机重构通过单元测试；Duolingo 打卡突破第45天..." style="width: 100%; background: #090d16; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 12px; color: #f8fafc; font-size: 12px; line-height: 1.6; resize: none;"></textarea>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" onclick="aiSummarizeNote()" style="background: none; border: none; color: #c084fc; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">✨ 让 AI 提炼分流</button>
+            <button type="button" onclick="saveDailyNote()" class="okr-btn okr-btn-primary">保存便签</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- 视角 2: 甘特时间轴与状态看板                                    -->
+    <!-- ------------------------------------------------------------- -->
+    <div id="view-gantt" style="display: none; flex-direction: column; gap: 16px;">
+      <div class="glass-card" style="padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 12px; color: #94a3b8;">聚焦目标 (O):</span>
+          <select id="gantt-o-select" onchange="onGanttOChange(this.value)" style="background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;"></select>
+          <span id="gantt-archive-status-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 正常推进中</span>
+          <button type="button" onclick="toggleArchive()" class="okr-btn">模拟归档封存</button>
+          <button type="button" onclick="jumpToCurrentWorkspace()" class="okr-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">🎯 浏览专属网页 ↗</button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8;">
+            <span id="gantt-kp-stat">支撑点: 2个</span>
+            <span id="gantt-sch-stat">关联日程: 3项</span>
+            <span>完成度:</span>
+            <div style="width: 80px; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden;">
+              <div id="gantt-prog-bar" style="width: 68%; height: 100%; background: #2563eb;"></div>
+            </div>
+            <span id="gantt-prog-num" style="font-weight: 700; color: #ffffff;">68%</span>
+          </div>
+
+          <div style="display: flex; align-items: center; background: #1e293b; padding: 3px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <button type="button" id="btn-gantt-timeline" class="dim-pill-btn active" onclick="setGanttSubMode('timeline')">甘特时间轴</button>
+            <button type="button" id="btn-gantt-board" class="dim-pill-btn" onclick="setGanttSubMode('board')">状态泳道看板</button>
+          </div>
+
+          <button type="button" onclick="aiDecomposePrompt()" class="okr-btn okr-btn-primary">✨ AI 智能拆解日程</button>
+        </div>
+      </div>
+
+      <!-- 甘特图时间轴 -->
+      <div id="gantt-timeline-panel" class="glass-card" style="padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: grid; grid-template-columns: 320px repeat(4, 1fr); gap: 10px; font-size: 12px; font-weight: 600; color: #94a3b8; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 10px;">
+          <div>核心支撑点 (Key Point) 与下属敏捷日程 (Schedule)</div>
+          <div style="text-align: center;">10月第1周 (10.01~10.07)</div>
+          <div style="text-align: center;">10月第2周 (10.08~10.14)</div>
+          <div style="text-align: center; background: rgba(37,99,235,0.2); color: #38bdf8; padding: 2px; border-radius: 6px;">10月第3周 (本周)</div>
+          <div style="text-align: center;">10月第4周 (10.22~10.31)</div>
+        </div>
+        <div id="gantt-kp-rows" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      </div>
+
+      <!-- 看板模式 -->
+      <div id="gantt-board-panel" style="display: none; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+        <div class="glass-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #e2e8f0;">
+            <span>待开始 (To Do)</span>
+            <span id="board-count-pending" style="font-size: 11px; padding: 1px 7px; border-radius: 9999px; background: rgba(255,255,255,0.1);">0</span>
+          </div>
+          <div id="board-col-pending" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+        <div class="glass-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #38bdf8;">
+            <span>进行中 (In Progress)</span>
+            <span id="board-count-in_progress" style="font-size: 11px; padding: 1px 7px; border-radius: 9999px; background: rgba(56,189,248,0.2); color: #38bdf8;">0</span>
+          </div>
+          <div id="board-col-in_progress" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+        <div class="glass-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #34d399;">
+            <span>已完成 (Done)</span>
+            <span id="board-count-completed" style="font-size: 11px; padding: 1px 7px; border-radius: 9999px; background: rgba(52,211,153,0.2); color: #34d399;">0</span>
+          </div>
+          <div id="board-col-completed" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- 视角 3: O 专属空间与资产沉淀                                    -->
+    <!-- ------------------------------------------------------------- -->
+    <div id="view-workspace" style="display: none; flex-direction: column; gap: 18px;">
+      <!-- 愿景 Hero 卡片 -->
+      <div class="glass-card" style="padding: 24px 28px; background: linear-gradient(135deg, rgba(30,58,138,0.25), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(59, 130, 246, 0.35);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div style="display: flex; gap: 20px; align-items: center;">
+            <div id="ws-hero-icon" style="font-size: 40px; padding: 12px 16px; border-radius: 16px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">🤖</div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 id="ws-hero-title" style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">开发 Super Agent 运行时系统</h2>
+                <span id="ws-hero-cat" style="font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 9999px; background: rgba(59, 130, 246, 0.18); color: #60a5fa;">技术工程</span>
+                <span id="ws-hero-badge" style="font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); color: #34d399;">🟢 正常推进中</span>
+                <button onclick="openEditObjectiveModal()" class="okr-btn" style="padding: 2px 8px; font-size: 11px; margin-left: 6px;">✏️ 编辑目标</button>
+              </div>
+              <p id="ws-hero-vision" style="margin: 8px 0 0 0; font-size: 13.5px; color: #e2e8f0; line-height: 1.65; max-width: 900px;">打造具备自主状态机编排、本地安全沙箱隔离及上下文自适应的长程执行 Agent，赋能日常科研、代码开发与知识管理自动化。</p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <select id="workspace-o-select" onchange="onWorkspaceOChange(this.value)" style="background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;"></select>
+            <button type="button" onclick="toggleArchive()" class="okr-btn">模拟归档封存</button>
+            <button type="button" onclick="openCreateObjectiveModal()" class="okr-btn okr-btn-primary">+ 新建大目标</button>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 12px; color: #94a3b8;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span>总体推进完成度:</span>
+            <div style="width: 280px; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 9999px; overflow: hidden;">
+              <div id="ws-prog-bar" style="width: 68%; height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 9999px;"></div>
+            </div>
+            <span id="ws-prog-num" style="font-size: 13px; font-weight: 700; color: #ffffff;">68%</span>
+          </div>
+          <div style="display: flex; gap: 20px;">
+            <span id="ws-stat-k">Key Points: 2个</span>
+            <span id="ws-stat-sch">执行日程: 3项</span>
+            <span id="ws-stat-r">成果复盘 (R): 1篇</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 四宫格模块 -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+        <div class="glass-card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #ffffff;">🔑 核心支撑点 (Key Points) 态势</h4>
+            <button onclick="openCreateKeypointModal()" class="okr-btn" style="padding: 2px 8px; font-size: 11px;">+ 新建支撑点 (K)</button>
+          </div>
+          <div id="ws-kp-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+
+        <div class="glass-card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #ffffff;">💡 灵感与想法草稿箱</h4>
+            <span style="font-size: 11px; color: #c084fc;">支持跨会话继承与转化</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="ws-input-inspiration" placeholder="输入一条突发奇想的架构灵感/思考，点击添加..." style="flex: 1; background: #090d16; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 12px; color: #ffffff; font-size: 12px;" onkeydown="if(event.key==='Enter') addInspirationFromPage()" />
+            <button type="button" onclick="addInspirationFromPage()" class="okr-btn okr-btn-primary">添加灵感</button>
+          </div>
+          <div id="ws-inspiration-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="glass-card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #ffffff;">📚 关联技术资料与文档库</h4>
+            <span style="font-size: 11px; color: #64748b;">双向绑定本地 Markdown 与代码</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="background: rgba(255, 255, 255, 0.02); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span style="color: #ffffff; font-weight: 500;">📄 Agent状态机设计说明书.md</span>
+              <span style="color: #64748b; font-family: monospace;">AI/Agent/StateMachine.md</span>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.02); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span style="color: #ffffff; font-weight: 500;">📄 Sandbox多层级安全规范.md</span>
+              <span style="color: #64748b; font-family: monospace;">AI/Agent/Sandbox_Security.md</span>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.02); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span style="color: #ffffff; font-weight: 500;">📄 ToolSchema反射协议.ts</span>
+              <span style="color: #64748b; font-family: monospace;">AI/Agent/ToolSchema.ts</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #ffffff;">🏆 阶段成果与复盘 (Results)</h4>
+            <button type="button" onclick="addResultPrompt()" class="okr-btn" style="color: #34d399; border-color: rgba(52, 211, 153, 0.3); font-size: 11px;">+ 追加 R 复盘 (归档后仍可用)</button>
+          </div>
+          <div id="ws-results-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= 弹窗: 编辑/新建日程 (优化点 1: 自主编辑修改) ================= -->
+  <div id="modal-edit-schedule" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 100; align-items: center; justify-content: center;">
+    <div class="glass-card" style="width: 480px; background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.15); padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 id="edit-sch-modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff;">编辑日程</h3>
+        <button type="button" onclick="closeEditScheduleModal()" style="background: none; border: none; color: #94a3b8; font-size: 18px;">✕</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12px;">
+        <input type="hidden" id="form-sch-id" />
+        <div>
+          <label style="color: #94a3b8; display: block; margin-bottom: 4px;">日程标题</label>
+          <input type="text" id="form-sch-title" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">所属目标 (O)</label>
+            <select id="form-sch-o" onchange="updateFormKeypointOptions(this.value)" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;"></select>
+          </div>
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">所属支撑点 (K)</label>
+            <select id="form-sch-k" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;"></select>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">日期</label>
+            <input type="date" id="form-sch-date" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+          </div>
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">开始时间</label>
+            <input type="time" id="form-sch-start" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+          </div>
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">结束时间</label>
+            <input type="time" id="form-sch-end" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+          </div>
+        </div>
+        <div>
+          <label style="color: #94a3b8; display: block; margin-bottom: 4px;">执行状态</label>
+          <select id="form-sch-status" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
+            <option value="pending">待开始 (To Do)</option>
+            <option value="in_progress">进行中 (In Progress)</option>
+            <option value="completed">已完成 (Done)</option>
+            <option value="skipped">已跳过 (Skipped)</option>
+          </select>
+        </div>
+        <div>
+          <label style="color: #94a3b8; display: block; margin-bottom: 4px;">执行心得 / 反思随记</label>
+          <textarea id="form-sch-note" rows="3" placeholder="记录本次执行的实际体会、遇到的坑或灵感..." style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff; resize: none;"></textarea>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px; margin-top: 16px;">
+        <button type="button" id="btn-delete-sch" onclick="deleteCurrentSchedule()" class="okr-btn okr-btn-danger">删除日程</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" onclick="closeEditScheduleModal()" class="okr-btn">取消</button>
+          <button type="button" onclick="saveScheduleFormData()" class="okr-btn okr-btn-primary">保存修改</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 弹窗: 编辑/新建目标 O ================= -->
+  <div id="modal-edit-objective" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 100; align-items: center; justify-content: center;">
+    <div class="glass-card" style="width: 480px; background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.15); padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 id="edit-o-modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff;">编辑大目标 (Objective)</h3>
+        <button type="button" onclick="closeEditObjectiveModal()" style="background: none; border: none; color: #94a3b8; font-size: 18px;">✕</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12px;">
+        <input type="hidden" id="form-o-id" />
+        <div style="display: grid; grid-template-columns: 80px 1fr; gap: 10px;">
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">图标 Emoji</label>
+            <input type="text" id="form-o-icon" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff; text-align: center; font-size: 18px;" />
+          </div>
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">目标标题</label>
+            <input type="text" id="form-o-title" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">分类标签</label>
+            <input type="text" id="form-o-category" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+          </div>
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">主题色标</label>
+            <input type="color" id="form-o-color" style="width: 100%; height: 35px; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer;" />
+          </div>
+        </div>
+        <div>
+          <label style="color: #94a3b8; display: block; margin-bottom: 4px;">核心愿景描述 (Vision)</label>
+          <textarea id="form-o-vision" rows="3" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff; resize: none;"></textarea>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px; margin-top: 16px;">
+        <button type="button" onclick="closeEditObjectiveModal()" class="okr-btn">取消</button>
+        <button type="button" onclick="saveObjectiveFormData()" class="okr-btn okr-btn-primary">保存目标</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 弹窗: 编辑/新建支撑点 K ================= -->
+  <div id="modal-edit-keypoint" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 100; align-items: center; justify-content: center;">
+    <div class="glass-card" style="width: 480px; background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.15); padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 id="edit-kp-modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff;">编辑核心支撑点 (Key Point)</h3>
+        <button type="button" onclick="closeEditKeypointModal()" style="background: none; border: none; color: #94a3b8; font-size: 18px;">✕</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12px;">
+        <input type="hidden" id="form-kp-id" />
+        <div>
+          <label style="color: #94a3b8; display: block; margin-bottom: 4px;">支撑点标题</label>
+          <input type="text" id="form-kp-title" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">排期时间窗口</label>
+            <input type="text" id="form-kp-window" placeholder="如：10月第1周 ~ 10月第4周" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+          </div>
+          <div>
+            <label style="color: #94a3b8; display: block; margin-bottom: 4px;">完成度百分比 (%)</label>
+            <input type="number" id="form-kp-progress" min="0" max="100" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+          </div>
+        </div>
+        <div>
+          <label style="color: #94a3b8; display: block; margin-bottom: 4px;">关联文档路径</label>
+          <input type="text" id="form-kp-doc" placeholder="如：keypoints/K_agent_core.md" style="width: 100%; background: #090d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" />
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px; margin-top: 16px;">
+        <button type="button" onclick="closeEditKeypointModal()" class="okr-btn">取消</button>
+        <button type="button" onclick="saveKeypointFormData()" class="okr-btn okr-btn-primary">保存支撑点</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 应用程序逻辑 JavaScript ================= -->
+  <script>
+    // 基础自治数据源 (对齐 ~/.dsh_okr 结构)
+    const appData = {
+      objectives: [
+        { id: "O_super_agent", title: "开发 Super Agent 运行时系统", category: "技术工程", color: "#3B82F6", icon: "🤖", is_archived: false, vision: "打造具备自主状态机编排、本地安全沙箱隔离及上下文自适应的长程执行 Agent，赋能日常科研、代码开发与知识管理自动化。", progress: 68 },
+        { id: "O_learn_english", title: "英语日常进阶与技术表达", category: "个人成长", color: "#10B981", icon: "🌍", is_archived: false, vision: "具备流畅阅读英文技术前沿论文、日常无字幕听力及流畅技术交流表达能力。", progress: 45 },
+        { id: "O_fitness", title: "体态管理与卧推冲击80kg", category: "健康生活", color: "#F59E0B", icon: "🏋️", is_archived: false, vision: "系统性胸肩三头抗阻训练，体脂率降至15%，卧推达到 80kg 5x5。", progress: 82 },
+        { id: "O_quant_finance_archive", title: "量化回测工具轻量预研 (已归档)", category: "探索研究", color: "#8B5CF6", icon: "📦", is_archived: true, vision: "探索个人量化因子分析与策略回测原型，评估长期投入产出比。", progress: 100 }
+      ],
+      key_points: [
+        { id: "K_agent_core", objective_id: "O_super_agent", title: "K1: Agent Core 调度引擎与状态机", progress: 75, target_window: "10月第1周 ~ 10月第4周", doc_path: "keypoints/K_agent_core.md" },
+        { id: "K_agent_sandbox", objective_id: "O_super_agent", title: "K2: 多层级安全沙箱与权限白名单", progress: 55, target_window: "10月第3周 ~ 11月第2周", doc_path: "keypoints/K_agent_sandbox.md" },
+        { id: "K_english_vocab", objective_id: "O_learn_english", title: "K1: 连续打卡积累核心词汇库", progress: 60, target_window: "9月中旬 ~ 11月底", doc_path: "keypoints/K_english_vocab.md" },
+        { id: "K_bench_press_80", objective_id: "O_fitness", title: "K1: 卧推负荷递增与离心控制", progress: 85, target_window: "8月 ~ 11月中旬", doc_path: "keypoints/K_bench_press_80.md" }
+      ],
+      schedules: [
+        { id: "SCH_20261025_01", objective_id: "O_super_agent", key_point_id: "K_agent_core", title: "Agent Core 状态机转移图设计与测试", date: "2026-10-25", start_time: "14:00", end_time: "16:30", status: "completed", checkin_note: "状态机拆解为显式转换后，Turn 重试与异常捕获逻辑全部跑通。" },
+        { id: "SCH_20261025_02", objective_id: "O_super_agent", key_point_id: "K_agent_sandbox", title: "测试沙箱文件白名单与环境变量防护", date: "2026-10-25", start_time: "17:00", end_time: "18:30", status: "in_progress", checkin_note: "正在验证权限逃逸边界，防御策略生效正常。" },
+        { id: "SCH_20261026_01", objective_id: "O_super_agent", key_point_id: "K_agent_core", title: "工具异常熔断与会话恢复测试", date: "2026-10-26", start_time: "10:00", end_time: "12:00", status: "in_progress", checkin_note: "" },
+        { id: "SCH_REC_duolingo", objective_id: "O_learn_english", key_point_id: "K_english_vocab", title: "Duolingo 每日打卡半小时 (习惯提醒)", date: "2026-10-25", start_time: "21:00", end_time: "21:30", status: "pending", checkin_note: "" },
+        { id: "SCH_20261025_04", objective_id: "O_fitness", key_point_id: "K_bench_press_80", title: "胸肩三头训练日：冲刺 75kg 5x5", date: "2026-10-25", start_time: "19:30", end_time: "20:45", status: "pending", checkin_note: "" }
+      ],
+      inspirations: [
+        { id: "INS_01", objective_id: "O_super_agent", date: "2026-10-24", text: "考虑引入检查点快照机制，在每个重要工具调用前后保存增量状态，遇不可逆错误时单步倒带（Undo）。" },
+        { id: "INS_02", objective_id: "O_super_agent", date: "2026-10-20", text: "Tool 参数反射可参考 OpenAPI 3.1 的 Schema Validator，避免 LLM 生成参数不合法时触发 Python 异常。" }
+      ],
+      results: [
+        { id: "R_agent_core_alpha", target_id: "O_super_agent", title: "K1 阶段成果：Core 状态机闭环跑通", score_or_verdict: "达成预期 (90分)", summary: "经过两周集中迭代，工具分发、异常熔断与会话恢复机制全部通过集成测试。" }
+      ]
+    };
+
+    let curView = 'calendar';
+    let curDim = 'week'; // 默认进入精美的 24h 周视图
+    let curSelectedOId = 'O_super_agent';
+    let curGanttMode = 'timeline';
+    let oFilterList = ['O_super_agent', 'O_learn_english', 'O_fitness', 'O_quant_finance_archive'];
+
+    // 优化点 3: 退出日程插件，返回 DSH 会话
+    function exitToDsh() {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'dsh-navigate-conversation' }, '*');
+      }
+      alert('已触发退出指令，返回 DSH 默认会话窗口！');
+    }
+
+    // 视角切换
+    function switchView(view) {
+      curView = view;
+      ['calendar', 'gantt', 'workspace'].forEach(v => {
+        document.getElementById(`view-${v}`).style.display = (v === view ? 'flex' : 'none');
+      });
+      document.getElementById('tab-btn-cal').className = `nav-tab-btn ${view === 'calendar' ? 'active' : ''}`;
+      document.getElementById('tab-btn-gantt').className = `nav-tab-btn ${view === 'gantt' ? 'active' : ''}`;
+      document.getElementById('tab-btn-ws').className = `nav-tab-btn ${view === 'workspace' ? 'active' : ''}`;
+
+      if (view === 'calendar') renderCalendar();
+      if (view === 'gantt') renderGantt();
+      if (view === 'workspace') renderWorkspace();
+    }
+
+    // 优化点 1: 网状互跳
+    function navigateTo(opts) {
+      if (opts.oId) curSelectedOId = opts.oId;
+      if (opts.dim) setCalendarDim(opts.dim);
+      if (opts.view) switchView(opts.view);
+    }
+    function jumpToCurrentWorkspace() {
+      navigateTo({ view: 'workspace', oId: curSelectedOId });
+    }
+
+    // 优化点 2: 键盘按键缩放与翻页
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setCalendarDim(curDim === 'day' ? 'week' : 'month');
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setCalendarDim(curDim === 'month' ? 'week' : 'day');
+      } else if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        goToday();
+      }
+    });
+
+    function setCalendarDim(dim) {
+      curDim = dim;
+      ['month', 'week', 'day'].forEach(d => {
+        document.getElementById(`btn-dim-${d}`).className = `dim-pill-btn ${d === dim ? 'active' : ''}`;
+        document.getElementById(`dim-${d}-container`).style.display = (d === dim ? (d === 'day' ? 'grid' : 'flex') : 'none');
+      });
+      renderCalendar();
+
+      if (dim === 'week') {
+        setTimeout(() => {
+          const scrollBox = document.getElementById('week-scroll-body');
+          if (scrollBox) scrollBox.scrollTop = 760; // 滚动到 13:00 附近
+        }, 50);
+      }
+    }
+
+    function shiftMonth(delta) {
+      document.getElementById('calendar-date-heading').innerText = (delta > 0 ? '2026年 11月' : '2026年 9月');
+    }
+    function goToday() {
+      document.getElementById('calendar-date-heading').innerText = '2026年 10月';
+      setCalendarDim('week');
+    }
+
+    // 优化点 3: 多选 O 筛选器 Popover
+    function toggleFilterPopover() {
+      const p = document.getElementById('filter-popover-panel');
+      p.style.display = (p.style.display === 'none' ? 'block' : 'none');
+    }
+    function filterSelectAll(check) {
+      oFilterList = check ? appData.objectives.map(o => o.id) : [];
+      renderFilterCheckboxes();
+      renderCalendar();
+    }
+    function renderFilterCheckboxes() {
+      const container = document.getElementById('filter-checkbox-list');
+      container.innerHTML = appData.objectives.map(o => {
+        const isChecked = oFilterList.includes(o.id);
+        return `
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; color: ${isChecked ? '#FFF' : '#64748b'};">
+            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFilterO('${o.id}')" />
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${o.color};"></span>
+            <span>${o.title.split(' ')[0]}</span>
+            ${o.is_archived ? '<span style="font-size: 10px; color: #a855f7;">(归档)</span>' : ''}
+          </label>
+        `;
+      }).join('');
+      document.getElementById('btn-filter-popover').innerText = `🎯 目标筛选 (${oFilterList.length}/${appData.objectives.length}) ▼`;
+    }
+    function toggleFilterO(id) {
+      if (oFilterList.includes(id)) {
+        oFilterList = oFilterList.filter(x => x !== id);
+      } else {
+        oFilterList.push(id);
+      }
+      renderFilterCheckboxes();
+      renderCalendar();
+    }
+
+    // 渲染日历
+    function renderCalendar() {
+      const filtered = appData.schedules.filter(s => oFilterList.includes(s.objective_id));
+
+      // 月视图
+      const monthGrid = document.getElementById('month-grid-cells');
+      monthGrid.innerHTML = '';
+      for (let day = 1; day <= 31; day++) {
+        const isToday = (day === 25);
+        const dateStr = `2026-10-${String(day).padStart(2, '0')}`;
+        const daySchs = filtered.filter(s => s.date === dateStr);
+
+        const cell = document.createElement('div');
+        cell.ondblclick = () => setCalendarDim('day');
+        cell.style.cssText = `
+          background: ${isToday ? '#172554' : '#1e293b'};
+          border: ${isToday ? '1.5px solid #2563eb' : '1px solid rgba(255,255,255,0.06)'};
+          border-radius: 10px;
+          padding: 8px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 96px;
+          cursor: pointer;
+        `;
+
+        let schsHtml = daySchs.map(s => {
+          const obj = appData.objectives.find(o => o.id === s.objective_id) || {};
+          const isDone = (s.status === 'completed');
+          return `
+            <div onclick="event.stopPropagation(); openEditScheduleModal('${s.id}');" title="点击编辑日程" style="display: flex; align-items: center; justify-content: space-between; gap: 4px; background: #0f172a; border: 1px solid ${obj.color}; color: ${obj.color}; padding: 2px 6px; border-radius: 5px; font-size: 10px; text-decoration: ${isDone ? 'line-through' : 'none'}; opacity: ${isDone ? 0.75 : 1};">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${s.start_time || ''} ${s.title}</span>
+              ${isDone ? '<span style="color: #34d399;">✓</span>' : ''}
+            </div>
+          `;
+        }).join('');
+
+        cell.innerHTML = `
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+              <span style="font-weight: 700; color: ${isToday ? '#38bdf8' : '#94a3b8'};">${day}</span>
+              ${daySchs.length > 0 ? `<span style="font-size: 10px; color: #64748b;">${daySchs.length}项</span>` : ''}
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">${schsHtml}</div>
+          </div>
+          <div style="text-align: right; font-size: 9px; color: #475569;">${isToday ? '今天' : ''}</div>
+        `;
+        monthGrid.appendChild(cell);
+      }
+
+      // 24h 周视图
+      renderWeek24hView(filtered);
+
+      // 日视图
+      const dayList = document.getElementById('dayview-schedule-items');
+      const todaySchs = filtered.filter(s => s.date === '2026-10-25');
+      dayList.innerHTML = todaySchs.map(s => {
+        const obj = appData.objectives.find(o => o.id === s.objective_id) || {};
+        const isDone = (s.status === 'completed');
+        return `
+          <div style="background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; gap: 10px;">
+              <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleSchedule('${s.id}')" style="cursor: pointer; margin-top: 3px;" />
+              <div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <span onclick="navigateTo({ view: 'workspace', oId: '${s.objective_id}' })" style="padding: 2px 7px; border-radius: 9999px; background: ${obj.color}20; color: ${obj.color}; font-size: 10px; cursor: pointer;">${obj.title.split(' ')[0]} ➔</span>
+                  <span style="font-size: 11px; color: #94a3b8;">${s.start_time} - ${s.end_time || ''}</span>
+                </div>
+                <div onclick="openEditScheduleModal('${s.id}')" style="font-size: 13px; font-weight: 600; color: ${isDone ? '#94a3b8' : '#FFF'}; text-decoration: ${isDone ? 'line-through' : 'none'}; margin-top: 4px; cursor: pointer;" title="点击编辑日程">${s.title} ✏️</div>
+                ${s.checkin_note ? `<div style="font-size: 11px; color: #10b981; margin-top: 4px;">💭 心得: ${s.checkin_note}</div>` : ''}
+              </div>
+            </div>
+            <button onclick="openEditScheduleModal('${s.id}')" class="okr-btn" style="padding: 4px 8px; font-size: 11px;">编辑</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 飞书 24h 周视图网格生成与事件绝对定位
+    function renderWeek24hView(schedules) {
+      const container = document.getElementById('hour-rows-wrapper');
+      container.innerHTML = '';
+      container.style.position = 'relative';
+
+      const weekDates = [
+        "2026-10-25", // 周日 (今天)
+        "2026-10-26", // 周一
+        "2026-10-27", // 周二
+        "2026-10-28", // 周三
+        "2026-10-29", // 周四
+        "2026-10-30", // 周五
+        "2026-10-31"  // 周六
+      ];
+
+      for (let h = 0; h < 24; h++) {
+        const hourStr = String(h).padStart(2, '0') + ':00';
+        const row = document.createElement('div');
+        row.className = 'hour-row';
+
+        const label = document.createElement('div');
+        label.className = 'hour-label';
+        label.innerText = hourStr;
+        row.appendChild(label);
+
+        for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+          const col = document.createElement('div');
+          col.className = 'grid-day-col';
+          const targetDate = weekDates[dayIdx];
+          col.onclick = () => {
+            const defaultStart = String(h).padStart(2, '0') + ':00';
+            const defaultEnd = String(h + 1).padStart(2, '0') + ':00';
+            openCreateScheduleModal(targetDate, defaultStart, defaultEnd);
+          };
+          row.appendChild(col);
+        }
+        container.appendChild(row);
+      }
+
+      schedules.forEach(s => {
+        const dayIdx = weekDates.indexOf(s.date);
+        if (dayIdx === -1) return;
+
+        const startParts = (s.start_time || '10:00').split(':');
+        const startMin = parseInt(startParts[0], 10) * 60 + parseInt(startParts[1] || '0', 10);
+
+        let durationMin = 60;
+        if (s.end_time) {
+          const endParts = s.end_time.split(':');
+          const endMin = parseInt(endParts[0], 10) * 60 + parseInt(endParts[1] || '0', 10);
+          durationMin = Math.max(30, endMin - startMin);
+        }
+
+        const topPx = startMin;
+        const heightPx = durationMin;
+        const colWidthPct = 100 / 7;
+        const leftPct = (dayIdx * colWidthPct);
+
+        const obj = appData.objectives.find(o => o.id === s.objective_id) || {};
+        const isDone = (s.status === 'completed');
+        const isInProgress = (s.status === 'in_progress');
+
+        const card = document.createElement('div');
+        card.className = `week-event-card ${isInProgress ? 'week-event-in-progress' : ''}`;
+        card.onclick = (e) => {
+          e.stopPropagation();
+          openEditScheduleModal(s.id);
+        };
+        card.style.cssText = `
+          top: ${topPx}px;
+          height: ${heightPx}px;
+          left: calc(60px + ${leftPct}% + 4px);
+          width: calc(${colWidthPct}% - 8px);
+          background: ${obj.color}18;
+          border: 1.5px solid ${obj.color};
+          color: #ffffff;
+        `;
+
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: ${obj.color};">
+            <span>${s.start_time} - ${s.end_time || ''}</span>
+            <span>${isDone ? '✓已完成' : isInProgress ? '●进行中' : ''}</span>
+          </div>
+          <div style="font-weight: 600; margin-top: 2px; text-decoration: ${isDone ? 'line-through' : 'none'};">${s.title}</div>
+          <div style="font-size: 9.5px; color: #94a3b8; margin-top: 2px;">${obj.title.split(' ')[0]}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // 渲染甘特与看板
+    function renderGantt() {
+      const curO = appData.objectives.find(o => o.id === curSelectedOId) || appData.objectives[0];
+      const oSelect = document.getElementById('gantt-o-select');
+      oSelect.innerHTML = appData.objectives.map(o => `
+        <option value="${o.id}" ${o.id === curO.id ? 'selected' : ''}>${o.icon} ${o.title} ${o.is_archived ? '(已归档)' : ''}</option>
+      `).join('');
+
+      const badge = document.getElementById('gantt-archive-status-badge');
+      if (curO.is_archived) {
+        badge.innerText = '🔒 已归档封存 (仅 R 可更新)';
+        badge.style.background = 'rgba(139,92,246,0.2)';
+        badge.style.color = '#c084fc';
+        badge.style.borderColor = 'rgba(139,92,246,0.4)';
+      } else {
+        badge.innerText = '🟢 正常推进中';
+        badge.style.background = 'rgba(16,185,129,0.15)';
+        badge.style.color = '#34d399';
+        badge.style.borderColor = 'rgba(16,185,129,0.3)';
+      }
+
+      const kps = appData.key_points.filter(k => k.objective_id === curO.id);
+      const kpIds = kps.map(k => k.id);
+      const schs = appData.schedules.filter(s => kpIds.includes(s.key_point_id));
+
+      document.getElementById('gantt-kp-stat').innerText = `支撑点: ${kps.length}个`;
+      document.getElementById('gantt-sch-stat').innerText = `关联日程: ${schs.length}项`;
+      document.getElementById('gantt-prog-num').innerText = `${curO.progress}%`;
+      document.getElementById('gantt-prog-bar').style.width = `${curO.progress}%`;
+
+      const kpContainer = document.getElementById('gantt-kp-rows');
+      kpContainer.innerHTML = kps.map(kp => {
+        const related = appData.schedules.filter(s => s.key_point_id === kp.id);
+        const schRows = related.map(s => {
+          const isDone = (s.status === 'completed');
+          return `
+            <div style="display: grid; grid-template-columns: 320px 1fr; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04);">
+              <div onclick="openEditScheduleModal('${s.id}')" style="font-size: 12px; color: #cbd5e1; padding-left: 20px; cursor: pointer;">${s.title} ✏️</div>
+              <div onclick="navigateTo({ view: 'calendar', dim: 'day' })" title="点击跳转至日历对应日期" style="background: ${isDone ? 'linear-gradient(90deg, #059669, #10B981)' : 'linear-gradient(90deg, #2563EB, #3B82F6)'}; color: #FFF; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; max-width: 75%;">
+                <span>${s.date.slice(5)} ${s.start_time}</span>
+                <span>${isDone ? '已完成' : '进行中'}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>🔑</span>
+                <span onclick="openEditKeypointModal('${kp.id}')" style="font-size: 13px; font-weight: 700; color: #ffffff; cursor: pointer;" title="点击编辑此支撑点">${kp.title} ✏️</span>
+                <span style="font-size: 11px; padding: 1px 7px; border-radius: 9999px; background: rgba(255,255,255,0.06); color: #94a3b8;">${kp.target_window}</span>
+              </div>
+              <span style="font-size: 12px; font-weight: 700; color: #38bdf8;">${kp.progress}%</span>
+            </div>
+            <div style="margin-top: 8px;">${schRows}</div>
+          </div>
+        `;
+      }).join('');
+
+      ['pending', 'in_progress', 'completed'].forEach(st => {
+        const items = schs.filter(s => s.status === st);
+        document.getElementById(`board-count-${st}`).innerText = items.length;
+        document.getElementById(`board-col-${st}`).innerHTML = items.map(s => `
+          <div style="background: #1e293b; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
+            <div onclick="openEditScheduleModal('${s.id}')" style="font-size: 12px; font-weight: 600; color: #FFF; cursor: pointer;">${s.title} ✏️</div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${s.date} ${s.start_time || ''}</div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 8px; gap: 6px;">
+              <button onclick="openEditScheduleModal('${s.id}')" class="okr-btn" style="padding: 2px 6px; font-size: 10px;">编辑</button>
+              <button onclick="toggleSchedule('${s.id}')" class="okr-btn" style="padding: 2px 6px; font-size: 10px;">${s.status === 'completed' ? '撤销' : '完成'}</button>
+            </div>
+          </div>
+        `).join('');
+      });
+    }
+
+    function onGanttOChange(val) {
+      curSelectedOId = val;
+      renderGantt();
+    }
+    function setGanttSubMode(mode) {
+      curGanttMode = mode;
+      document.getElementById('btn-gantt-timeline').className = `dim-pill-btn ${mode === 'timeline' ? 'active' : ''}`;
+      document.getElementById('btn-gantt-board').className = `dim-pill-btn ${mode === 'board' ? 'active' : ''}`;
+      document.getElementById('gantt-timeline-panel').style.display = (mode === 'timeline' ? 'flex' : 'none');
+      document.getElementById('gantt-board-panel').style.display = (mode === 'board' ? 'grid' : 'none');
+      renderGantt();
+    }
+
+    // 渲染 O 专属空间
+    function renderWorkspace() {
+      const curO = appData.objectives.find(o => o.id === curSelectedOId) || appData.objectives[0];
+      const select = document.getElementById('workspace-o-select');
+      select.innerHTML = appData.objectives.map(o => `
+        <option value="${o.id}" ${o.id === curO.id ? 'selected' : ''}>${o.icon} ${o.title}</option>
+      `).join('');
+
+      document.getElementById('ws-hero-icon').innerText = curO.icon;
+      document.getElementById('ws-hero-title').innerText = curO.title;
+      document.getElementById('ws-hero-cat').innerText = curO.category;
+      document.getElementById('ws-hero-vision').innerText = curO.vision;
+      document.getElementById('ws-prog-num').innerText = `${curO.progress}%`;
+      document.getElementById('ws-prog-bar').style.width = `${curO.progress}%`;
+
+      const kps = appData.key_points.filter(k => k.objective_id === curO.id);
+      const results = appData.results.filter(r => r.target_id === curO.id);
+      const inss = appData.inspirations.filter(i => i.objective_id === curO.id);
+
+      document.getElementById('ws-stat-k').innerText = `Key Points: ${kps.length}个`;
+      document.getElementById('ws-stat-r').innerText = `成果复盘 (R): ${results.length}篇`;
+
+      document.getElementById('ws-kp-container').innerHTML = kps.map(kp => `
+        <div style="background: #1e293b; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 13px; font-weight: 600; color: #FFF;">${kp.title}</span>
+              <span style="font-size: 11px; color: #38bdf8;">${kp.progress}%</span>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">排期: ${kp.target_window} · ${kp.doc_path}</div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button onclick="openEditKeypointModal('${kp.id}')" class="okr-btn" style="padding: 2px 6px; font-size: 10px;">编辑</button>
+            <button onclick="navigateTo({ view: 'gantt', oId: '${curO.id}' })" class="okr-btn" style="padding: 2px 6px; font-size: 10px; color: #38bdf8;">看板 ➔</button>
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('ws-inspiration-list').innerHTML = inss.map(ins => `
+        <div style="background: #1e293b; padding: 10px; border-radius: 8px; font-size: 12px; color: #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+          <span>• ${ins.text}</span>
+          <button onclick="openCreateScheduleModal('2026-10-25', '14:00', '15:00', '${ins.text}')" class="okr-btn" style="padding: 2px 6px; font-size: 10px; color: #38bdf8;">排入日程 ➔</button>
+        </div>
+      `).join('');
+
+      document.getElementById('ws-results-container').innerHTML = results.map(r => `
+        <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); padding: 12px; border-radius: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; font-weight: 700; color: #34d399;">${r.title}</span>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(16,185,129,0.2); color: #34d399;">${r.score_or_verdict}</span>
+          </div>
+          <p style="margin: 6px 0 0 0; font-size: 12px; color: #e2e8f0; line-height: 1.5;">${r.summary}</p>
+        </div>
+      `).join('');
+    }
+
+    function onWorkspaceOChange(val) {
+      curSelectedOId = val;
+      renderWorkspace();
+    }
+    function toggleArchive() {
+      const curO = appData.objectives.find(o => o.id === curSelectedOId);
+      if (curO) {
+        curO.is_archived = !curO.is_archived;
+        renderGantt();
+        renderWorkspace();
+        renderFilterCheckboxes();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 编辑/新建日程弹窗逻辑
+    // -------------------------------------------------------------
+    function openCreateScheduleModal(date, startTime, endTime, title) {
+      document.getElementById('edit-sch-modal-title').innerText = '新建日程';
+      document.getElementById('form-sch-id').value = '';
+      document.getElementById('form-sch-title').value = title || '';
+      document.getElementById('form-sch-date').value = date || '2026-10-25';
+      document.getElementById('form-sch-start').value = startTime || '14:00';
+      document.getElementById('form-sch-end').value = endTime || '15:00';
+      document.getElementById('form-sch-status').value = 'pending';
+      document.getElementById('form-sch-note').value = '';
+      document.getElementById('btn-delete-sch').style.display = 'none';
+
+      const oSel = document.getElementById('form-sch-o');
+      oSel.innerHTML = appData.objectives.map(o => `<option value="${o.id}" ${o.id === curSelectedOId ? 'selected' : ''}>${o.title}</option>`).join('');
+      updateFormKeypointOptions(curSelectedOId);
+
+      document.getElementById('modal-edit-schedule').style.display = 'flex';
+    }
+
+    function openEditScheduleModal(scheduleId) {
+      const s = appData.schedules.find(x => x.id === scheduleId);
+      if (!s) return;
+
+      document.getElementById('edit-sch-modal-title').innerText = '编辑日程';
+      document.getElementById('form-sch-id').value = s.id;
+      document.getElementById('form-sch-title').value = s.title;
+      document.getElementById('form-sch-date').value = s.date;
+      document.getElementById('form-sch-start').value = s.start_time || '10:00';
+      document.getElementById('form-sch-end').value = s.end_time || '11:00';
+      document.getElementById('form-sch-status').value = s.status || 'pending';
+      document.getElementById('form-sch-note').value = s.checkin_note || '';
+      document.getElementById('btn-delete-sch').style.display = 'inline-flex';
+
+      const oSel = document.getElementById('form-sch-o');
+      oSel.innerHTML = appData.objectives.map(o => `<option value="${o.id}" ${o.id === s.objective_id ? 'selected' : ''}>${o.title}</option>`).join('');
+      updateFormKeypointOptions(s.objective_id, s.key_point_id);
+
+      document.getElementById('modal-edit-schedule').style.display = 'flex';
+    }
+
+    function updateFormKeypointOptions(objectiveId, selectedKpId) {
+      const kSel = document.getElementById('form-sch-k');
+      const kps = appData.key_points.filter(k => k.objective_id === objectiveId);
+      kSel.innerHTML = kps.map(k => `<option value="${k.id}" ${k.id === selectedKpId ? 'selected' : ''}>${k.title}</option>`).join('') || '<option value="">(无支撑点)</option>';
+    }
+
+    function closeEditScheduleModal() {
+      document.getElementById('modal-edit-schedule').style.display = 'none';
+    }
+
+    function saveScheduleFormData() {
+      const id = document.getElementById('form-sch-id').value;
+      const title = document.getElementById('form-sch-title').value.trim();
+      const oId = document.getElementById('form-sch-o').value;
+      const kId = document.getElementById('form-sch-k').value;
+      const date = document.getElementById('form-sch-date').value;
+      const start = document.getElementById('form-sch-start').value;
+      const end = document.getElementById('form-sch-end').value;
+      const status = document.getElementById('form-sch-status').value;
+      const note = document.getElementById('form-sch-note').value.trim();
+
+      if (!title) return alert('请输入日程标题');
+
+      if (id) {
+        const s = appData.schedules.find(x => x.id === id);
+        if (s) {
+          s.title = title;
+          s.objective_id = oId;
+          s.key_point_id = kId;
+          s.date = date;
+          s.start_time = start;
+          s.end_time = end;
+          s.status = status;
+          s.checkin_note = note;
+        }
+      } else {
+        appData.schedules.push({
+          id: 'SCH_' + Date.now(),
+          objective_id: oId,
+          key_point_id: kId,
+          title,
+          date,
+          start_time: start,
+          end_time: end,
+          status,
+          checkin_note: note
+        });
+      }
+
+      closeEditScheduleModal();
+      renderCalendar();
+      renderGantt();
+      renderWorkspace();
+    }
+
+    function deleteCurrentSchedule() {
+      const id = document.getElementById('form-sch-id').value;
+      if (!id) return;
+      if (confirm('确定要删除此日程吗？')) {
+        appData.schedules = appData.schedules.filter(x => x.id !== id);
+        closeEditScheduleModal();
+        renderCalendar();
+        renderGantt();
+        renderWorkspace();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 编辑/新建大目标 O 与支撑点 K
+    // -------------------------------------------------------------
+    function openEditObjectiveModal() {
+      const curO = appData.objectives.find(o => o.id === curSelectedOId);
+      if (!curO) return;
+      document.getElementById('edit-o-modal-title').innerText = '编辑大目标 (Objective)';
+      document.getElementById('form-o-id').value = curO.id;
+      document.getElementById('form-o-icon').value = curO.icon;
+      document.getElementById('form-o-title').value = curO.title;
+      document.getElementById('form-o-category').value = curO.category;
+      document.getElementById('form-o-color').value = curO.color;
+      document.getElementById('form-o-vision').value = curO.vision;
+      document.getElementById('modal-edit-objective').style.display = 'flex';
+    }
+
+    function openCreateObjectiveModal() {
+      document.getElementById('edit-o-modal-title').innerText = '新建大目标 (Objective)';
+      document.getElementById('form-o-id').value = '';
+      document.getElementById('form-o-icon').value = '🎯';
+      document.getElementById('form-o-title').value = '';
+      document.getElementById('form-o-category').value = '个人成长';
+      document.getElementById('form-o-color').value = '#3B82F6';
+      document.getElementById('form-o-vision').value = '';
+      document.getElementById('modal-edit-objective').style.display = 'flex';
+    }
+
+    function closeEditObjectiveModal() {
+      document.getElementById('modal-edit-objective').style.display = 'none';
+    }
+
+    function saveObjectiveFormData() {
+      const id = document.getElementById('form-o-id').value;
+      const title = document.getElementById('form-o-title').value.trim();
+      const icon = document.getElementById('form-o-icon').value.trim() || '🎯';
+      const category = document.getElementById('form-o-category').value.trim();
+      const color = document.getElementById('form-o-color').value;
+      const vision = document.getElementById('form-o-vision').value.trim();
+
+      if (!title) return alert('请输入目标标题');
+
+      if (id) {
+        const o = appData.objectives.find(x => x.id === id);
+        if (o) {
+          o.title = title;
+          o.icon = icon;
+          o.category = category;
+          o.color = color;
+          o.vision = vision;
+        }
+      } else {
+        const newId = 'O_' + Date.now();
+        appData.objectives.push({
+          id: newId,
+          title, icon, category, color, vision,
+          is_archived: false,
+          progress: 0
+        });
+        curSelectedOId = newId;
+      }
+
+      closeEditObjectiveModal();
+      renderFilterCheckboxes();
+      renderWorkspace();
+      renderGantt();
+      renderCalendar();
+    }
+
+    function openCreateKeypointModal() {
+      document.getElementById('edit-kp-modal-title').innerText = '新建核心支撑点 (K)';
+      document.getElementById('form-kp-id').value = '';
+      document.getElementById('form-kp-title').value = '';
+      document.getElementById('form-kp-window').value = '11月第1周 ~ 11月第4周';
+      document.getElementById('form-kp-progress').value = '0';
+      document.getElementById('form-kp-doc').value = 'keypoints/K_new.md';
+      document.getElementById('modal-edit-keypoint').style.display = 'flex';
+    }
+
+    function openEditKeypointModal(kpId) {
+      const kp = appData.key_points.find(x => x.id === kpId);
+      if (!kp) return;
+      document.getElementById('edit-kp-modal-title').innerText = '编辑核心支撑点 (K)';
+      document.getElementById('form-kp-id').value = kp.id;
+      document.getElementById('form-kp-title').value = kp.title;
+      document.getElementById('form-kp-window').value = kp.target_window;
+      document.getElementById('form-kp-progress').value = kp.progress;
+      document.getElementById('form-kp-doc').value = kp.doc_path || '';
+      document.getElementById('modal-edit-keypoint').style.display = 'flex';
+    }
+
+    function closeEditKeypointModal() {
+      document.getElementById('modal-edit-keypoint').style.display = 'none';
+    }
+
+    function saveKeypointFormData() {
+      const id = document.getElementById('form-kp-id').value;
+      const title = document.getElementById('form-kp-title').value.trim();
+      const windowVal = document.getElementById('form-kp-window').value.trim();
+      const progress = parseInt(document.getElementById('form-kp-progress').value || '0', 10);
+      const doc = document.getElementById('form-kp-doc').value.trim();
+
+      if (!title) return alert('请输入支撑点标题');
+
+      if (id) {
+        const kp = appData.key_points.find(x => x.id === id);
+        if (kp) {
+          kp.title = title;
+          kp.target_window = windowVal;
+          kp.progress = progress;
+          kp.doc_path = doc;
+        }
+      } else {
+        appData.key_points.push({
+          id: 'K_' + Date.now(),
+          objective_id: curSelectedOId,
+          title,
+          target_window: windowVal,
+          progress,
+          doc_path: doc
+        });
+      }
+
+      closeEditKeypointModal();
+      renderWorkspace();
+      renderGantt();
+    }
+
+    // 打卡弹窗逻辑
+    function openCheckinModal() {
+      renderModalCheckinList();
+      document.getElementById('modal-checkin').style.display = 'flex';
+    }
+    function closeCheckinModal() {
+      document.getElementById('modal-checkin').style.display = 'none';
+    }
+    function renderModalCheckinList() {
+      const list = document.getElementById('modal-checkin-list');
+      const todaySchs = appData.schedules.filter(s => s.date === '2026-10-25');
+      list.innerHTML = todaySchs.map(s => {
+        const isDone = (s.status === 'completed');
+        return `
+          <div style="background: #111827; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleSchedule('${s.id}')" style="cursor: pointer;" />
+              <div>
+                <div style="font-size: 13px; font-weight: 600; color: ${isDone ? '#94a3b8' : '#FFF'}; text-decoration: ${isDone ? 'line-through' : 'none'};">${s.title}</div>
+                <div style="font-size: 11px; color: #64748b;">${s.start_time || ''} · ${s.objective_id}</div>
+              </div>
+            </div>
+            <button onclick="toggleSchedule('${s.id}')" class="okr-btn" style="padding: 4px 10px; font-size: 11px; color: ${isDone ? '#34d399' : '#94a3b8'}; background: ${isDone ? 'rgba(16,185,129,0.2)' : '#1e293b'};">${isDone ? '已打卡 ✓' : '待打卡'}</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleSchedule(id) {
+      const s = appData.schedules.find(x => x.id === id);
+      if (s) {
+        s.status = (s.status === 'completed' ? 'in_progress' : 'completed');
+        if (s.status === 'completed' && !s.checkin_note) s.checkin_note = '打卡完成';
+        renderCalendar();
+        renderGantt();
+        renderModalCheckinList();
+      }
+    }
+
+    // AI 抽屉逻辑
+    function toggleAiDrawer() {
+      const d = document.getElementById('ai-copilot-drawer');
+      d.style.display = (d.style.display === 'none' ? 'flex' : 'none');
+    }
+    function sendAiFromInput() {
+      const input = document.getElementById('ai-input-box');
+      if (input.value.trim()) {
+        sendAiMsg(input.value.trim());
+        input.value = '';
+      }
+    }
+    function sendAiMsg(text) {
+      const body = document.getElementById('ai-chat-body');
+      body.innerHTML += `
+        <div style="align-self: flex-end; background: #2563eb; color: #FFF; padding: 10px 14px; border-radius: 12px; font-size: 12px; max-width: 85%;">${text}</div>
+      `;
+      setTimeout(() => {
+        let reply = `已收到指令：“${text}”。已自动为您更新上下文与日程状态。`;
+        if (text.includes('Duolingo') || text.includes('打卡')) {
+          const duo = appData.schedules.find(s => s.id === 'SCH_REC_duolingo');
+          if (duo) { duo.status = 'completed'; duo.checkin_note = 'AI 自动打卡完成'; }
+          renderCalendar();
+          reply = '✅ 已为您自动完成今日 Duolingo 打卡，更新了英语目标的活跃度！';
+        } else if (text.includes('灵感') || text.includes('WASM')) {
+          appData.inspirations.unshift({ id: 'INS_' + Date.now(), objective_id: curSelectedOId, date: '2026-10-25', text: text });
+          renderWorkspace();
+          reply = `💡 灵感已成功沉淀并归纳至目标草稿箱！`;
+        }
+        body.innerHTML += `
+          <div style="align-self: flex-start; background: #1e293b; color: #FFF; padding: 10px 14px; border-radius: 12px; font-size: 12px; line-height: 1.5; max-width: 88%;">${reply}</div>
+        `;
+        body.scrollTop = body.scrollHeight;
+      }, 500);
+    }
+
+    function addInspirationFromPage() {
+      const input = document.getElementById('ws-input-inspiration');
+      if (input.value.trim()) {
+        appData.inspirations.unshift({ id: 'INS_' + Date.now(), objective_id: curSelectedOId, date: '2026-10-25', text: input.value.trim() });
+        input.value = '';
+        renderWorkspace();
+      }
+    }
+    function addResultPrompt() {
+      const val = prompt('追加阶段成果复盘 (即使已归档依旧开放追加):');
+      if (val) {
+        appData.results.unshift({ id: 'R_' + Date.now(), target_id: curSelectedOId, title: '阶段追评复盘', score_or_verdict: '达成预期 (95分)', summary: val });
+        renderWorkspace();
+      }
+    }
+    function saveDailyNote() {
+      alert('已成功落盘至 ~/.dsh_okr 对应目标的 Markdown 反思便签！');
+      document.getElementById('daily-note-textarea').value = '';
+    }
+    function aiSummarizeNote() {
+      const val = document.getElementById('daily-note-textarea').value;
+      if (!val) return alert('请先输入便签内容');
+      toggleAiDrawer();
+      sendAiMsg(`请帮我把这段每日心得归集到我的目标中：${val}`);
+    }
+
+    // 页面初始化
+    renderFilterCheckboxes();
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'gantt') switchView('gantt');
+    else if (hash === 'workspace') switchView('workspace');
+    else if (hash === 'month') { switchView('calendar'); setCalendarDim('month'); }
+    else if (hash === 'day') { switchView('calendar'); setCalendarDim('day'); }
+    else if (hash === 'modal-edit-o') {
+      switchView('workspace');
+      openEditObjectiveModal();
+    } else if (hash === 'modal-edit-k') {
+      switchView('workspace');
+      openEditKeypointModal('K_agent_core');
+    } else if (hash === 'edit-sch' || hash === 'modal-edit') {
+      switchView('calendar');
+      setCalendarDim('week');
+      openEditScheduleModal('SCH_20261025_01');
+    } else {
+      switchView('calendar');
+      setCalendarDim('week'); // 默认进入飞书同款 24h 时间轴周视图
+    }
+  </script>
+</body>
+</html>

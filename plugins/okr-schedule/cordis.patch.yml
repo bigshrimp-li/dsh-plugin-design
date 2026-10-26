@@ -1,0 +1,3 @@
+- insert:
+    - id: okr-schedule
+      name: '@local/okr-schedule'

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Agent Session Visualizer",
+    "description": "Hierarchical execution trace and forensic timeline visualizer for AI Agent sessions (Codex, Claude, Grok, Noval)."
+  }
+}

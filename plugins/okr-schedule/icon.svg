@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="grad-bg" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="2" width="48" height="46" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect x="4" y="6" width="40" height="36" rx="8" fill="url(#grad-bg)" filter="url(#shadow)"/>
+  <rect x="7" y="15" width="34" height="24" rx="5" fill="#0F172A" fill-opacity="0.85"/>
+  <!-- 日历顶部线圈 -->
+  <line x1="14" y1="3" x2="14" y2="9" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="34" y1="3" x2="34" y2="9" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- 内部罗盘/目标指针 -->
+  <circle cx="24" cy="27" r="7" stroke="#38BDF8" stroke-width="1.8" stroke-dasharray="2 2"/>
+  <polygon points="24,22 26.5,27 24,26 21.5,27" fill="#F43F5E"/>
+  <polygon points="24,32 26.5,27 24,28 21.5,27" fill="#94A3B8"/>
+  <circle cx="24" cy="27" r="1.5" fill="#FFFFFF"/>
+</svg>

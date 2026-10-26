@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "okr-schedule",
+  "importedAt": "2026-10-26",
+  "kind": "working-tree-snapshot",
+  "originalPath": "/Users/bytedance/worskpace/dsh-okr-schedule-plugin",
+  "files": {
+    "README.md": "96c8e575b204cc7f9dd4b444376399add9c1a9769bad909e7ec77dd0bec967f6",
+    "client.js": "61de51378eee80994035333949f898c157fb94a419f0ba135e158c3b62a1905a",
+    "cordis.patch.yml": "f74c53fb696dc20b040f90ce5a181447acc309daa7928f6b520084e832c6bf8c",
+    "icon.svg": "9b14a56b6d78dfea3f078d5be11320b56472e8b6f191d14089a3235035d236b8",
+    "index.js": "0698aee6a0fde64f4bacfaff84ea03a9456702225f31eab047470e5ffba216fc",
+    "locale/en.json": "99d07c0d66836f3c2f7b7e75e578bb2702351cf6242eb42916fb85b37d752a30",
+    "locale/zh.json": "094b22bda4f0d2eab0283a8408875d4b36c0c9e8bfb7bbd16519bf7bc3fcdc2b",
+    "package.json": "393d48e664b7ce2551557c311a2dca13c5f6d3caeddfa39322afaca183774341",
+    "preview.html": "e2cdf476577edc97670150065659addbd9ed098eef5beae1ebb4fb4ff29fde35"
+  },
+  "excludedLocalDirectories": [
+    "data",
+    "temp",
+    "artifacts",
+    "node_modules",
+    ".git"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "name": "@local/agent-session-visualizer",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "server.mjs",
+    "app.js",
+    "index.html",
+    "styles.css",
+    "adapters/**/*"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "slots",
+        "layout"
+      ]
+    }
+  },
+  "scripts": {
+    "extract": "npm run extract:codex",
+    "extract:codex": "node adapters/codex/extract.mjs",
+    "start": "node server.mjs",
+    "test": "npm run check && npm run test:fixture && npm run test:trace && npm run test:server",
+    "test:fixture": "node tests/grok-subagent.mjs",
+    "test:local": "npm run test:data:local && npm run test:browser:local",
+    "test:data:local": "node tests/codex-graph.mjs && node tests/grok-graph.mjs && node tests/claude-graph.mjs",
+    "test:browser:local": "node tests/browser.mjs",
+    "check": "node --check index.js && node --check client.js && node --check app.js && node --check server.mjs && node --check adapters/common/trace.mjs && node --check adapters/codex/index.mjs && node --check adapters/codex/extract.mjs && node --check adapters/grok/index.mjs && node --check adapters/claude/index.mjs && node --check adapters/noval/index.mjs && node --check tests/trace.mjs && node --check tests/browser-cdp.mjs && node --check tests/codex-graph.mjs && node --check tests/grok-graph.mjs && node --check tests/grok-subagent.mjs && node --check tests/claude-graph.mjs && node --check tests/browser.mjs && node --check tests/server.mjs",
+    "test:trace": "node tests/trace.mjs",
+    "test:browser:cdp": "node tests/browser-cdp.mjs",
+    "build": "npm run check",
+    "test:server": "node tests/server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

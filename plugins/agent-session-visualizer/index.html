@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Agent Session Visualizer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <p class="eyebrow">AGENT SESSION / EXECUTION FORENSICS</p>
+          <h1>Agent Execution Graph</h1>
+        </div>
+      </div>
+      <div class="topbar-center">
+        <div class="topbar-providers" id="topbar-providers">
+          <button class="topbar-p-btn active" data-p="codex" type="button">Codex</button>
+          <button class="topbar-p-btn" data-p="claude" type="button">Claude Code</button>
+          <button class="topbar-p-btn" data-p="grok" type="button">Grok Build</button>
+          <button class="topbar-p-btn" data-p="noval" type="button">Noval</button>
+        </div>
+        <div class="session-stamp"><span class="live-dot"></span><span>ROOT SESSION</span><strong id="header-session">LOADING</strong></div>
+      </div>
+      <div class="header-actions">
+        <button class="session-entry" id="back-to-dsh" type="button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: #93c5fd;" title="返回 DSH 会话主页面"><span>← 返回 DSH</span></button>
+        <button class="session-entry" id="open-sessions" type="button"><span>浏览 Sessions</span><b id="session-count">—</b></button>
+        <button class="quiet-button" id="copy-node" type="button">复制节点内容</button>
+        <button class="icon-button" id="theme-pulse" type="button" aria-label="切换高亮色">◐</button>
+      </div>
+    </header>
+
+    <div class="session-browser" id="session-browser" hidden>
+      <button class="session-scrim" id="close-session-scrim" type="button" aria-label="关闭 Session 浏览器"></button>
+      <section class="session-browser-panel" role="dialog" aria-modal="true" aria-labelledby="session-browser-title">
+        <div class="session-browser-head">
+          <div>
+            <p class="eyebrow" id="provider-eyebrow">LOCAL PROVIDER / CODEX</p>
+            <h2 id="session-browser-title">Session Directory</h2>
+          </div>
+          <div class="live-state" id="live-state"><i></i><span>CONNECTING</span></div>
+          <button class="session-close" id="close-sessions" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="provider-switch" id="provider-switch" aria-label="Session provider">
+          <button class="active" data-provider="codex" type="button"><i></i><span><strong>Codex</strong><small>~/.codex/sessions</small></span><b data-provider-count="codex">—</b></button>
+          <button data-provider="grok" type="button"><i></i><span><strong>Grok Build</strong><small>~/.grok/sessions</small></span><b data-provider-count="grok">—</b></button>
+          <button data-provider="claude" type="button"><i></i><span><strong>Claude Code</strong><small>~/.claude/projects</small></span><b data-provider-count="claude">—</b></button>
+          <button data-provider="noval" type="button"><i></i><span><strong>Noval</strong><small>项目内 .noval/session-logs</small></span><b data-provider-count="noval">—</b></button>
+        </div>
+        <div class="directory-ribbon">
+          <span>WATCHING</span>
+          <code id="session-directory">~/.codex</code>
+          <button id="refresh-sessions" type="button">立即扫描 ↻</button>
+        </div>
+        <div class="noval-workspace-root" id="noval-workspace-root" hidden>
+          <label for="workspace-root-input">Noval 工程目录</label>
+          <input id="workspace-root-input" type="text" placeholder="/path/to/novel-project" autocomplete="off" />
+          <button id="load-noval-sessions" type="button">加载</button>
+        </div>
+        <div class="session-stats" id="session-stats"></div>
+        <div class="session-browser-body">
+          <aside class="project-browser">
+            <div class="project-browser-head"><span>01</span><strong>工程目录</strong></div>
+            <div class="project-list" id="project-list"></div>
+          </aside>
+          <section class="session-results">
+            <div class="session-filters">
+              <label class="session-search"><span>/</span><input id="session-search" type="search" placeholder="搜索当前分类中的 Session" autocomplete="off" /></label>
+            </div>
+            <div class="session-list-head"><span id="current-project-name">所有对话</span><span id="visible-session-count">—</span></div>
+            <div class="session-list" id="session-list"><div class="session-list-loading">正在建立本地 Session 索引…</div></div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <section class="metrics-strip" id="metrics" aria-label="Graph metrics"></section>
+
+    <main class="workspace">
+      <aside class="panel thread-panel">
+        <div class="panel-head"><div><span class="panel-index">01</span><h2>会话分支与 Run</h2></div></div>
+        <label class="search-box"><span>/</span><input id="graph-search" type="search" placeholder="搜索节点或消息" autocomplete="off" /></label>
+        <div class="trace-summary" id="trace-summary"></div>
+        <div class="thread-tree" id="thread-tree"></div>
+        <div class="color-legend" id="color-legend">
+          <button data-type="user" type="button"><i class="user"></i>用户消息</button>
+          <button data-type="model" type="button"><i class="model"></i>模型消息</button>
+          <button data-type="tool" type="button"><i class="tool"></i>工具批次</button>
+          <button data-type="agent" type="button"><i class="agent"></i>Sub-agent</button>
+          <button data-type="agent-result" type="button"><i class="agent-result"></i>结果回流</button>
+        </div>
+      </aside>
+
+      <section class="panel graph-panel">
+        <div class="panel-head graph-head">
+          <div><span class="panel-index">02</span><h2 id="stage-title">执行关系图</h2></div>
+          <div class="stage-switch" id="view-switch" role="tablist" aria-label="视图切换">
+            <button class="active" data-view="graph" type="button" role="tab">执行关系图</button>
+            <button data-view="run" type="button" role="tab">Run 详情 (效率看板)</button>
+          </div>
+          <div class="graph-controls">
+            <button id="zoom-out" type="button" aria-label="缩小">−</button>
+            <button id="focus-agents" type="button">定位 Sub-agent</button>
+            <button id="fit-graph" type="button">全图</button>
+            <button id="zoom-in" type="button" aria-label="放大">＋</button>
+          </div>
+        </div>
+        <div class="graph-hint"><span>VIEW MODE</span><p>执行关系图按纵向 Agent 泳道与正文工具聚合展示信息流转；Run 详情聚焦 TTFT、TPOT、Token 与缓存命中效率分析。</p></div>
+        <div class="turn-strip"><span>RUN SCOPE</span><div class="turn-list" id="turn-list"></div></div>
+        <div class="graph-viewport" id="graph-viewport">
+          <svg id="graph-svg" role="img" aria-label="Root agent and child-agent execution graph"></svg>
+          <div class="graph-scale" id="graph-scale">100%</div>
+          <div class="graph-loading" id="graph-loading" hidden><i></i><span>READING LOCAL SESSION</span></div>
+        </div>
+        <div class="run-view" id="run-view" hidden>
+          <div class="run-view-head" id="run-view-head"></div>
+          <div class="run-view-perf" id="run-view-perf"></div>
+          <div class="run-waterfall" id="run-waterfall"></div>
+        </div>
+      </section>
+
+      <aside class="panel detail-panel">
+        <div class="panel-head">
+          <div><span class="panel-index">03</span><h2>节点检查器</h2></div>
+          <span class="node-kind" id="node-kind">NODE</span>
+        </div>
+        <div class="detail-tabs" role="tablist">
+          <button class="detail-tab active" data-tab="content" type="button">完整内容</button>
+          <button class="detail-tab" data-tab="tools" type="button">工具信息</button>
+          <button class="detail-tab" data-tab="context" type="button">输入上下文</button>
+          <button class="detail-tab" data-tab="json" type="button">JSON</button>
+        </div>
+        <div class="detail-scroll" id="detail-content"></div>
+      </aside>
+    </main>
+
+    <footer><span>READ-ONLY GRAPH SNAPSHOT</span><span id="source-file">—</span><span>LOCAL SESSION DATA</span></footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "plugins": [
+    {
+      "id": "design",
+      "path": "plugins/design",
+      "status": "maintained",
+      "skills": [
+        "design",
+        "design-system"
+      ],
+      "source": {
+        "kind": "local"
+      }
+    },
+    {
+      "id": "okr-schedule",
+      "path": "plugins/okr-schedule",
+      "status": "experimental",
+      "skills": [],
+      "source": {
+        "kind": "local",
+        "importRecord": "docs/imports/okr-schedule.json"
+      }
+    },
+    {
+      "id": "agent-session-visualizer",
+      "path": "plugins/agent-session-visualizer",
+      "status": "experimental",
+      "skills": [],
+      "source": {
+        "kind": "local",
+        "importRecord": "docs/imports/agent-session-visualizer.json"
+      }
+    }
+  ]
+}

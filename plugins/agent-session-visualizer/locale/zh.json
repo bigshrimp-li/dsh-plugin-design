@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "会话轨迹透视 (Session Visualizer)",
+    "description": "面向 AI Agent 的多 Provider (Codex / Claude / Grok / Noval) 层次化会话执行轨迹与时序图透视分析插件。"
+  }
+}

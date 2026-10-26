@@ -1,0 +1,5 @@
+- insert:
+    - id: agent-session-visualizer
+      name: '@local/agent-session-visualizer'
+      config:
+        port: 3789

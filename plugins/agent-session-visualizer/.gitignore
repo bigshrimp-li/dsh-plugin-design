@@ -1,0 +1,5 @@
+# 由本地真实 Session 生成，可能包含未脱敏的消息、工具输入与结果
+/data/session-graph.json
+
+# 浏览器回归生成的截图
+/artifacts/*.png
