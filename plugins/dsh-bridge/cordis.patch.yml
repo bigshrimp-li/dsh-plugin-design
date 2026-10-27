@@ -1,0 +1,4 @@
+# Add an independent space; preserve the native Harness agent and workspaces.
+- insert:
+    - id: super-agent-bridge
+      name: '@super-agent/dsh-bridge'

@@ -1,0 +1,62 @@
+{
+  "name": "@super-agent/dsh-bridge",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "Independent Super Agent workspace for DeepSeek Harness.",
+  "meta": {
+    "title": "Super Agent",
+    "description": "独立的 Super Agent 运行区，保留 Harness 原生工作区、会话和模型选择。"
+  },
+  "exports": {
+    ".": "./dist/host/index.js",
+    "./client": "./src/client/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "engines": {
+    "dsh": "0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "node": ">=22.19.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-scope": "0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-scope": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist",
+    "src/client/*.js",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "npm run build && vitest run",
+    "test:unit": "vitest run",
+    "test:core": "node scripts/test-core.mjs",
+    "test:host": "npm run build && node scripts/test-host.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "vitest": "3.2.4"
+  }
+}

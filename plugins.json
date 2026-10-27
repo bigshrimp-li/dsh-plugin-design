@@ -32,6 +32,16 @@
         "kind": "local",
         "importRecord": "docs/imports/agent-session-visualizer.json"
       }
+    },
+    {
+      "id": "dsh-bridge",
+      "path": "plugins/dsh-bridge",
+      "status": "experimental",
+      "skills": [],
+      "source": {
+        "kind": "local",
+        "importRecord": "plugins/dsh-bridge/provenance/import-2026-10-26.json"
+      }
     }
   ]
 }
