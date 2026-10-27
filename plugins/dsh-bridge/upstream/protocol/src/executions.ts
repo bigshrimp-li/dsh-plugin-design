@@ -5,6 +5,10 @@ export type VerifyExecutionRequest = {
 };
 export type ExecutionVerificationView = VerifyExecutionRequest & { readonly actorId: string; readonly at: number };
 export type ExecutionView = {
+  readonly ownerKind?: string;
+  readonly goalId?: string;
+  readonly assessmentId?: string;
+  readonly requestRef?: string;
   readonly executionId: string;
   readonly conversationId: string;
   readonly runId: string;

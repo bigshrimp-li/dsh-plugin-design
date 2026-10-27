@@ -7,6 +7,7 @@
  */
 export const CLIENT_PACKAGE_VERSION = "0.1.0";
 export * from "./attachments.js";
+export * from "./goals.js";
 export * from "./skill-installations.js";
 
 export {

@@ -117,6 +117,13 @@ export const THREADS_QUERY_SESSION_ID = "sessionId";
 
 /** Names the matcher can return; the handler switches on these. */
 export type ThreadRouteName =
+  | "conversationGoals"
+  | "goal"
+  | "goalUpdate"
+  | "goalSteer"
+  | "goalPause"
+  | "goalResume"
+  | "goalCancel"
   | "threads"
   | "thread"
   | "threadInputs"
@@ -162,6 +169,14 @@ export type ThreadRouteSpec = {
 };
 
 export const THREAD_ROUTES: readonly ThreadRouteSpec[] = [
+  { name: "conversationGoals", method: "GET", path: "/v1/conversations/{conversationId}/goals" },
+  { name: "conversationGoals", method: "POST", path: "/v1/conversations/{conversationId}/goals" },
+  { name: "goalPause", method: "POST", path: "/v1/goals/{goalId}:pause" },
+  { name: "goalResume", method: "POST", path: "/v1/goals/{goalId}:resume" },
+  { name: "goalCancel", method: "POST", path: "/v1/goals/{goalId}:cancel" },
+  { name: "goalSteer", method: "POST", path: "/v1/goals/{goalId}:steer" },
+  { name: "goalUpdate", method: "PATCH", path: "/v1/goals/{goalId}" },
+  { name: "goal", method: "GET", path: "/v1/goals/{goalId}" },
   { name: "conversationDelegations", method: "GET", path: CONVERSATION_DELEGATIONS_PATH },
   { name: "delegationCancel", method: "POST", path: DELEGATION_CANCEL_PATH },
   { name: "delegation", method: "GET", path: DELEGATION_PATH },

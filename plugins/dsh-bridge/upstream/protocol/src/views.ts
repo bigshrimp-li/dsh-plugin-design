@@ -46,7 +46,11 @@ export const EMPTY_RECOVERY: RecoverySummary = {
   activeDelegations: 0,
 };
 
+export type RuntimeFeatures = { readonly goalsV1?: boolean };
+
 export type ServerInfo = {
+  /** Missing features are unsupported. Reported from the serving runtime. */
+  readonly runtimeFeatures?: RuntimeFeatures;
   readonly version: string;
   readonly protocol: ProtocolRange;
   readonly state: ServerState;

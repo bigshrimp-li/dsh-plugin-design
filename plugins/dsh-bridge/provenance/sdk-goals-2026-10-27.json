@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "dsh-bridge",
+  "syncedAt": "2026-10-27",
+  "kind": "repository-commit-snapshot",
+  "sourceRepositoryCommit": "8680492cf07b98eb44e940fb075ba6cf69e1c793",
+  "reason": "goalsV1 public SDK and protocol",
+  "snapshots": {
+    "client": {
+      "originalPath": "/Users/bytedance/worskpace/agent-loop-core/packages/client",
+      "files": {
+        "package.json": "2272e86c1b1e591fedddc57ba2ad4e0c61883cadc49d6c81459fb01481104adc",
+        "src/attachments.ts": "968c8e69a305b7ae0718284ec5e4d820240b2e752ee948680a89d5ebd98a827d",
+        "src/client.ts": "6a33d5e36ebdf879db0128714985d71bf4f4ba1542f0b1462822175fe807b591",
+        "src/errors.ts": "78e0b01e5ae3338e364ba41a88701b6ce965c0a49074426d623104101fa86f50",
+        "src/goals.ts": "a99db7422bd85369bbd4e52d687381a60342ad60ce7ea9a4838cba4a43e534d2",
+        "src/index.ts": "334525fe209b7d4276eb1e933285be4a74776515a4149aa38806741817ad6640",
+        "src/managed-workspaces.ts": "daa811a585eddd63cc24951a7b023b2faf4a8a4e8f44391974544dbbed55d68f",
+        "src/settings.ts": "af4071733f4d46b7d6683d079b8222dc5f3af02d450222251783f353197d98a4",
+        "src/skill-installations.ts": "09b2c31ca54616bcfb2e14f7c73d696146fcce2c8832df4edc9cf90bac685421",
+        "src/skill-sources.ts": "a589053ede595c20a207ed3284ce897f5fd18caba35643679cf50d2808157ba5",
+        "src/sse.ts": "bed42b0db863ed13a201a86c36170d00b09e931ff930bce9601a365769781236",
+        "src/subscription.ts": "b6b3807c1c7167c16666ec16c62b8070a4c46c0b70b9b4a8b2a1cf136be0e61c",
+        "src/transport.ts": "9977808248f845eb1686bfd634bb1f16efc05b896d58809aa9c7fe2e20d927a1",
+        "src/workspace-files.ts": "a3e696e3ad47635bc721871976fee4818953ba5fc467bc50a822440f7194cb9d"
+      }
+    },
+    "protocol": {
+      "originalPath": "/Users/bytedance/worskpace/agent-loop-core/packages/protocol",
+      "files": {
+        "package.json": "d4b34a8e249ecc123dc0c820782680ebd12febf9a5b1c736545c35837b4be75b",
+        "src/attachments.ts": "d0fd0b10ef331d27cc20bd0cb510a2475d5e42476a48648efcc2d42e056c766e",
+        "src/composer.ts": "d8c0fedf9656195f8f23d4fd88b65eaaa2e96fa7d777de73215dd809b19c1e0c",
+        "src/errors.ts": "a394d1d9350f6b963600fdeb8ab5420d7ada94a41d51d819548306cfb55cabd0",
+        "src/events.ts": "04b55f45649073fa42959410392e135115fd997b30669a50b8dccb9d0bdb7132",
+        "src/executions.ts": "6f0abc9e49aeb37685e798ef82f23cc19a138e787311992623864c63e6fd41f5",
+        "src/goals.ts": "6103fc318ae8157b17ebeebc54bc7001cdcaed762a9d2563e52587646e7565e0",
+        "src/index.ts": "927f30e1cf130a99d48f92a0b8ce2d9e1d487626784eef97842b756467391225",
+        "src/json.ts": "170a7977f8ffb1354a288d0f9126cc0e27a6c126b9bc4de8fe0a41bcbc943204",
+        "src/layout.ts": "941568dc311c81f4d5d3a19eff39505cecf2746a51069438c7a486c3538a5a4f",
+        "src/observation.ts": "f5377f3235caf316c8d599d8c811065f4d8096ba90f362ef44385fbb70355e73",
+        "src/p1-contracts.ts": "fbcbfd2c9014bb84fd73b1c3ae5e593b53f8075c137cd3e32a0f3b3ff1a9d11d",
+        "src/routes.ts": "5b6264313bab30a5e8a1adf9a3936ddd35b1fb22bd7883a01720aba8519d1434",
+        "src/settings.ts": "b22a365abd23cfd7284a894f735e53b69985c5435cb261380d454d9080fe2062",
+        "src/skill-installations.ts": "abfdd9a85637d088bd755f5e618fabfa923bc7e70268b13eda93d94cbc5552a2",
+        "src/version.ts": "5de75f507e9f31c571fe5cde131f6abf29e124be3b0d783827381805e71de7e3",
+        "src/views.ts": "da214a676b288f1c00f05118a2df793e951b535c1bda0ad656a6799f3e4890e4",
+        "src/workspace-files.ts": "5d2fb3468b9d57fe5d1ec8967d5119112d6ba1a45a23dec817584535373beaa1"
+      }
+    }
+  }
+}

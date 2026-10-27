@@ -201,6 +201,7 @@ div:has(> [data-slot="sidebar.footer.action"] > .sa-workspaces){flex-direction:c
 .sa-send:disabled{opacity:.4;cursor:default}
 .sa-send-stop{background:#4176e6}
 .sa-reply-group{position:relative;margin:0 0 16px;display:flex;flex-direction:column;gap:12px}
+.sa-goal-card label{display:block;margin:12px 0 6px}.sa-goal-card input,.sa-goal-card textarea{display:block;box-sizing:border-box;width:100%;max-width:440px;margin:6px 0;border:1px solid #cfd5df;border-radius:6px;padding:8px;font:inherit}.sa-goal-card textarea{min-height:72px;resize:vertical}
 .sa-run-card{border:.5px solid #e1e5ee;border-radius:8px;padding:10px 12px;margin-bottom:8px;overflow-wrap:anywhere}
 .sa-message-table{overflow:auto;max-width:100%}
 .sa-message table{border-collapse:collapse;white-space:normal;width:100%}
@@ -1168,6 +1169,39 @@ ${COMPOSER_CSS}`;
           h("span", { className: "sa-stats-item" }, `${partial ? "已知用量 " : ""}${formatTokens(tokens)} · 缓存命中 ${cache}`),
           h("span", { className: "sa-stats-item" }, `上下文 ${percent}`));
       }
+      function GoalCard({ s }) {
+        const [increase, setIncrease] = React.useState(""), [objective, setObjective] = React.useState("");
+        const goal = s.goal;
+        if (!goal) return null;
+        const labels = { running: "持续推进", waiting: "等待中", pausing: "正在暂停", paused: "已暂停", blocked: "已阻塞", exhausted: "预算或限制已耗尽", draining: "正在结束", completed: "已完成", cancelled: "已取消", failed: "失败" };
+        const terminal = ["completed", "cancelled", "failed"].includes(goal.status), stopping = ["pausing", "draining"].includes(goal.status);
+        const busy = s.goalBusy || s.busy, number = value => Number.isSafeInteger(value) ? value.toLocaleString("zh-CN") : "尚未确认";
+        const budget = goal.budget || {}, progress = goal.checkpoint || {};
+        const remaining = [goal.limits?.totalTokens, budget.settledTokens, budget.reservedTokens].every(Number.isSafeInteger) ? Math.max(0, goal.limits.totalTokens - budget.settledTokens - budget.reservedTokens) : null;
+        return h("section", { className: "sa-run-card sa-goal-card", "aria-label": "持续目标", "data-goal-id": goal.goalId },
+          h("strong", null, `目标 · ${labels[goal.status] || goal.status}`),
+          h("p", { style: { whiteSpace: "pre-wrap" } }, goal.objective),
+          h("p", { className: "sa-muted" }, `推进 ${number(goal.iteration)} · 阶段 ${{ execute: "执行", assess: "评估", verify: "完成审核", idle: "空闲" }[goal.phase] || "未知"} · 修订 ${goal.revision}`),
+          h("p", null, `累计 token ${number(budget.settledTokens)} / ${number(goal.limits?.totalTokens)}；预留 ${number(budget.reservedTokens)}；未确认占用 ${number(budget.uncertainTokens)}；可用 ${number(remaining)}${budget.estimatedTokens !== undefined ? `；含估算 ${number(budget.estimatedTokens)} token` : ""}`),
+          progress.nextStep && h("p", null, `下一步：${progress.nextStep}`),
+          (progress.completedItems || []).length > 0 && h("details", null, h("summary", null, "已完成项"), h("ul", null, ...progress.completedItems.map((item, index) => h("li", { key: index }, item)))),
+          (progress.remainingItems || []).length > 0 && h("details", null, h("summary", null, "待完成项"), h("ul", null, ...progress.remainingItems.map((item, index) => h("li", { key: index }, item)))),
+          h("p", { className: "sa-muted" }, `模型请求 ${number(budget.modelRequests)} · 活跃时长 ${Number.isFinite(budget.activeElapsedMs) ? Math.round(budget.activeElapsedMs / 1000) + " 秒" : "尚未确认"}`),
+          goal.currentRunId && h("p", { className: "sa-muted" }, `当前任务：${goal.currentRunId}`),
+          goal.reason && h("p", { role: "status" }, `原因：${typeof goal.reason === "string" ? goal.reason : goal.reason.message || goal.reason.code || "请查看目标状态"}`),
+          h("div", { style: { display: "flex", flexWrap: "wrap", gap: 8 } },
+            !terminal && !stopping && ["running", "waiting"].includes(goal.status) && h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.controlGoal("pause")) }, "暂停目标"),
+            !terminal && ["paused", "blocked", "exhausted"].includes(goal.status) && h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.controlGoal("resume")) }, "恢复目标"),
+            !terminal && !stopping && h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.controlGoal("cancel")) }, "取消目标"),
+            h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void controller.refresh() }, "刷新目标")),
+          !terminal && h("details", null, h("summary", null, "调整目标与预算"),
+            h("p", { className: "sa-muted" }, "提高累计预算后，使用“恢复目标”继续。修改目标需先暂停；原有用量不会清零。"),
+            h("label", null, "增加 token 预算", h("input", { type: "text", inputMode: "numeric", value: increase, disabled: busy, onChange: event => setIncrease(event.target.value) })),
+            h("button", { type: "button", className: "sa-chip", disabled: busy || !increase, onClick: () => void run(async () => { await controller.increaseGoalBudget(increase); setIncrease(""); }) }, "提高预算"),
+            h("label", null, "新的目标说明", h("textarea", { value: objective, disabled: busy || !["paused", "blocked", "exhausted"].includes(goal.status), onChange: event => setObjective(event.target.value) })),
+            h("button", { type: "button", className: "sa-chip", disabled: busy || !objective.trim() || !["paused", "blocked", "exhausted"].includes(goal.status), onClick: () => void run(async () => { await controller.updateGoalObjective(objective); setObjective(""); }) }, "保存目标说明")),
+          ...(controller.pendingGoalOperations?.() || []).map(record => h("p", { key: record.payload.requestId }, `原操作待确认：${record.action} · ${record.payload.goalId}`, h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.retryGoalOperation(record.payload.requestId)) }, "重试原目标操作"))));
+      }
       function Composer({ s }) {
         const input = React.useRef(null), files = React.useRef(null), attachButton = React.useRef(null), skillButton = React.useRef(null), contextButton = React.useRef(null), [attachmentMenu, setAttachmentMenu] = React.useState(false), [projectPicker, setProjectPicker] = React.useState(false), [skillPicker, setSkillPicker] = React.useState(false), [contextPreview, setContextPreview] = React.useState(false), [dragging, setDragging] = React.useState(false), [selection, setSelection] = React.useState(null);
         React.useEffect(() => { const pending = controller.loadAttachmentCapabilities?.(); pending?.catch(() => {}); }, [s.targetId, s.coreInstanceId]);
@@ -1181,11 +1215,15 @@ ${COMPOSER_CSS}`;
         const thinkingValue = thinkingLevel || "provider_default";
         const activeRuns = (s.runDetails || s.thread?.runs || []).filter(task => task.conversationId === s.selected?.conversationId && ["starting", "running", "waiting"].includes(task.status));
         const retained = (s.attachments || []).length + (s.materials || []).length, blocked = (s.attachments || []).some(item => item.status !== "ready") || (s.attachmentRemovals || []).length > 0, unsupported = s.attachmentCapabilities?.supported === false;
-        const disabled = s.busy || deleted(s), closeTo = ref => () => { setProjectPicker(false); setSkillPicker(false); setContextPreview(false); ref.current?.focus(); };
+        const disabled = s.busy || s.goalBusy || deleted(s), closeTo = ref => () => { setProjectPicker(false); setSkillPicker(false); setContextPreview(false); ref.current?.focus(); };
         const addFiles = selected => { if (!disabled && selected?.length) void run(() => controller.addMessageFiles(selected)); };
         const chooseFiles = () => { setAttachmentMenu(false); files.current?.click(); };
         const readSelection = event => { const start = event.target.selectionStart, end = event.target.selectionEnd; setSelection(end > start ? { start, end } : null); };
         return h("div", { className: "sa-composer-seat" },
+          s.goalsSupported && !s.goal && h("p", { className: "sa-muted" }, "持续目标：/goal 目标说明 --budget token数量"),
+          s.goalError && h("p", { className: "sa-composer-warning", role: "alert" }, s.goalError),
+          s.goalNotice && h("p", { className: "sa-muted", role: "status" }, s.goalNotice),
+          s.goal && !["completed", "cancelled", "failed"].includes(s.goal.status) && h("div", { className: "sa-workspace-picker" }, h(Choice, { label: "目标期间的输入用途", value: s.goalInputMode || "message", items: [{ id: "message", label: "发送新任务并暂停目标" }, { id: "steer", label: "补充当前目标" }], onSelect: value => controller.setGoalInputMode(value) }, s.goalInputMode === "steer" ? "补充当前目标" : "发送新任务并暂停目标")),
           deleted(s) && h("p", { className: "sa-muted", role: "status" }, "会话已删除，无法恢复。请新建会话。"),
           !s.selected && h("div", { className: "sa-workspace-picker" }, h(Choice, { label: "Super Agent 工作目录", value: s.root,
             items: [{ id: "none", label: "不绑定工作区 · 直接聊天" }, ...s.directories.map(d => ({ id: d.root, label: basename(d.root), icon: icon("IconFolderCloseRegular") })), { id: "add", label: "添加工作区", icon: icon("IconProjectAddOutlineRegular") }],
@@ -1195,9 +1233,9 @@ ${COMPOSER_CSS}`;
           contextPreview && h(ContextPreview, { key: `context:${s.targetId}:${s.selected?.conversationId || "new"}`, s, close: closeTo(contextButton) }),
           s.conversation?.pendingConfig && h("div", { className: "sa-composer-notice sa-muted", role: "status" }, `当前 ${s.models.find(m => m.id === config?.modelId)?.name || config?.modelId || "模型未知"} · ${config?.thinkingLevel || "提供方默认"}；新选择将在当前任务结束后生效，已接收任务保持原配置。`, h("button", { type: "button", className: "sa-chip", disabled: s.busy || deleted(s), onClick: () => void run(() => controller.discardPendingConfig()) }, "撤销待生效选择")),
           s.thread?.status === "paused_by_user" && h("div", { className: "sa-workspace-picker" }, h("span", { className: "sa-muted" }, "会话已暂停"), h("button", { type: "button", className: "sa-chip", disabled: s.busy || deleted(s), onClick: () => void run(() => controller.controlThread("resume")) }, "恢复")),
-          running && h("div", { className: "sa-workspace-picker" }, h(Choice, { label: "输入用途", value: s.delivery,
+          running && (!s.goal || ["completed", "cancelled", "failed"].includes(s.goal.status)) && h("div", { className: "sa-workspace-picker" }, h(Choice, { label: "输入用途", value: s.delivery,
             items: [{ id: "new_run", label: "排队新任务" }, { id: "next_turn", label: "补充当前任务" }], onSelect: value => controller.setDelivery(value) }, s.delivery === "next_turn" ? "补充当前任务" : "排队新任务")),
-          running && s.delivery === "next_turn" && h("div", { className: "sa-composer-target-select" }, h("label", { htmlFor: "sa-composer-target-run" }, "补充目标"), h("select", { id: "sa-composer-target-run", value: s.targetRunId || (activeRuns.length === 1 ? activeRuns[0].runId : ""), onChange: event => controller.setTargetRun(event.target.value || null), disabled }, h("option", { value: "", disabled: true }, "选择运行中的任务"), ...activeRuns.map((task, index) => h("option", { key: task.runId, value: task.runId }, `任务 ${index + 1} · ${runStatusLabel(task, s.thread)}`)))),
+          running && (!s.goal || ["completed", "cancelled", "failed"].includes(s.goal.status)) && s.delivery === "next_turn" && h("div", { className: "sa-composer-target-select" }, h("label", { htmlFor: "sa-composer-target-run" }, "补充目标"), h("select", { id: "sa-composer-target-run", value: s.targetRunId || (activeRuns.length === 1 ? activeRuns[0].runId : ""), onChange: event => controller.setTargetRun(event.target.value || null), disabled }, h("option", { value: "", disabled: true }, "选择运行中的任务"), ...activeRuns.map((task, index) => h("option", { key: task.runId, value: task.runId }, `任务 ${index + 1} · ${runStatusLabel(task, s.thread)}`)))),
           h("form", { className: "sa-composer", "data-dragging": dragging, onSubmit: e => { e.preventDefault(); void controller.send(); },
             onDragOver: event => { if (!unsupported && !disabled && [...(event.dataTransfer?.types || [])].includes("Files")) { event.preventDefault(); setDragging(true); } },
             onDragLeave: event => { if (!event.currentTarget?.contains?.(event.relatedTarget)) setDragging(false); },
@@ -1208,7 +1246,7 @@ ${COMPOSER_CSS}`;
             s.attachmentCapabilityError && h("p", { className: "sa-composer-warning", role: "alert" }, `附件能力读取失败：${s.attachmentCapabilityError}`),
             retained > 0 && h("div", { className: "sa-composer-target" }, `附件接收服务：${s.coreTargetLabel || "当前 Core"} · 发送前不会交给模型`),
             s.delivery === "next_turn" && (s.selectedSkillIds || []).length > 0 && h("p", { className: "sa-composer-warning", role: "alert" }, "当前任务沿用原 Skill；请取消本次选择或改为排队新任务。"),
-            h("textarea", { ref: input, className: "sa-input", rows: 1, "aria-label": "Super Agent 消息", placeholder: "发消息或创建任务", value: s.draft, disabled: s.busy || deleted(s),
+            h("textarea", { ref: input, className: "sa-input", rows: 1, "aria-label": "Super Agent 消息", placeholder: "发消息或创建任务", value: s.draft, disabled: s.busy || s.goalBusy || deleted(s),
               onChange: e => controller.setDraft(e.target.value), onSelect: readSelection,
               onPaste: event => { const images = Array.from(event.clipboardData?.items || []).filter(item => item.kind === "file" && item.type.startsWith("image/")).map(item => item.getAsFile()).filter(Boolean); if (!disabled && !unsupported && images.length) { event.preventDefault(); addFiles(images); } },
               onKeyDown: e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent?.isComposing && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); void controller.send(); } } }),
@@ -1225,7 +1263,7 @@ ${COMPOSER_CSS}`;
               h("span", { style: { flex: "1 1 auto" } }),
               h("span", { className: "sa-model-slot" }, h(ComposerMenu, { s, modelId, model, thinkingValue, running, disabled: s.busy || deleted(s) || !s.models.some(item => item.selectable !== false) })),
               h(Tooltip, { label: "发送", shortcutKeys: ["Enter"], portal: true },
-                    h("button", { className: "sa-send", type: "submit", "aria-label": "发送", disabled: deleted(s) || s.busy || !s.ready || blocked || (!s.draft.trim() && !retained) || (!s.selected && !s.modelId) || (s.delivery === "next_turn" && (s.selectedSkillIds || []).length > 0) },
+                    h("button", { className: "sa-send", type: "submit", "aria-label": "发送", disabled: deleted(s) || s.busy || s.goalBusy || !s.ready || blocked || (!s.draft.trim() && !retained) || (!s.selected && !s.modelId) || (s.delivery === "next_turn" && (s.selectedSkillIds || []).length > 0) },
                       h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "#ffffff", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
                         h("path", { d: "M8 12.5v-9M4.2 7.2L8 3.5l3.8 3.7" })))),
               running && h(Tooltip, { label: "停止", portal: true }, h("button", { className: "sa-send sa-send-stop", type: "button", "aria-label": "停止", disabled: deleted(s), onClick: () => void controller.stop() }, h("span", { style: { background: "#ffffff", width: 11, height: 11, borderRadius: 2 } }))))),
@@ -1373,6 +1411,7 @@ ${COMPOSER_CSS}`;
                 title: current ? title(s, current) : s.selected.conversationId, threadTitle: current ? title(s, current) : s.selected.threadId,
                 messages: s.messages, initialFocus: traceFocus, controller,
                 onOpenConversation: conversationId => void controller.selectThread(s.selected.threadId, conversationId) }))),
+            !tracing && s.goal && h("div", { className: "sa-message-list", style: { flex: "none", paddingBottom: 0 } }, h(GoalCard, { key: s.goal.goalId, s })),
             hero && h("div", { className: "sa-hero" }, fish && h("svg", { className: "sa-hero-logo", viewBox: `0 0 ${fish.width} ${fish.height}`, "aria-hidden": true }, h("path", { d: primitives.FISH_LOGO_PATH, fill: "currentColor" })),
               h("span", null, "探索未至之境"), h("span", { className: "sa-badge" }, "Super Agent")),
             !hero && !tracing && (s.executions || []).filter(item => item.status === "unknown").map(execution => h("div", { className: "sa-message-list", key: `execution:${s.targetId}:${execution.executionId}`, style: { flex: "none", paddingBottom: 0 } }, h(Boundary || React.Fragment, null, h(ExecutionVerification, { execution })))),
@@ -1407,7 +1446,7 @@ ${COMPOSER_CSS}`;
         componentDidCatch(error, info) { console.error("[super-agent] isolated view failure", error, info?.componentStack); }
         render() { return this.state.error ? h("div", { className: "sa-error", role: "alert" }, `局部界面读取失败：${this.state.error.message}`, h("button", { type: "button", onClick: () => { this.setState({ error: null }); void controller.refresh(); } }, "重试")) : this.props.children; }
       };
-      return { Space: Boundary ? props => h(Boundary, { key: "space" }, h(Space, props)) : Space, DirectorySection, DiffPanel, groupChatRuns, latestModelAttempts, metricsFromTrace };
+      return { GoalCard, Space: Boundary ? props => h(Boundary, { key: "space" }, h(Space, props)) : Space, DirectorySection, DiffPanel, groupChatRuns, latestModelAttempts, metricsFromTrace };
     }
     return { createSpaceView, CSS, diffLayout, diffSections, codeTokens, attachmentRangeLabel, currentAttachmentState, compactionStatusLabel, skillCatalogRowKey, skillChoiceState };
   },

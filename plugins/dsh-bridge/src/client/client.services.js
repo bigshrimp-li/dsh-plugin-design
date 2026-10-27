@@ -390,6 +390,12 @@ window.__ModuleLoader__.load({
        * Only actions with a real Core operation are listed — see the note above.
        */
       const OPERATIONS = {
+        ...Object.fromEntries(["create", "update", "steer", "pause", "resume", "cancel", "get", "status", "list"].map(method => [`goal.${method}`, payload => {
+          const action = `goal.${method}`;
+          if (["create", "update", "steer", "pause", "resume", "cancel"].includes(method)) requireField(payload, "requestId");
+          requireField(payload, ["create", "list"].includes(method) ? "conversationId" : "goalId");
+          return [action, { ...payload }];
+        }])),
         "run.stop": (payload) => [
           "thread.stop",
           {

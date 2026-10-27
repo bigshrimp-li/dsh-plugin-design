@@ -1,6 +1,6 @@
 {
   "name": "@super-agent/dsh-bridge",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Independent Super Agent workspace for DeepSeek Harness.",
@@ -53,6 +53,7 @@
     "test": "npm run build && vitest run",
     "test:unit": "vitest run",
     "test:core": "node scripts/test-core.mjs",
+    "test:goal-host-core": "npm run build && node scripts/test-goal-host-core.mjs",
     "test:host": "npm run build && node scripts/test-host.mjs"
   },
   "devDependencies": {

@@ -27,6 +27,7 @@ import { createObservationService } from "./observation-service.js";
 import { createLocalArtifactService } from "./local-artifacts.js";
 import { createFileDecisionActions } from "./file-decisions-service.js";
 import { createLocalUploadService } from "./local-uploads.js";
+import { createGoalActions } from "./goal-service.js";
 export const CORE_ROUTE_PREFIX = "/super-agent";
 
 /**
@@ -60,6 +61,7 @@ const COMMANDS = new Set([
   "conversation.discardPending",
   "conversation.compact",
   "input.submit",
+  "goal.create", "goal.update", "goal.steer", "goal.pause", "goal.resume", "goal.cancel",
   "wait.answer",
   "wait.resolve",
   "wait.provideFile",
@@ -240,6 +242,7 @@ export function createCoreService({ client, settingsClient, options, now = () =>
    * and asserted in one place.
    */
   const operations = {
+    ...createGoalActions({ client, attempt, error: (code, message) => new CoreServiceError(code, message) }),
     ...createFileDecisionActions({ client, attempt }),
     "files.capabilities": () => attempt(() => client.files.capabilities()),
     "files.environment": payload => attempt(() => client.files.environment({ ...(payload.snapshotId ? { snapshotId: payload.snapshotId } : {}), ...(payload.runId ? { runId: payload.runId } : {}), ...(payload.presetId ? { presetId: payload.presetId } : {}) })),
