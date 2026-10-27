@@ -331,6 +331,8 @@ export type ThreadQueuedInputRef = {
 };
 
 export type ThreadView = {
+  /** Goal phases remain visible when no work Run is currently active. */
+  readonly activeGoals?: readonly { readonly goalId: string; readonly conversationId: string; readonly status: import("./goals.js").GoalStatus; readonly phase: import("./goals.js").GoalPhase }[];
   readonly deletedAt?: string | null;
   readonly recoverUntil?: string | null;
   readonly recoveryExpired?: boolean;
@@ -747,6 +749,8 @@ export type MessagePage = {
 /* ------------------------------------------------------------------ runs and turns */
 
 export type RunView = {
+  readonly goalId?: string;
+  readonly goalIteration?: number;
   readonly permissionPolicy?: { readonly mode: PermissionMode; readonly source: "service_default" | "conversation_override" };
   readonly runId: string;
   readonly threadId: string;

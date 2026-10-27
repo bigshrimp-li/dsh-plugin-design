@@ -8,6 +8,7 @@
 import type { JsonObject } from "./json.js";
 
 export const OBSERVATION_FACT_TYPES = [
+  "goal",
   "thread",
   "conversation",
   "run",
@@ -67,6 +68,8 @@ export function isObservationTraceId(value: string): value is ObservationTraceId
 }
 
 export type ObservationFactBase = {
+  readonly goalId?: string | null;
+  readonly goalIteration?: number | null;
   readonly factId: string;
   readonly sourceKind: ObservationSourceKind;
   readonly sourceRef: string;
@@ -152,7 +155,7 @@ export type ObservationUsage = {
 export type ModelAttemptObservationFact = ObservationFactBase & {
   readonly type: "model_attempt";
   readonly payload: {
-    readonly purpose?: "agent" | "compaction" | "unknown";
+    readonly purpose?: "agent" | "compaction" | "evaluate" | "verify" | "unknown";
     readonly compactionId?: string | null;
     readonly status: "requested" | "started" | "complete" | "failed" | "cancelled" | "unknown";
     readonly providerId: string | null;
@@ -267,7 +270,20 @@ export type ReportObservationFact = ObservationFactBase & {
   };
 };
 
+export type GoalObservationFact = ObservationFactBase & {
+  readonly type: "goal";
+  readonly payload: {
+    readonly goalId: string; readonly status: string | null; readonly phase: string | null;
+    readonly objective: string | null; readonly reason: string | null; readonly revision: number | null;
+    readonly iteration: number | null; readonly settledTokens: number | null;
+    readonly reservedTokens: number | null; readonly uncertainTokens: number | null;
+    readonly totalTokens: number | null;
+    readonly estimatedTokens?: number | null;
+  };
+};
+
 export type ObservationFact =
+  | GoalObservationFact
   | ThreadObservationFact
   | ConversationObservationFact
   | RunObservationFact
@@ -481,7 +497,7 @@ export type ObservationUsageQuery = {
 };
 
 export type ObservationUsageBucket = {
-  readonly purpose?: "agent" | "compaction" | "unknown";
+  readonly purpose?: "agent" | "compaction" | "evaluate" | "verify" | "unknown";
   readonly runId: string | null;
   readonly turnId: string | null;
   readonly providerId: string | null;
@@ -506,7 +522,7 @@ export type ObservationUsageResponse = {
 };
 
 export type ObservationGraphNode = {
-  readonly kind: "conversation" | "run";
+  readonly kind: "goal" | "conversation" | "run";
   readonly id: string;
   readonly threadId: string;
   readonly conversationId: string | null;
@@ -517,7 +533,7 @@ export type ObservationGraphNode = {
 };
 
 export type ObservationGraphEdge = {
-  readonly kind: "parent_run" | "origin_run" | "delegation" | "report_delivery" | "fork";
+  readonly kind: "goal_iteration" | "parent_run" | "origin_run" | "delegation" | "report_delivery" | "fork";
   readonly fromId: string;
   readonly toId: string;
   readonly factId: string;

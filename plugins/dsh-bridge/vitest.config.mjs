@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const local = value => fileURLToPath(new URL(value, import.meta.url));
-const coreTests = ['test/host/local-artifacts-runtime.test.mjs', 'test/host/local-uploads.test.mjs'];
+const coreTests = ['test/host/local-artifacts-runtime.test.mjs', 'test/host/local-uploads.test.mjs', 'test/host/goal-host-core.test.mjs'];
 const coreRoot = process.env.SUPER_AGENT_SOURCE_ROOT;
 const aliases = {
   '@super-agent/client': local('./upstream/client/src/index.ts'),

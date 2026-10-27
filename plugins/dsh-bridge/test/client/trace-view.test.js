@@ -98,6 +98,15 @@ const page = facts => ({
 });
 
 describe("Conversation Trace page", () => {
+  it("labels a goal relationship without turning its identity into a Run target", async () => {
+    const graph = async () => ({ nodes: [{ kind: "goal", id: "goal-a", conversationId: "conversation-1" }, { kind: "run", id: "run-a", runId: "run-a", conversationId: "conversation-1" }], edges: [{ kind: "goal_iteration", fromId: "run-a", toId: "goal-a" }] });
+    const view = harness({ read: async () => page([]), graph, props: { conversationId: "conversation-1", threadId: "thread-1" } });
+    view.draw(); view.flushEffects(); await Promise.resolve(); await Promise.resolve();
+    const tree = view.draw();
+    expect(text(tree)).toContain("目标推进");
+    expect(text(tree)).toContain("目标 goal-a");
+    expect(allNodes(tree).some(node => node.type === "button" && text(node).includes("goal-a"))).toBe(false);
+  });
   it("locates a fact, links only final messages to it, and exposes a typed Conversation relation", async () => {
     const fact = {
       factId: "tool-fact", type: "tool_invocation", conversationId: "conversation-1",

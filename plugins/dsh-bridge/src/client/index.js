@@ -1,5 +1,5 @@
 /** Independent Super Agent root panel. Harness owns its native Sessions and composer.
- * Client bundle revision: composer-attachments-skills-20261024-16. Bump with chunk changes
+ * Client bundle revision: goals-v1-20261027. Bump with chunk changes
  * when deploying through a Harness host that caches package resources by entry.
  */
 window.__ModuleLoader__.load({

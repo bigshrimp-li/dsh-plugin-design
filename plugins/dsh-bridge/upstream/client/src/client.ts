@@ -63,6 +63,7 @@ import { createAttachmentClient, type AttachmentClient } from "./attachments.js"
 import { createSkillInstallationClient, type SkillInstallationClient } from "./skill-installations.js";
 import { createWorkspaceFileClient, type WorkspaceFileClient } from "./workspace-files.js";
 import { createManagedWorkspaceClient, type ManagedWorkspaceClient } from "./managed-workspaces.js";
+import { createGoalClient, type GoalClient } from "./goals.js";
 
 import { CoreClientError, clientErrorFromEnvelope, parseErrorEnvelope } from "./errors.js";
 import { createSubscription, type SubscriptionOptions } from "./subscription.js";
@@ -115,6 +116,7 @@ export type ListWaitsOptions = PageOptions & {
 };
 
 export interface CoreClient {
+  readonly goals: GoalClient;
   readonly attachments: AttachmentClient;
   readonly skillInstallations: SkillInstallationClient;
   readonly managedWorkspaces: ManagedWorkspaceClient;
@@ -221,6 +223,7 @@ export function createClient(options: ClientOptions): CoreClient {
 }
 
 class Client implements CoreClient {
+  readonly goals: GoalClient;
   readonly attachments: AttachmentClient;
   readonly skillInstallations: SkillInstallationClient;
   readonly managedWorkspaces: ManagedWorkspaceClient;
@@ -253,6 +256,8 @@ class Client implements CoreClient {
     this.caller = options.caller;
     this.#heartbeatIntervalMs = options.heartbeatIntervalMs;
     this.#requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    this.goals = createGoalClient((method, path, body) => method === "GET"
+      ? this.#query(path) : this.#command({ method, path, requestId: String(body?.["requestId"] ?? ""), body: body ?? {} }));
     this.attachments = createAttachmentClient((method, path, body) => method === "GET"
       ? this.#query(path) : this.#command({ method, path, requestId: String(body?.["requestId"] ?? ""), body: body ?? {} }));
     this.skillInstallations = createSkillInstallationClient((method, path, body) => method === "GET"

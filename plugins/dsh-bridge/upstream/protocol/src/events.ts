@@ -45,7 +45,19 @@ export type ServerEventType = (typeof SERVER_EVENT_TYPES)[number];
  * linked to a native entry has the first and not the second, and a client that
  * treated them as one would show a message as delivered before there was one.
  */
+export const GOAL_EVENT_TYPES = [
+  "goal.created",
+  "goal.status_changed",
+  "goal.iteration_started",
+  "goal.progress_updated",
+  "goal.budget_updated",
+  "goal.assessment_recorded",
+  "goal.completed",
+] as const;
+export type GoalEventType = (typeof GOAL_EVENT_TYPES)[number];
+
 export const THREAD_EVENT_TYPES = [
+  ...GOAL_EVENT_TYPES,
   "thread.created",
   "thread.status_changed",
   "input.accepted",

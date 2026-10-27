@@ -21,3 +21,4 @@ export * from "./workspace-files.js";
 export * from "./attachments.js";
 export * from "./skill-installations.js";
 export * from "./composer.js";
+export * from "./goals.js";

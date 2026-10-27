@@ -468,7 +468,7 @@ window.__ModuleLoader__.load({
             relationRows.push({ edge, target: fromCurrent ? to : from, direction: fromCurrent ? "outgoing" : "incoming" });
           }
         }
-        const relationLabel = kind => ({ fork: "对话分支", parent_run: "父子任务", origin_run: "原输入独立重试", delegation: "子 Agent 委派", report_delivery: "报告交付" })[kind] || kind;
+        const relationLabel = kind => ({ goal_iteration: "目标推进", fork: "对话分支", parent_run: "父子任务", origin_run: "原输入独立重试", delegation: "子 Agent 委派", report_delivery: "报告交付" })[kind] || kind;
         const openRelation = row => {
           const target = row.target;
           if (!target) return;
@@ -584,7 +584,8 @@ window.__ModuleLoader__.load({
             ...relationRows.map(row => h("div", { className: "sa-trace-relation", key: `${row.edge.kind}:${row.edge.factId}:${row.edge.fromId}:${row.edge.toId}` },
               h("span", null, relationLabel(row.edge.kind)),
               h("code", null, `${row.edge.fromId} → ${row.edge.toId}`),
-              row.target && h("button", { type: "button", className: "sa-chip", onClick: () => openRelation(row) },
+              row.target?.kind === "goal" && h("span", { className: "sa-muted" }, `目标 ${row.target.id}`),
+              row.target && row.target.kind !== "goal" && h("button", { type: "button", className: "sa-chip", onClick: () => openRelation(row) },
                 row.target.conversationId && row.target.conversationId !== conversationId ? `打开 Conversation ${row.target.conversationId}` : `定位 ${row.target.runId || row.target.id}`)))),
           empty && h("p", { className: "sa-trace-empty", role: state.error ? "alert" : "status" }, empty),
           h("div", { className: "sa-trace-grid" },

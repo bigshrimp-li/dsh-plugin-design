@@ -4,6 +4,58 @@ window.__ModuleLoader__.load({
   factory() {
     const SPACE_ID = "@super-agent/dsh-bridge/space";
     const STORAGE_KEY = "super-agent.space.v1";
+    const GOAL_TERMINAL = new Set(["completed", "cancelled", "failed"]);
+    function positiveGoalNumber(value, label = "预算") {
+      if (!/^[1-9]\d*$/.test(String(value)) || !Number.isSafeInteger(Number(value))) throw new Error(`${label}必须是安全范围内的正整数`);
+      return Number(value);
+    }
+    /** Parse user-authored composer text only. Quoted arguments and -- preserve reserved words. */
+    function parseGoalCommand(text) {
+      if (/^\s*\/\/goal(?:\s|$)/i.test(text)) return { kind: "literal", text: text.replace(/\/\/(goal)/i, "/$1") };
+      const match = /^\s*\/goal(?:\s+([\s\S]*))?$/i.exec(text);
+      if (!match) return null;
+      const body = (match[1] || "").trim(), tokens = [];
+      let value = "", quote = null, start = 0, active = false;
+      for (let i = 0; i <= body.length; i++) {
+        const ch = body[i];
+        if (quote) {
+          if (ch === undefined) throw new Error("goal 命令的引号未闭合");
+          if (ch === quote) quote = null;
+          else if (ch === "\\" && [quote, "\\"].includes(body[i + 1])) value += body[++i];
+          else value += ch;
+        } else if (ch === "'" || ch === '"') { if (!active) start = i; active = true; quote = ch; }
+        else if (ch === undefined || /\s/.test(ch)) { if (active) tokens.push({ value, start, end: i }); active = false; value = ""; }
+        else { if (!active) start = i; active = true; value += ch; }
+      }
+      if (!tokens.length) return { kind: "goal", operation: "status" };
+      const first = tokens[0].value.toLowerCase();
+      if (["status", "pause", "resume", "cancel"].includes(first)) {
+        if (tokens.length !== 1) throw new Error(`/goal ${first} 不接受额外参数；目标以保留词开头时使用 /goal --budget 数量 -- 目标正文`);
+        return { kind: "goal", operation: first };
+      }
+      if (first === "update") {
+        const objective = tokens.slice(1).map(token => token.value).join(" ").trim();
+        if (!objective) throw new Error("请提供新的目标说明");
+        return { kind: "goal", operation: "update", objective };
+      }
+      if (first === "budget") {
+        if (tokens.length !== 2 || !tokens[1].value.startsWith("+")) throw new Error("使用 /goal budget +数量 提高累计预算");
+        return { kind: "goal", operation: "budget", increase: positiveGoalNumber(tokens[1].value.slice(1)) };
+      }
+      let totalTokens, literal = false; const objective = [];
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i].value;
+        if (!literal && token === "--") { literal = true; continue; }
+        if (!literal && token === "--budget") {
+          if (totalTokens !== undefined) throw new Error("goal 预算只能指定一次");
+          totalTokens = positiveGoalNumber(tokens[++i]?.value);
+        } else if (!literal && token.startsWith("--")) throw new Error(`未知 goal 参数：${token}`);
+        else objective.push(token);
+      }
+      if (!objective.join(" ").trim()) throw new Error("请提供目标正文");
+      if (!totalTokens) throw new Error("持续目标需要有限预算，请添加 --budget 数量");
+      return { kind: "goal", operation: "create", objective: objective.join(" "), limits: { totalTokens } };
+    }
     const linesOf = value => {
       if (value.length === 0) return [];
       const lines = value.replace(/\r\n/g, "\n").split("\n");
@@ -77,6 +129,7 @@ window.__ModuleLoader__.load({
         attachments: restoreAttachments(saved.attachments), attachmentRemovals: saved.attachmentRemovals || [], attachmentDraftId: saved.attachmentDraftId || null,
         attachmentCapabilities: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "",
         skillCatalog: [], selectedSkills: Array.isArray(saved.selectedSkills) ? saved.selectedSkills : [], skillCatalogError: "", attachmentNotice: "",
+        goalsSupported: false, goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0,
         busy: false, error: "", historyError: "", ready: false, loaded: false, inspector: false, workspaceForm: false,
         coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: saved.workspaceRequest || null,
         thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, fileSelection: null, delivery: "new_run", targetRunId: null,
@@ -88,7 +141,9 @@ window.__ModuleLoader__.load({
         attempt && typeof attempt === "object" && typeof attempt.text === "string" && typeof attempt.signature === "string" &&
         typeof attempt.requestId === "string" && attempt.payload && typeof attempt.payload === "object"));
       const listeners = new Set(), metadata = new Map(), drafts = new Map(Object.entries(saved.drafts || {})), pendingInputs = restorePendingInputs(saved.pendingInputs), pendingWaitActions = new Map(), materialDrafts = new Map(Object.entries(saved.materialDrafts || {}));
-      let disposed = false, started = false, epoch = 0, timer, source, refreshing = null;
+      const restoreGoalOperations = value => new Map(Object.entries(value || {}).filter(([, record]) => record && /^goal\.(update|steer|pause|resume|cancel)$/.test(record.action) && record.payload && typeof record.payload.requestId === "string" && typeof record.payload.goalId === "string"));
+      const pendingGoalOperations = restoreGoalOperations(saved.pendingGoalOperations);
+      let disposed = false, started = false, epoch = 0, timer, source, refreshing = null, refreshAfterCurrent = false;
       let createAttempt = saved.createAttempt && typeof saved.createAttempt.id === "string" && typeof saved.createAttempt.signature === "string" ? saved.createAttempt : null;
       const runLookups = new Map(), liveCursors = new Map(), terminalRunIds = new Set(), pendingRedos = new Map(), pendingMerges = new Map(), pendingRollbacks = new Map(), runDiffCache = new Map();
       let materialUpload = null;
@@ -98,16 +153,19 @@ window.__ModuleLoader__.load({
       const serializableComposer = record => ({ ...record, attachments: (record.attachments || []).map(({ thumbnailUrl, ...item }) => item) });
       const pendingThreadDeletions = new Map();
       let workspaceReadVersion = 0, workspaceBrowseAbort = null;
-      const persist = () => {
+      const persist = (strict = false) => {
         const cache = { directories: state.directories, titles: state.titles, removedRoots: state.removedRoots,
           pinnedThreadIds: state.pinnedThreadIds, archivedThreadIds: state.archivedThreadIds, manualThreadOrder: state.manualThreadOrder,
           viewOptions: state.viewOptions, selected: state.selected, root: state.root, modelId: state.modelId, modelSource: state.modelSource, thinkingLevel: state.thinkingLevel, permissionMode: state.permissionMode, targetId: state.targetId, workspaceRequest: state.workspaceRequest, diffSelection: state.diffSelection, diffWidth: state.diffWidth,
           draft: state.draft, materials: state.materials, selectedSkillIds: state.selectedSkillIds, selectedSkills: state.selectedSkills,
           attachments: serializableComposer(composerRecord()).attachments, attachmentRemovals: state.attachmentRemovals, attachmentDraftId: state.attachmentDraftId,
           composerDrafts: Object.fromEntries([...composerDrafts, [composerKey(), composerRecord()]].map(([key, value]) => [key, serializableComposer(value)])),
-          pendingInputs: Object.fromEntries(pendingInputs), createAttempt,
+          pendingInputs: Object.fromEntries(pendingInputs), pendingGoalOperations: Object.fromEntries(pendingGoalOperations), createAttempt,
           materialDrafts: { ...Object.fromEntries(materialDrafts), [state.selected?.conversationId || "new"]: { materials: state.materials, selectedSkillIds: state.selectedSkillIds } }, drafts: { ...Object.fromEntries(drafts), [state.selected?.conversationId || "new"]: state.draft } };
-        try { const value = JSON.stringify(cache); storage?.setItem(STORAGE_KEY, value); storage?.setItem(`${STORAGE_KEY}.${state.targetId || "uds"}`, value); } catch {}
+        try {
+          if (strict && typeof storage?.setItem !== "function") throw new Error("浏览器未提供操作恢复存储");
+          const value = JSON.stringify(cache); storage?.setItem(STORAGE_KEY, value); storage?.setItem(`${STORAGE_KEY}.${state.targetId || "uds"}`, value);
+        } catch (error) { if (strict) throw new Error(`无法保存原目标操作，尚未发送：${error.message}`); }
       };
       const set = patch => { if (disposed) return;
         if (["draft", "materials", "attachments", "attachmentRemovals", "selectedSkillIds", "selectedSkills", "delivery", "targetRunId", "modelId", "thinkingLevel", "permissionMode", "fileSelection", "root"].some(key => Object.hasOwn(patch, key) && JSON.stringify(patch[key]) !== JSON.stringify(state[key])) && !Object.hasOwn(patch, "inputPreview")) patch = { ...patch, inputPreview: null, previewError: "" };
@@ -308,13 +366,15 @@ window.__ModuleLoader__.load({
         set({ previewLoading: true, previewError: "" });
         try {
           const preparedAttachments = state.attachments.filter(item => item.ref).map(item => item.ref), materials = [...state.materials, ...state.attachments.filter(item => item.material).map(item => item.material)];
-          const modelId = state.delivery === "next_turn" ? state.runDetails.find(item => item.runId === state.targetRunId)?.modelId : state.conversation?.pendingConfig?.config?.modelId || state.conversation?.config?.modelId || state.modelId;
+          const parsedCommand = parseGoalCommand(state.draft), previewDelivery = parsedCommand?.operation === "create" ? "new_run" : state.delivery;
+          const previewText = parsedCommand?.objective || parsedCommand?.text || state.draft;
+          const modelId = previewDelivery === "next_turn" ? state.runDetails.find(item => item.runId === state.targetRunId)?.modelId : state.conversation?.pendingConfig?.config?.modelId || state.conversation?.config?.modelId || state.modelId;
           let result;
           if (capabilities.inputPreview === true || capabilities.preview === true) {
             if (materials.length) throw new Error("旧版材料与新附件预检不能混合，请重新附加原文件后预览");
             const refs = await validateSelectedSkills(capabilities);
             const draftId = await ensureAttachmentDraft(originOfComposer(), requestId("attachment.preview"));
-            result = await call("input.preview", { targetId, requestId: requestId("input.preview"), draftId, ...(state.selected?.conversationId ? { conversationId: state.selected.conversationId } : { thinkingLevel: state.thinkingLevel, ...(state.permissionMode ? { permissionMode: state.permissionMode } : {}) }), modelId, text: state.draft, attachments: preparedAttachments, ...(refs.length === state.selectedSkillIds.length && refs.length ? { selectedSkillRefs: refs } : { selectedSkillIds: state.selectedSkillIds }), delivery: state.delivery, ...(state.targetRunId ? { targetRunId: state.targetRunId } : {}) });
+            result = await call("input.preview", { targetId, requestId: requestId("input.preview"), draftId, ...(state.selected?.conversationId ? { conversationId: state.selected.conversationId } : { thinkingLevel: state.thinkingLevel, ...(state.permissionMode ? { permissionMode: state.permissionMode } : {}) }), modelId, text: previewText, attachments: preparedAttachments, ...(refs.length === state.selectedSkillIds.length && refs.length ? { selectedSkillRefs: refs } : { selectedSkillIds: state.selectedSkillIds }), delivery: previewDelivery, ...(previewDelivery === "next_turn" && state.targetRunId ? { targetRunId: state.targetRunId } : {}) });
             if (!result?.planId || typeof result.signature !== "string") throw new Error("服务未返回有效的上下文预检结果，请重试");
           } else {
             if (preparedAttachments.length) throw new Error("当前服务未提供新附件预检，不能忽略附件继续发送");
@@ -338,6 +398,24 @@ window.__ModuleLoader__.load({
         } while (cursor);
         return items;
       };
+      const requireGoalSupport = async () => {
+        const targetId = state.targetId, at = epoch;
+        const info = await call("server.info", { targetId });
+        if (disposed || at !== epoch || targetId !== state.targetId) throw new Error("连接或对话已切换，请重新确认目标操作");
+        const supported = info?.runtimeFeatures?.goalsV1 === true;
+        set({ goalsSupported: supported });
+        if (!supported) throw Object.assign(new Error("当前 Core 不支持持久目标，请连接支持 goalsV1 的 Go runtime"), { code: "NOT_SUPPORTED" });
+      };
+      const readGoal = async selected => {
+        if (!selected || !state.goalsSupported) return null;
+        const targetId = state.targetId;
+        const goals = await pageAll("goal.list", { conversationId: selected.conversationId, targetId });
+        const latest = goals.find(goal => !GOAL_TERMINAL.has(goal.status)) || goals[0];
+        if (!latest?.goalId) return null;
+        const goal = await call("goal.get", { goalId: latest.goalId, targetId });
+        if (goal?.conversationId !== selected.conversationId || !Number.isSafeInteger(goal.revision)) throw new Error("目标快照的身份或修订无效");
+        return goal;
+      };
       const syncSelection = async () => {
         const at = epoch, selected = state.selected;
         const query = selected ? `?${new URLSearchParams({ threadId: selected.threadId, conversationId: selected.conversationId })}` : "";
@@ -351,6 +429,10 @@ window.__ModuleLoader__.load({
         if (view.connection !== "ready") {
           set({ ready: false, loaded: true, error: view.core?.error?.message || "Core 未连接，请检查本机服务后刷新" }); return;
         }
+        let goal = null, goalError = "";
+        try { goal = await readGoal(selected); } catch (error) { goalError = error.message; }
+        if (disposed || at !== epoch) return;
+        if (goal && state.goal?.goalId === goal.goalId && state.goal.revision > goal.revision) goal = state.goal;
         let messages = state.messages, thread = state.thread, conversation = state.conversation, runDetails = state.runDetails || [], waits = state.waits || [], executions = state.executions || [], contextView = state.contextView, contextError = "", historyError = "", historyCaughtUp = true, historySucceeded = false, branches = state.branches || [], branchError = "";
         if (selected) {
           const readWaits = async () => {
@@ -396,7 +478,7 @@ window.__ModuleLoader__.load({
         if (disposed || at !== epoch) return;
         const committed = new Set(messages.map(m => m.generationKey).filter(Boolean));
         const finalRuns = new Set(messages.filter(message => message.isFinal === true).map(message => message.runId));
-        set({ ready: true, loaded: true, messages, thread, conversation, runDetails, waits, executions, contextView, contextError, historyError, branches, branchError,
+        set({ ready: true, loaded: true, goal, goalError, messages, thread, conversation, runDetails, waits, executions, contextView, contextError, historyError, branches, branchError,
           live: state.live.filter(m => !committed.has(m.generationKey) && !(terminalRunIds.has(m.runId) && historySucceeded && (historyCaughtUp || finalRuns.has(m.runId)))) });
       };
       const refresh = async () => {
@@ -404,8 +486,9 @@ window.__ModuleLoader__.load({
         refreshing = (async () => {
           const at = epoch;
           try {
-            const [catalog, listed, settings] = await Promise.allSettled([call("models.list"), pageAll("thread.list", { deleted: "include" }), call("settings.get")]);
+            const [catalog, listed, settings, info] = await Promise.allSettled([call("models.list"), pageAll("thread.list", { deleted: "include" }), call("settings.get"), call("server.info")]);
             if (disposed || at !== epoch) return;
+            set({ goalsSupported: info.status === "fulfilled" ? info.value?.runtimeFeatures?.goalsV1 === true : state.goalsSupported });
             const modelsResult = catalog.status === "fulfilled" ? catalog.value : state.models;
             const models = Array.isArray(modelsResult) ? modelsResult.filter(m => m && typeof m.id === "string") : Array.isArray(modelsResult?.items) ? modelsResult.items : [];
             const summaries = listed.status === "fulfilled" ? listed.value : state.threads;
@@ -440,14 +523,14 @@ window.__ModuleLoader__.load({
               modelId: state.modelSource === "service_default" ? defaultModelId : models.some(m => m.id === state.modelId && m.selectable !== false) ? state.modelId : "" });
             await syncSelection();
           } catch (error) { if (at === epoch) set({ error: error.message, ready: false, loaded: true }); }
-        })().finally(() => { refreshing = null; });
+        })().finally(() => { refreshing = null; if (refreshAfterCurrent && !disposed) { refreshAfterCurrent = false; void refresh(); } });
         return refreshing;
       };
       const rememberDraft = () => { const key = state.selected?.conversationId || "new"; drafts.set(key, state.draft); materialDrafts.set(key, { materials: state.materials, selectedSkillIds: state.selectedSkillIds }); composerDrafts.set(composerKey(), composerRecord()); };
       const selectThread = async (threadId, conversationId) => {
         rememberDraft(); epoch++; runLookups.clear(); liveCursors.clear(); terminalRunIds.clear(); runDiffCache.clear();
         const item = state.threads.find(t => t.threadId === threadId);
-        set({ busy: false, selected: { threadId, conversationId }, root: item?.conversation?.config?.cwd || "",
+        set({ busy: false, goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", selected: { threadId, conversationId }, root: item?.conversation?.config?.cwd || "",
           ...(composerDrafts.get(conversationId) || { attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkills: [] }), skillCatalog: [], inputPreview: null, previewError: "", previewLoading: false,
           draft: drafts.get(conversationId) || "", materials: materialDrafts.get(conversationId)?.materials || [], selectedSkillIds: materialDrafts.get(conversationId)?.selectedSkillIds || [], fileSelection: null, targetRunId: null, diffSelection: null, messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, historyError: "", error: "" });
         ctx.layout.selectPanel(SPACE_ID);
@@ -459,7 +542,7 @@ window.__ModuleLoader__.load({
         const nextModelId = state.defaultModelId;
         const nextModel = state.models.find(model => model.id === nextModelId);
         const thinkingLevel = nextModelId === state.modelId && (state.thinkingLevel === null || !Array.isArray(nextModel?.supportedThinkingLevels) || nextModel.supportedThinkingLevels.includes(state.thinkingLevel)) ? state.thinkingLevel : null;
-        set({ ...(composerDrafts.get(`new:${root || ""}`) || { attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkills: [] }), skillCatalog: [], inputPreview: null, previewLoading: false, previewError: "", selected: null, root, modelId: nextModelId, modelSource: "service_default", thinkingLevel, delivery: "new_run", draft: drafts.get("new") || "", materials: materialDrafts.get("new")?.materials || [], selectedSkillIds: materialDrafts.get("new")?.selectedSkillIds || [], fileSelection: null, targetRunId: null, diffSelection: null, messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, historyError: "", error: "" });
+        set({ ...(composerDrafts.get(`new:${root || ""}`) || { attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkills: [] }), skillCatalog: [], inputPreview: null, previewLoading: false, previewError: "", goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", selected: null, root, modelId: nextModelId, modelSource: "service_default", thinkingLevel, delivery: "new_run", draft: drafts.get("new") || "", materials: materialDrafts.get("new")?.materials || [], selectedSkillIds: materialDrafts.get("new")?.selectedSkillIds || [], fileSelection: null, targetRunId: null, diffSelection: null, messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, historyError: "", error: "" });
         services.viewState.set({ threadId: null, conversationId: null, mainConversationId: null, snapshot: null, run: null });
         ctx.layout.selectPanel(SPACE_ID);
       };
@@ -515,21 +598,85 @@ window.__ModuleLoader__.load({
         } throw error; }
         finally { if (!disposed && at === epoch) set({ workspaceOpening: false }); }
       };
+      const goalOperationsForSelection = () => [...pendingGoalOperations.values()].filter(record => record.payload.targetId === state.targetId && record.conversationId === state.selected?.conversationId);
+      const performGoalOperation = async record => {
+        const at = epoch, targetId = state.targetId, selected = state.selected;
+        if (record.payload.targetId !== targetId || record.conversationId !== selected?.conversationId || record.coreInstanceId && state.coreInstanceId && record.coreInstanceId !== state.coreInstanceId) throw new Error("原目标命令属于其他连接、服务实例或对话，不能在当前目标重放");
+        if (state.goalBusy) return null;
+        persist(true);
+        set({ goalBusy: true, goalError: "", goalNotice: "" });
+        try {
+          await requireGoalSupport();
+          const receipt = await call(record.action, structuredClone(record.payload));
+          pendingGoalOperations.delete(record.payload.requestId); persist();
+          if (disposed || at !== epoch) return receipt;
+          set({ goalNotice: `目标命令已接收（${receipt.state || "accepted"}）；以服务确认后的目标状态为准。` });
+          await syncSelection();
+          return receipt;
+        } catch (error) {
+          const rejected = ["INVALID_REQUEST", "NOT_SUPPORTED", "GOAL_REVISION_CONFLICT", "GOAL_STATE_CONFLICT", "GOAL_BUDGET_EXHAUSTED", "GOAL_BUDGET_UNCERTAIN", "GOAL_NOT_FOUND"].includes(error.code);
+          const canRelease = rejected && !record.uncertain;
+          if (canRelease) pendingGoalOperations.delete(record.payload.requestId);
+          else record.uncertain = true;
+          persist();
+          if (!disposed && at === epoch) set({ goalError: error.message, goalNotice: canRelease ? "服务已拒绝命令，请刷新目标后重新操作。" : "原目标命令已保留。重试会发送相同目标、修订和 requestId。" });
+          throw error;
+        } finally { if (!disposed && at === epoch) set({ goalBusy: false }); }
+      };
+      const controlGoal = async (operation, fields = {}, intent = fields) => {
+        const goal = state.goal ? structuredClone(state.goal) : null, selected = state.selected, targetId = state.targetId, coreInstanceId = state.coreInstanceId;
+        if (!goal || !selected) throw new Error("当前对话没有目标；使用 /goal 目标 --budget 数量 创建");
+        await requireGoalSupport();
+        if (coreInstanceId && state.coreInstanceId && coreInstanceId !== state.coreInstanceId) throw new Error("Core 实例已变化，请重新确认目标操作");
+        const action = `goal.${operation}`;
+        const pending = goalOperationsForSelection().find(record => record.action === action);
+        if (pending && (pending.payload.goalId !== goal.goalId || JSON.stringify(pending.intent || pending.fields) !== JSON.stringify(intent))) throw new Error("原目标命令尚未确认，请先重试原操作；不能把原命令发送给新目标或新参数");
+        const record = pending || { action, fields: structuredClone(fields), intent: structuredClone(intent), conversationId: selected.conversationId, coreInstanceId: state.coreInstanceId,
+          payload: { targetId, goalId: goal.goalId, expectedRevision: goal.revision, ...structuredClone(fields), requestId: requestId(action) } };
+        if (!pending) { pendingGoalOperations.set(record.payload.requestId, record); persist(); }
+        return performGoalOperation(record);
+      };
+      const increaseGoalBudget = async increase => {
+        const amount = positiveGoalNumber(increase), goal = state.goal;
+        const total = goal?.limits?.totalTokens;
+        if (!Number.isSafeInteger(total) || !Number.isSafeInteger(total + amount)) throw new Error("目标预算未知或增加后超出安全整数范围");
+        return controlGoal("update", { limits: { ...goal.limits, totalTokens: total + amount } }, { increase: amount });
+      };
+      const sendGoalCommand = async command => {
+        const original = state.draft, at = epoch;
+        if (command.operation === "steer" && !command.text?.trim()) throw new Error("请提供目标补充内容");
+        if (state.materials.length || state.attachments.length || state.selectedSkillIds.length || state.fileSelection) throw new Error("目标控制和补充只发送文字。请先发送或保留所选附件、Skill 和文件输入");
+        let result;
+        if (command.operation === "status") { await requireGoalSupport(); await syncSelection(); set({ goalNotice: state.goal ? "目标状态已刷新" : "当前对话没有目标；使用 /goal 目标 --budget 数量 创建" }); result = state.goal; }
+        else if (command.operation === "budget") result = await increaseGoalBudget(command.increase);
+        else if (command.operation === "update") result = await controlGoal("update", { objective: command.objective });
+        else if (command.operation === "steer") result = await controlGoal("steer", { text: command.text });
+        else result = await controlGoal(command.operation);
+        if (at === epoch && state.draft === original) set({ draft: "" });
+        return result;
+      };
       const send = async () => {
-        if (state.busy) return;
+        if (state.busy || state.goalBusy) return;
+        let goalCommand;
+        try {
+          goalCommand = parseGoalCommand(state.draft);
+          if (goalCommand?.kind === "goal" && goalCommand.operation !== "create") return await sendGoalCommand(goalCommand);
+          if (!goalCommand && state.goalInputMode === "steer") return await sendGoalCommand({ operation: "steer", text: state.draft });
+        } catch (error) { set({ goalError: error.message, error: error.message }); return null; }
         if (!state.draft.trim() && !state.materials.length && !state.attachments.length) { if (state.selectedSkillIds.length) set({ error: "请补充任务描述；仅选择 Skill 不能发送" }); return; }
         if (state.thread?.deletedAt != null) { set({ error: "会话已删除，无法恢复。请新建会话。" }); return; }
         if (state.attachments.some(item => item.status !== "ready")) { set({ error: "请先重试或移除尚未准备好的附件，正文与其他附件已保留" }); return; }
         if (state.attachmentRemovals.length) { set({ error: "附件移除结果待确认，请先查询原操作；草稿已保留" }); return; }
         if (state.attachments.some(item => item.coreInstanceId && state.coreInstanceId && item.coreInstanceId !== state.coreInstanceId)) { set({ error: "Core 实例已变化，请重新选择附件；原草稿已保留" }); return; }
-        const text = state.draft, root = state.root, modelId = state.modelId, thinkingLevel = state.thinkingLevel, fileSelection = state.fileSelection, targetId = state.targetId,
+        const text = goalCommand?.objective || goalCommand?.text || state.draft, root = state.root, modelId = state.modelId, thinkingLevel = state.thinkingLevel, fileSelection = state.fileSelection, targetId = state.targetId,
           materials = structuredClone([...(state.materials || []), ...state.attachments.filter(item => item.material).map(item => item.material)]), preparedAttachments = structuredClone(state.attachments.filter(item => item.ref).map(item => item.ref)), selectedSkillIds = [...(state.selectedSkillIds || [])];
-        const delivery = state.delivery || "new_run";
+        const delivery = goalCommand?.operation === "create" || state.goal && !GOAL_TERMINAL.has(state.goal.status) ? "new_run" : state.delivery || "new_run";
         let requiresPreview = preparedAttachments.length > 0 || state.attachmentCapabilities?.inputPreview === true && selectedSkillIds.length > 0;
         const originKey = composerKey();
         let selected = state.selected, at = epoch;
         set({ busy: true, error: "" });
         try {
+          if (goalCommand?.operation === "create") await requireGoalSupport();
           if (materials.length || preparedAttachments.length || selectedSkillIds.length) {
             const capabilities = await loadAttachmentCapabilities();
             if (capabilities.supported === false) throw new Error(capabilities.reason || "当前运行时暂不支持附件与 Skill，请切换到 TypeScript/Pi 服务");
@@ -572,16 +719,17 @@ window.__ModuleLoader__.load({
           const chosenTarget = state.targetRunId && candidates.some(run => run.runId === state.targetRunId) ? state.targetRunId : candidates.length === 1 ? candidates[0].runId : null;
           if (delivery === "next_turn" && !chosenTarget) throw new Error("当前对话有多个运行中任务，请先选择补充目标");
           const frozenSkillRefs = selectedSkillRefs();
-          const signature = JSON.stringify([text, materials, selectedSkillIds, fileSelection, delivery, chosenTarget || null, ...(preparedAttachments.length ? [preparedAttachments] : []), ...(frozenSkillRefs.length ? [frozenSkillRefs] : [])]);
+          const signature = JSON.stringify([text, materials, selectedSkillIds, fileSelection, delivery, chosenTarget || null, ...(goalCommand?.operation === "create" ? [goalCommand.limits] : []), ...(preparedAttachments.length ? [preparedAttachments] : []), ...(frozenSkillRefs.length ? [frozenSkillRefs] : [])]);
           if (attempt?.targetId !== undefined && attempt.targetId !== targetId) throw new Error("原输入回执属于其他连接目标，不能在当前目标重放");
           if (attempt && (attempt.text !== text || attempt.signature !== signature || attempt.payload?.conversationId !== selected.conversationId)) throw new Error("原输入回执尚未确认，请恢复原命令后重试；当前草稿不会被当成原命令发送");
           if (!attempt) {
             const refs = selectedSkillRefs();
-            attempt = { targetId, stage: "submit", text, signature, requestId: requestId("input.submit"), payload: { ...selected, text, ...(materials.length ? { materials } : {}), ...(preparedAttachments.length ? { preparedAttachments } : {}), ...(requiresPreview ? { previewId: plan.planId, previewSignature: plan.signature } : {}), ...(selectedSkillIds.length ? refs.length === selectedSkillIds.length ? { selectedSkillRefs: refs } : { selectedSkillIds } : {}), delivery, ...(chosenTarget ? { targetRunId: chosenTarget } : fileSelection?.branchId ? { fileBranchId: fileSelection.branchId } : fileSelection ? { fileInput: { mode: "fixed_snapshot", snapshotId: fileSelection.snapshotId } } : {}) } };
-            pendingInputs.set(key, attempt);
+            attempt = { targetId, stage: "submit", text, signature, action: goalCommand?.operation === "create" ? "goal.create" : "input.submit", requestId: requestId(goalCommand?.operation === "create" ? "goal.create" : "input.submit"), payload: { ...selected, ...(goalCommand?.operation === "create" ? { objective: text, limits: goalCommand.limits, resumePolicy: "manual_after_restart" } : { text }), ...(materials.length ? { materials } : {}), ...(preparedAttachments.length ? { preparedAttachments } : {}), ...(requiresPreview ? { previewId: plan.planId, previewSignature: plan.signature } : {}), ...(selectedSkillIds.length ? refs.length === selectedSkillIds.length ? { selectedSkillRefs: refs } : { selectedSkillIds } : {}), delivery, ...(chosenTarget ? { targetRunId: chosenTarget } : fileSelection?.branchId ? { fileBranchId: fileSelection.branchId } : fileSelection ? { fileInput: { mode: "fixed_snapshot", snapshotId: fileSelection.snapshotId } } : {}) } };
+            pendingInputs.set(key, attempt); persist(attempt.action === "goal.create");
           }
-          const receipt = await call("input.submit", { ...attempt.payload, targetId, requestId: attempt.requestId });
+          const receipt = await call(attempt.action === "goal.create" ? "goal.create" : "input.submit", { ...attempt.payload, targetId: attempt.targetId ?? targetId, requestId: attempt.requestId });
           if (disposed || at !== epoch) return;
+          if (attempt.action === "goal.create") set({ goalNotice: "目标已接收；执行与完成以服务状态为准。" });
           pendingInputs.delete(key); drafts.delete(key); drafts.delete("new"); materialDrafts.delete(key); materialDrafts.delete("new");
           composerDrafts.delete(originKey); composerDrafts.delete(key);
           for (const item of state.attachments) if (item.thumbnailUrl) globalThis.URL?.revokeObjectURL?.(item.thumbnailUrl);
@@ -625,15 +773,23 @@ window.__ModuleLoader__.load({
         if (existing < 0) live.push(segment); else live[existing] = segment;
         set({ live });
       };
+      const receiveEvent = event => {
+        if (event?.type?.startsWith("goal.") && Number.isSafeInteger(event.seq)) {
+          if (event.seq <= state.goalEventSeq) return;
+          set({ goalEventSeq: event.seq });
+        }
+        if (refreshing) refreshAfterCurrent = true;
+        void refresh();
+      };
       const connectEvents = () => {
         if (disposed || source) return;
         if (transport.subscribe) {
-          const stop = transport.subscribe({ onEvent: () => void refresh(), onLive: frame => void receiveLive(frame).catch(() => {}), onError: () => { set({ live: [] }); void refresh(); } });
+          const stop = transport.subscribe({ onEvent: receiveEvent, onLive: frame => void receiveLive(frame).catch(() => {}), onError: () => { set({ live: [] }); void refresh(); } });
           source = { close: stop }; return;
         }
         if (!EventSourceImpl) return;
         source = new EventSourceImpl("/super-agent/events");
-        source.addEventListener("message", () => void refresh());
+        source.addEventListener("message", event => { try { receiveEvent(JSON.parse(event.data)); } catch { receiveEvent(null); } });
         source.addEventListener("live", event => { try { void receiveLive(JSON.parse(event.data)).catch(() => {}); } catch {} });
         source.addEventListener("error", () => { set({ live: [] }); void refresh(); });
       };
@@ -641,7 +797,12 @@ window.__ModuleLoader__.load({
         getSnapshot: () => state, subscribe: fn => { listeners.add(fn); return () => listeners.delete(fn); },
         getThread: threadId => call("thread.get", { threadId }),
         refresh, selectThread, newConversation, registerWorkspace, browseManagedWorkspace, openManagedWorkspace, send, receiveLive,
-        loadAttachmentCapabilities, previewInput,
+        loadAttachmentCapabilities, previewInput, receiveEvent,
+        controlGoal, increaseGoalBudget,
+        updateGoalObjective: objective => { if (!objective?.trim()) throw new Error("请提供新的目标说明"); return controlGoal("update", { objective: objective.trim() }); },
+        retryGoalOperation: id => { const record = pendingGoalOperations.get(id); if (!record) throw new Error("原目标命令不存在"); return performGoalOperation(record); },
+        pendingGoalOperations: goalOperationsForSelection,
+        setGoalInputMode: mode => { if (!["message", "steer"].includes(mode)) throw new Error("输入用途无效"); set({ goalInputMode: mode, delivery: "new_run" }); },
         async addMessageFiles(files) {
           const selected = Array.from(files || []); if (!selected.length) return [];
           const origin = originOfComposer(), capabilities = await loadAttachmentCapabilities();
@@ -1264,8 +1425,9 @@ window.__ModuleLoader__.load({
           composerDrafts.clear(); for (const [key, value] of Object.entries(cached.composerDrafts || {})) composerDrafts.set(key, restoreComposer(value));
           drafts.clear(); for (const [key, value] of Object.entries(cached.drafts || {})) if (typeof value === "string") drafts.set(key, value);
           pendingInputs.clear(); for (const [key, value] of restorePendingInputs(cached.pendingInputs)) pendingInputs.set(key, value);
+          pendingGoalOperations.clear(); for (const [key, value] of restoreGoalOperations(cached.pendingGoalOperations)) pendingGoalOperations.set(key, value);
           createAttempt = cached.createAttempt && typeof cached.createAttempt.id === "string" && typeof cached.createAttempt.signature === "string" ? cached.createAttempt : null;
-          set({ attachments: restoreAttachments(cached.attachments), attachmentRemovals: cached.attachmentRemovals || [], attachmentDraftId: cached.attachmentDraftId || null, selectedSkills: cached.selectedSkills || [], skillCatalog: [], skillCatalogError: "", attachmentCapabilities: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "", attachmentNotice: "", busy: false, inspector: false, targetId, workspaceForm: false, coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: cached.workspaceRequest || null, selected: cached.selected || null, directories: Array.isArray(cached.directories) ? cached.directories : [], removedRoots: cached.removedRoots || [], titles: cached.titles || {}, pinnedThreadIds: cached.pinnedThreadIds || [], archivedThreadIds: cached.archivedThreadIds || [], models: [], threads: [], messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, root: cached.root || "", modelId: cached.modelId || "", modelSource: cached.modelSource || (cached.modelId ? "conversation_override" : "service_default"), thinkingLevel: typeof cached.thinkingLevel === "string" ? cached.thinkingLevel : null, defaultModelId: "", permissionMode: cached.permissionMode || null, delivery: "new_run", targetRunId: null, diffSelection: cached.diffSelection && typeof cached.diffSelection.runId === "string" ? cached.diffSelection : null, draft: typeof cached.draft === "string" ? cached.draft : "", materials: Array.isArray(cached.materials) ? cached.materials : [], selectedSkillIds: Array.isArray(cached.selectedSkillIds) ? cached.selectedSkillIds : [], fileSelection: null, ready: false, error: "", historyError: "" });
+          set({ goal: null, goalsSupported: false, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0, attachments: restoreAttachments(cached.attachments), attachmentRemovals: cached.attachmentRemovals || [], attachmentDraftId: cached.attachmentDraftId || null, selectedSkills: cached.selectedSkills || [], skillCatalog: [], skillCatalogError: "", attachmentCapabilities: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "", attachmentNotice: "", busy: false, inspector: false, targetId, workspaceForm: false, coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: cached.workspaceRequest || null, selected: cached.selected || null, directories: Array.isArray(cached.directories) ? cached.directories : [], removedRoots: cached.removedRoots || [], titles: cached.titles || {}, pinnedThreadIds: cached.pinnedThreadIds || [], archivedThreadIds: cached.archivedThreadIds || [], models: [], threads: [], messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, root: cached.root || "", modelId: cached.modelId || "", modelSource: cached.modelSource || (cached.modelId ? "conversation_override" : "service_default"), thinkingLevel: typeof cached.thinkingLevel === "string" ? cached.thinkingLevel : null, defaultModelId: "", permissionMode: cached.permissionMode || null, delivery: "new_run", targetRunId: null, diffSelection: cached.diffSelection && typeof cached.diffSelection.runId === "string" ? cached.diffSelection : null, draft: typeof cached.draft === "string" ? cached.draft : "", materials: Array.isArray(cached.materials) ? cached.materials : [], selectedSkillIds: Array.isArray(cached.selectedSkillIds) ? cached.selectedSkillIds : [], fileSelection: null, ready: false, error: "", historyError: "" });
           services.resetForTarget?.();
           services.viewState.set({ connection: "offline", threadId: null, conversationId: null, snapshot: null, run: null, threads: [], info: null, eventSeq: null });
           if (started) connectEvents(); void refresh();
@@ -1305,6 +1467,6 @@ window.__ModuleLoader__.load({
       ];
       return { registrations, controller };
     }
-    return { SPACE_ID, STORAGE_KEY, createSpace, lineDiff };
+    return { SPACE_ID, STORAGE_KEY, createSpace, lineDiff, parseGoalCommand };
   },
 });
