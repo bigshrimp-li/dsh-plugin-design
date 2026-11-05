@@ -12,6 +12,8 @@ DeepSeek Harness 的多插件仓库。每个插件独立安装、测试和维护
 
 前提：Node.js ≥ 20、npm、已安装 DSH，并且 `dsh` 在 PATH 中。Design 的渲染和浏览器测试还需要 Chrome、Chromium 或 Edge。
 
+目标日程使用 Node.js 的 SQLite Worker，需要 Node.js ≥ 22.19.0。安装全部插件或运行完整工作区测试时也使用该版本或更新版本。
+
 1. 克隆仓库并安装锁定的依赖：
 
    ```sh
@@ -47,7 +49,7 @@ npm run build --workspace @local/dsh-plugin-design
 npm run test --workspace @local/agent-session-visualizer
 ```
 
-`npm test` 包含构建、安装器回归、Design 单元测试、OKR 临时目录测试、Session Visualizer 样例测试。`npm run test:host` 和旧入口 `./test.sh` 执行 Design 的 DSH Electron 端到端测试。`npm run test:browser` 执行已声明该入口的浏览器测试；本机 Provider 历史另用 Session Visualizer 的 `test:data:local` 和 `test:browser:cdp` 验证。
+`npm test` 包含构建、安装器回归、Design 单元测试、目标日程临时目录测试和 Session Visualizer 样例测试。`npm run test:host` 执行已声明的宿主检查，包括目标日程的 DSH 与 SQLite 验证。旧入口 `./test.sh` 仍只执行 Design 的宿主测试。`npm run test:browser` 执行已声明该入口的浏览器测试；本机 Provider 历史另用 Session Visualizer 的 `test:data:local` 和 `test:browser:cdp` 验证。
 
 ```text
 plugins/        各插件的实现、清单、测试、示例和插件文档
@@ -63,4 +65,4 @@ Design 继续使用 `~/.design`，OKR Host 工具继续使用 `~/.dsh_okr`。Ses
 
 本机 OKR 的旧 `data/` 和 Session Visualizer 的 `data/session-graph.json` 不进入 Git 或分发包。迁移时保留外部旧路径到新插件目录的兼容链接；这些链接属于本机环境，不作为其他机器的安装前提。
 
-OKR 页面目前仍使用内存中的演示数据，与 Host 工具不是同一数据来源。此次迁移保持其现有行为。来源和验证范围见 [迁移记录](docs/migration.md)；新增插件按 [接入约定](docs/plugin-guide.md) 操作。
+目标日程从全局日历进入。页面和 Host 工具读取同一目标空间的 SQLite；创造模式中的方案须由用户确认后才写入正式空间。可从[目标日程 3.2.0 迭代](plugins/okr-schedule/docs/2026-11-05-calendar-creation-mode/spec.md)查看 tickets 和离线原型。早期导入范围见[迁移记录](docs/migration.md)；新增插件按[接入约定](docs/plugin-guide.md)操作。
