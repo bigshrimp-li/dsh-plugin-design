@@ -22,7 +22,7 @@ describe("后台任务卡", () => {
 it("retries an ambiguous schedule with its original authorization and expiry", async () => {
   const form = ScheduleForm({ s: { ready: true } }).props.children[1];
   const original = globalThis.FormData;
-  class Values { get(name) { return { target: "PR #42", prompt: "Check CI", stopCondition: "CI passed", minutes: "5", hours: "24" }[name]; } }
+  class Values { getAll(name) { return name === "tools" ? ["read"] : []; } get(name) { return { target: "PR #42", prompt: "Check CI", stopCondition: "CI passed", minutes: "5", hours: "24" }[name]; } }
   try {
     globalThis.FormData = Values;
     const event = { preventDefault() {}, currentTarget: { reset() {} } };
@@ -30,6 +30,6 @@ it("retries an ambiguous schedule with its original authorization and expiry", a
     await form.props.onSubmit(event);
     expect(requests).toHaveLength(2);
     expect(requests[1]).toEqual(requests[0]);
-    expect(requests[0]).toMatchObject({ target: "PR #42", intervalSec: 300, requestId: "create-1" });
+    expect(requests[0]).toMatchObject({ target: "PR #42", intervalSec: 300, requestId: "create-1", tools: ["read"] });
   } finally { globalThis.FormData = original; }
 });

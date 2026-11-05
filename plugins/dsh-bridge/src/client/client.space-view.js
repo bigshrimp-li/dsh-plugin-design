@@ -1178,6 +1178,7 @@ ${COMPOSER_CSS}`;
           const data = Object.fromEntries(["target", "prompt", "stopCondition"].map(name => [name, String(values.get(name)).trim()]));
           const hours = Number(values.get("hours"));
           data.intervalSec = Number(values.get("minutes")) * 60;
+          data.tools = values.getAll("tools");
           const fingerprint = JSON.stringify([data, hours]);
           if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, args: { ...data, expiresAt: Date.now() + hours * 3600000, requestId: controller.taskRequestId("schedule") } };
           setBusy(true); setNotice("");
@@ -1193,6 +1194,9 @@ ${COMPOSER_CSS}`;
             field("target", "检查对象", { placeholder: "例如 PR #42" }), field("prompt", "检查内容"), field("stopCondition", "停止条件"),
             field("minutes", "间隔（分钟）", { type: "number", min: 1, max: 10080, defaultValue: 5 }),
             field("hours", "有效期（小时）", { type: "number", min: 1, max: 168, defaultValue: 24 }),
+            h("fieldset", null, h("legend", null, "允许检查使用的工作区工具"),
+              ...[["read", "读取文件"], ["ls", "列出目录"], ["find", "查找文件"], ["grep", "检索文件内容"]].map(([value, text]) =>
+                h("label", { key: value, style: { marginRight: 10 } }, h("input", { type: "checkbox", name: "tools", value, disabled: busy }), text))),
             h("small", null, "立即检查一次。每次最多调用模型 4 次，每日最多检查 24 次。"),
             h("button", { className: "sa-chip", type: "submit", disabled: busy || !s.ready }, "创建计划"), notice && h("p", { role: "status" }, notice)));
       }
