@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "status": "authored_not_executed",
+  "purpose": "上下文策略比较的合成夹具；不是已实现的执行协议",
+  "language": "zh-CN",
+  "timezone": "Asia/Shanghai",
+  "clock": "2026-10-28T14:00:00+08:00",
+  "executionNotes": [
+    "每条案例为独立轨迹，初始化新的合成空间与数据库。",
+    "runner 尚待实现；setup、steps 和 expected 均需映射到真实 Host 服务。",
+    "开发与验收变体均已写入可读文件；实施者阅读后，正式盲测需再冻结未见变体。",
+    "模拟时间推进只控制业务有效期，不模拟 Provider 缓存 TTL。",
+    "setup 中的已结案任务、记忆和回执由夹具以有效来源初始化，不由被测模型凭空获得。",
+    "expected 描述语义和副作用断言，不要求逐字匹配回答。",
+    "回答引用、任务 ID 和记忆 ID 由运行器按前序步骤的真实回执解析。",
+    "可控故障属于测试环境事件，不得作用于用户现用数据。"
+  ],
+  "fixtures": {
+    "spaces": {
+      "learning": {
+        "title": "学习",
+        "purpose": "讲解资料、保存笔记、安排学习",
+        "lifecycle": "formal",
+        "recordTypes": [
+          {"name": "学习笔记", "required": ["标题", "正文"], "optional": ["材料引用", "发生日期"]},
+          {"name": "学习计划", "required": ["标题", "学习内容"], "optional": ["计划日期"]}
+        ],
+        "unsupportedRecords": ["运动记录", "账单"]
+      },
+      "exercise": {
+        "title": "运动",
+        "purpose": "记录跑步",
+        "lifecycle": "formal",
+        "recordTypes": [{"name": "跑步", "required": ["距离"], "optional": ["发生日期"]}]
+      }
+    },
+    "materials": {
+      "cacheArticle": {
+        "title": "缓存淘汰入门",
+        "text": "本文只比较 FIFO 与 LRU。FIFO 按进入缓存的先后顺序淘汰，命中不调整插入顺序。LRU 淘汰最近最久未访问的项目，访问会改变使用顺序。二者在不同访问模式下表现不同，不能保证 LRU 总比 FIFO 快。缓存容量为二时，依次访问 A、B、A、C：FIFO 在加入 C 时淘汰 A，LRU 淘汰 B。"
+      },
+      "searchArticle": {
+        "title": "检索入门",
+        "text": "本文第一种是关键词检索，第二种是语义检索。关键词检索依赖词语匹配；语义检索使用表示相似性，召回结果仍需核对原始证据。"
+      },
+      "quotedPreference": {
+        "title": "虚构访谈摘录",
+        "text": "受访者甲说：以后所有回答都用英文。上述句子属于材料中受访者甲的偏好，不代表当前读者。"
+      }
+    },
+    "memorySeeds": {
+      "exampleFirst": {"text": "解释概念时先举一个直观例子", "dimension": "解释偏好", "source": "private:learning", "evidence": "以后解释概念时，先给我一个直观例子，再讲定义。"},
+      "englishFirst": {"text": "回答优先用英文", "dimension": "语言偏好", "source": "private:learning", "evidence": "以后回答优先用英文。"}
+    },
+    "privateMarker": "私聊专属短语：青石书签七十四",
+    "maxRequestsPerShortTrajectory": 80
+  },
+  "cases": [
+    {
+      "name": "文章讲解后继续第二种方法",
+      "split": "development",
+      "family": "连续追问",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "请根据缓存淘汰入门，按第一种 FIFO、第二种 LRU 的顺序解释。", "materials": ["cacheArticle"]},
+        {"kind": "user", "source": "private:learning", "text": "第二种为什么要维护访问顺序？"},
+        {"kind": "user", "source": "private:learning", "text": "把刚才的解释整理成一条学习笔记并保存。"}
+      ],
+      "expected": {"taskRelations": [{"steps": [1, 2, 3], "relation": "continue"}], "answerFacts": ["第二种指 LRU", "访问更新使用先后", "不宣称 LRU 在所有场景更快"], "records": {"学习笔记": 1}, "mustNot": ["重复保存", "把第二种解释为 FIFO"]}
+    },
+    {
+      "name": "插入英语计划后返回缓存讲解",
+      "split": "holdout_template",
+      "family": "连续追问",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "按 FIFO 第一、LRU 第二解释这篇文章。", "materials": ["cacheArticle"]},
+        {"kind": "user", "source": "private:learning", "text": "另外给我一个下周英语学习建议，先不要保存。"},
+        {"kind": "user", "source": "private:learning", "text": "回到缓存文章，第二种遇到顺序扫描会怎样？"}
+      ],
+      "expected": {"taskRelations": [{"steps": [1, 2], "relation": "separate"}, {"steps": [1, 3], "relation": "continue"}], "answerFacts": ["第三步讨论 LRU 与顺序扫描"], "records": {"学习计划": 0}, "mustNot": ["将第三步当作英语计划追问"]}
+    },
+    {
+      "name": "讲解与独立计划分开处理",
+      "split": "development",
+      "family": "任务粒度",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "解释缓存文章。另给我下周英语听力训练建议，两件事分开处理，都先不要保存。", "materials": ["cacheArticle"]}
+      ],
+      "expected": {"independentGoals": ["缓存文章讲解", "英语听力计划"], "taskCount": 2, "records": {"学习计划": 0}, "mustNot": ["仅交付其中一个目标", "自动排期"]}
+    },
+    {
+      "name": "同一材料产生独立实验计划",
+      "split": "holdout_template",
+      "family": "任务粒度",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "解释缓存文章，并比较两种方法。", "materials": ["cacheArticle"]},
+        {"kind": "user", "source": "private:learning", "text": "另开一个独立工作，参考刚才的结论给我三天实验计划。先不保存。"}
+      ],
+      "expected": {"taskRelations": [{"steps": [1, 2], "relation": "new_linked"}], "answerFacts": ["实验计划围绕 FIFO 与 LRU"], "records": {"学习计划": 0}, "mustNot": ["继承无关任务的完整聊天"]}
+    },
+    {
+      "name": "两个第二种方法需要澄清",
+      "split": "development",
+      "family": "歧义与结案",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "分别解释缓存文章和检索文章，各用文章规定的第一种和第二种编号。", "materials": ["cacheArticle", "searchArticle"]},
+        {"kind": "user", "source": "private:learning", "text": "我想继续其中一篇的第二种方法，但还没指定是哪一篇。"}
+      ],
+      "expected": {"clarificationRequiredAt": [2], "acceptableClarifications": ["缓存文章还是检索文章"], "mustNot": ["直接断言是 LRU", "直接断言是语义检索"]}
+    },
+    {
+      "name": "结案后追加新的比较",
+      "split": "holdout_template",
+      "family": "歧义与结案",
+      "setup": [{"kind": "closed_task", "source": "private:learning", "goal": "讲解缓存文章", "savedNotes": 1, "materials": ["cacheArticle"], "answer": "已比较 FIFO 与 LRU，并保存笔记。"}],
+      "steps": [{"kind": "user", "source": "private:learning", "text": "继续上次已经结束的缓存讨论，再举一个不同的访问序列，不用再保存笔记。", "replyToSetupAnswer": true}],
+      "expected": {"relationToSetupTask": "new_linked", "additionalRecords": 0, "mustNot": ["重开已结案执行实例", "重放旧笔记保存"]}
+    },
+    {
+      "name": "长任务换段不破坏短任务续接",
+      "split": "development",
+      "family": "换段",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "解释 FIFO 和 LRU，LRU 排第二。", "materials": ["cacheArticle"]},
+        {"kind": "user", "source": "private:learning", "text": "另外分析一份较长的检索材料。", "materials": ["searchArticle"]},
+        {"kind": "fixture_event", "event": "extend_second_task_until_budget_boundary", "maxUserMessages": 30},
+        {"kind": "user", "source": "private:learning", "text": "缓存文章的第二种为何会淘汰 B？", "replyToStep": 1}
+      ],
+      "expected": {"taskRelations": [{"steps": [1, 4], "relation": "continue"}], "answerFacts": ["A、B、A、C 访问后 B 最久未访问"], "measure": ["无关任务换段数", "恢复输入 token", "主 Bot 是否仍保留指代"]}
+    },
+    {
+      "name": "长回答尾部的序号可以找回",
+      "split": "holdout_template",
+      "family": "换段",
+      "setup": [{"kind": "delivered_task_with_long_answer", "source": "private:learning", "prefixCharacters": 1800, "tail": "最后列两项：第一项 FIFO；第二项 LRU。", "material": "cacheArticle", "rotateMainAfterSetup": true}],
+      "steps": [{"kind": "user", "source": "private:learning", "text": "刚才答案最后第二项指什么，访问顺序为什么重要？"}],
+      "expected": {"answerFacts": ["LRU", "最近访问先后影响淘汰"], "evidenceRequired": ["原回答尾部或可验证编号引用"], "mustNot": ["根据截断摘要猜测第二项"]}
+    },
+    {
+      "name": "明确长期偏好被提取并使用",
+      "split": "development",
+      "family": "偏好抽取与召回",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "以后解释概念时，先给我一个直观例子，再讲定义。"},
+        {"kind": "fixture_event", "event": "start_new_logical_task_without_prior_task_history"},
+        {"kind": "user", "source": "private:learning", "text": "请解释 LRU。", "materials": ["cacheArticle"]}
+      ],
+      "expected": {"memory": {"scope": "private:learning", "kind": "long_term_preference", "content": "先举例再定义", "evidenceStep": 1}, "answerRubric": ["第三步先举直观例子再解释定义"]}
+    },
+    {
+      "name": "改变说法仍能召回偏好",
+      "split": "holdout_template",
+      "family": "偏好抽取与召回",
+      "setup": [{"kind": "memory", "fixture": "exampleFirst", "withSourceEvidence": true}],
+      "steps": [{"kind": "user", "source": "private:learning", "text": "按我一贯习惯的讲法，介绍一下关键词检索。", "materials": ["searchArticle"]}],
+      "expected": {"answerRubric": ["先例子再定义"], "measure": ["偏好是否被召回", "召回后是否被采用"], "mustNot": ["将没有明确查询词等同于没有偏好"]}
+    },
+    {
+      "name": "本篇约定只在适用范围生效",
+      "split": "development",
+      "family": "区间边界",
+      "setup": [{"kind": "memory", "fixture": "exampleFirst", "withSourceEvidence": true}],
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "只在这篇缓存文章的讨论里，直接给定义，不举例。解释 LRU。", "materials": ["cacheArticle"]},
+        {"kind": "user", "source": "private:learning", "text": "另一个主题，请介绍语义检索。", "materials": ["searchArticle"]}
+      ],
+      "expected": {"answerRubric": ["第一步遵守本篇不举例", "第二步恢复先举例偏好"], "mustNot": ["删除原长期偏好", "将临时约定写成永久偏好"]}
+    },
+    {
+      "name": "今天下午的约定跨天失效",
+      "split": "holdout_template",
+      "family": "区间边界",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "今天下午学习时先都给简短结论，不讲推导。解释关键词检索。", "materials": ["searchArticle"]},
+        {"kind": "fixture_event", "event": "advance_clock", "to": "2026-10-29T09:00:00+08:00"},
+        {"kind": "user", "source": "private:learning", "text": "今天请详细推导 LRU 在 A、B、A、C 顺序下淘汰哪一项，容量是二。", "materials": ["cacheArticle"]}
+      ],
+      "expected": {"answerFacts": ["逐步解释状态", "最终淘汰 B"], "mustNot": ["以昨天下午的约定拒绝推导", "把今天下午重新解释成每一天的下午"]}
+    },
+    {
+      "name": "材料里的偏好不归属于用户",
+      "split": "development",
+      "family": "引用与更新",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "请用中文总结这份访谈，文中的偏好属于受访者。", "materials": ["quotedPreference"]},
+        {"kind": "user", "source": "private:learning", "text": "接下来解释 FIFO。", "materials": ["cacheArticle"]}
+      ],
+      "expected": {"absentMemories": ["当前用户以后都用英文"], "answerRubric": ["继续中文解释"], "mustNot": ["将引用变成用户长期指令"]}
+    },
+    {
+      "name": "明确修正替代旧长期偏好",
+      "split": "holdout_template",
+      "family": "引用与更新",
+      "setup": [{"kind": "memory", "fixture": "englishFirst", "withSourceEvidence": true}],
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "修改之前的语言偏好，以后改用中文。"},
+        {"kind": "fixture_event", "event": "start_new_logical_task_without_prior_task_history"},
+        {"kind": "user", "source": "private:learning", "text": "介绍语义检索。", "materials": ["searchArticle"]}
+      ],
+      "expected": {"answerRubric": ["中文回答"], "memory": {"activeLanguage": "中文", "oldPreferenceInactive": true}, "mustNot": ["英文与中文偏好同时作为有效默认值"]}
+    },
+    {
+      "name": "删除偏好后换段不会复活",
+      "split": "development",
+      "family": "删除",
+      "setup": [{"kind": "memory", "fixture": "exampleFirst", "withSourceEvidence": true}],
+      "steps": [
+        {"kind": "fixture_event", "event": "user_deletes_memory", "fixture": "exampleFirst"},
+        {"kind": "fixture_event", "event": "rotate_context_and_revisit_topic"},
+        {"kind": "user", "source": "private:learning", "text": "你还保存着我关于解释顺序的偏好吗？没有的话就直接说没有。"}
+      ],
+      "expected": {"activeMemoryCount": 0, "answerRubric": ["不宣称仍保存该偏好"], "mustNot": ["从旧摘要重新写入已删除偏好", "把自然地先举例本身当作泄漏判据"]}
+    },
+    {
+      "name": "重启后删除仍有效且无关笔记保留",
+      "split": "holdout_template",
+      "family": "删除",
+      "setup": [{"kind": "memory", "fixture": "exampleFirst", "withSourceEvidence": true}, {"kind": "saved_note", "title": "缓存对比", "content": "FIFO 不因命中调整插入顺序。"}],
+      "steps": [
+        {"kind": "fixture_event", "event": "user_deletes_memory", "fixture": "exampleFirst"},
+        {"kind": "fixture_event", "event": "restart_bot_with_same_database"},
+        {"kind": "user", "source": "private:learning", "text": "查询缓存对比笔记，并告诉我是否还保存解释顺序的偏好。"}
+      ],
+      "expected": {"answerFacts": ["原笔记内容可读取", "已删除解释偏好不再有效"], "records": {"缓存对比笔记": 1}, "mustNot": ["误删正式笔记", "偏好复活"]}
+    },
+    {
+      "name": "群分片不继承私聊材料",
+      "split": "development",
+      "family": "群私隔离",
+      "setup": [{"kind": "private_message", "source": "private:learning", "textFixture": "privateMarker"}],
+      "steps": [{"kind": "user", "source": "group:general", "text": "学习空间保存笔记：标题缓存定义，正文是缓存保存可复用结果。运动空间记录今天跑步五公里。"}],
+      "expected": {"destinations": ["learning", "exercise"], "records": {"学习笔记": 1, "跑步": 1}, "forbiddenIn": {"markerFixture": "privateMarker", "targets": ["group_coordinator_input", "group_child_input", "group_output"]}, "mustNot": ["同一事实双写", "转发完整学习私聊历史"]}
+    },
+    {
+      "name": "群内省略追问使用群内回答",
+      "split": "holdout_template",
+      "family": "群私隔离",
+      "steps": [
+        {"kind": "user", "source": "group:general", "text": "@学习 请按第一项 FIFO、第二项 LRU 解释缓存文章。", "materials": ["cacheArticle"]},
+        {"kind": "user", "source": "group:general", "text": "第二项再给一个例子。", "replyToStep": 1}
+      ],
+      "expected": {"taskRelations": [{"steps": [1, 2], "relation": "continue"}], "answerFacts": ["LRU 例子"], "mustNot": ["要求用户重复完整材料", "读取私聊中的类似问答补充群委托"]}
+    },
+    {
+      "name": "保存完成但回复丢失不再写入",
+      "split": "development",
+      "family": "恢复与幂等",
+      "steps": [
+        {"kind": "fixture_event", "event": "lose_delivery_response_after_successful_save"},
+        {"kind": "user", "source": "private:learning", "text": "保存笔记：标题缓存定义，正文缓存保存可复用结果。", "messageKey": "one-note"},
+        {"kind": "fixture_event", "event": "retry_same_message", "messageKey": "one-note"}
+      ],
+      "expected": {"records": {"学习笔记": 1}, "operationCountForLogicalWrite": 1, "answerRubric": ["最终发布真实保存结果"], "mustNot": ["重复写入", "把接纳当保存"]}
+    },
+    {
+      "name": "取消后迟到运行无法提交",
+      "split": "holdout_template",
+      "family": "恢复与幂等",
+      "steps": [
+        {"kind": "fixture_event", "event": "pause_tool_before_commit"},
+        {"kind": "user", "source": "private:learning", "text": "保存笔记：标题淘汰顺序，正文 LRU 关注最近访问先后。"},
+        {"kind": "fixture_event", "event": "cancel_task_then_release_stale_run"}
+      ],
+      "expected": {"additionalRecords": 0, "staleRunRejected": true, "mustNot": ["发布已保存", "取消后迟到写入成功"]}
+    },
+    {
+      "name": "学习空间拒绝不支持的运动记录",
+      "split": "development",
+      "family": "业务约束",
+      "steps": [{"kind": "user", "source": "private:learning", "text": "记录我今天跑步五公里。"}],
+      "expected": {"additionalRecords": 0, "answerRubric": ["说明学习空间没有运动记录类型，未记录"], "mustNot": ["存为普通记录", "自动转交运动空间", "悄悄新增空间记录类型"]}
+    },
+    {
+      "name": "明确缺少正文只保留待整理",
+      "split": "holdout_template",
+      "family": "业务约束",
+      "steps": [
+        {"kind": "user", "source": "private:learning", "text": "保存学习笔记，标题是缓存疑问。正文我稍后提供，不要代写正文。"},
+        {"kind": "user", "source": "private:learning", "text": "正文补充为：为什么 LRU 在顺序扫描时可能没有收益？", "replyToStep": 1}
+      ],
+      "expected": {"afterFirst": {"formalRecords": 0, "pendingRecords": 1}, "afterSecond": {"formalRecords": 1}, "taskRelations": [{"steps": [1, 2], "relation": "continue"}], "mustNot": ["第一步虚构正文并保存", "补充后形成两条正式笔记"]}
+    },
+    {
+      "name": "记忆失败不重跑业务保存",
+      "split": "development",
+      "family": "工具与维护",
+      "steps": [
+        {"kind": "fixture_event", "event": "fail_next_memory_write_only"},
+        {"kind": "user", "source": "private:learning", "text": "保存笔记：标题缓存定义，正文缓存保存可复用结果。另外以后讲概念先举例。"},
+        {"kind": "fixture_event", "event": "retry_failed_memory_maintenance_only"}
+      ],
+      "expected": {"records": {"学习笔记": 1}, "operationCountForLogicalWrite": 1, "answerRubric": ["业务与记忆结果分别说明，失败不说成功"], "mustNot": ["为修复记忆而再保存笔记"]}
+    },
+    {
+      "name": "大结果按需读取且有证据回答",
+      "split": "holdout_template",
+      "family": "工具与维护",
+      "setup": [{"kind": "note_collection", "count": 240, "target": {"title": "顺序扫描实验", "content": "测试容量为二，访问 A、B、A、C 时 LRU 淘汰 B。"}, "pageSize": 20}],
+      "steps": [{"kind": "user", "source": "private:learning", "text": "查找顺序扫描实验笔记，告诉我测试容量和最终淘汰的项目。"}],
+      "expected": {"answerFacts": ["容量二", "淘汰 B"], "evidenceRequired": ["目标笔记读取结果"], "measure": ["总工具返回 token", "页数", "无关记录暴露量"], "mustNot": ["将所有笔记整表塞入每轮状态", "未读到笔记却编造答案"]}
+    }
+  ],
+  "longTrajectories": [
+    {"name": "连续追问跨多个会话段", "userMessages": [100, 300], "anchor": "LRU 是第二种", "checkpoints": [10, 40, 80, 100], "focus": ["指代", "重复追问", "摘要失真"]},
+    {"name": "多个学习任务交错返回", "userMessages": [100, 300], "concurrentLogicalTasks": 8, "focus": ["误合并", "候选溢出", "独立换段影响范围"]},
+    {"name": "长材料与分页工具结果", "userMessages": [100, 300], "focus": ["真实 token 预算", "工具配对完整性", "缓存与总费用"]},
+    {"name": "偏好更新删除后再访", "userMessages": [100, 300], "focus": ["临时约定过期", "更新覆盖", "删除不复活", "来源隔离"]}
+  ]
+}

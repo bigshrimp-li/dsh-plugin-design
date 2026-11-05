@@ -1,1463 +1,754 @@
 window.__ModuleLoader__.load({
-  id: '@local/okr-schedule',
-  factory(require) {
-    const React = require('react');
-    const h = React.createElement;
-    const { useState, useEffect, useRef } = React;
-
-    let pluginCtx = null;
-
-    // 自治数据源 (对齐 ~/.dsh_okr 结构)
-    const initialData = {
-      objectives: [
-        { id: "O_super_agent", title: "开发 Super Agent 运行时系统", category: "技术工程", color: "#3B82F6", icon: "🤖", is_archived: false, vision: "打造具备自主状态机编排、本地安全沙箱隔离及上下文自适应的长程执行 Agent，赋能日常科研、代码开发与知识管理自动化。", progress: 68 },
-        { id: "O_learn_english", title: "英语日常进阶与技术表达", category: "个人成长", color: "#10B981", icon: "🌍", is_archived: false, vision: "具备流畅阅读英文技术前沿论文、日常无字幕听力及流畅技术交流表达能力。", progress: 45 },
-        { id: "O_fitness", title: "体态管理与卧推冲击80kg", category: "健康生活", color: "#F59E0B", icon: "🏋️", is_archived: false, vision: "系统性胸肩三头抗阻训练，体脂率降至15%，卧推达到 80kg 5x5。", progress: 82 },
-        { id: "O_quant_finance_archive", title: "量化回测工具轻量预研 (已归档)", category: "探索研究", color: "#8B5CF6", icon: "📦", is_archived: true, vision: "探索个人量化因子分析与策略回测原型，评估长期投入产出比。", progress: 100 }
-      ],
-      key_points: [
-        { id: "K_agent_core", objective_id: "O_super_agent", title: "K1: Agent Core 调度引擎与状态机", progress: 75, target_window: "10月第1周 ~ 10月第4周", doc_path: "keypoints/K_agent_core.md" },
-        { id: "K_agent_sandbox", objective_id: "O_super_agent", title: "K2: 多层级安全沙箱与权限白名单", progress: 55, target_window: "10月第3周 ~ 11月第2周", doc_path: "keypoints/K_agent_sandbox.md" },
-        { id: "K_english_vocab", objective_id: "O_learn_english", title: "K1: 连续打卡积累核心词汇库", progress: 60, target_window: "9月中旬 ~ 11月底", doc_path: "keypoints/K_english_vocab.md" },
-        { id: "K_bench_press_80", objective_id: "O_fitness", title: "K1: 卧推负荷递增与离心控制", progress: 85, target_window: "8月 ~ 11月中旬", doc_path: "keypoints/K_bench_press_80.md" }
-      ],
-      schedules: [
-        { id: "SCH_20261025_01", objective_id: "O_super_agent", key_point_id: "K_agent_core", title: "Agent Core 状态机转移图设计与测试", date: "2026-10-25", start_time: "14:00", end_time: "16:30", status: "completed", checkin_note: "状态机拆解为显式转换后，Turn 重试与异常捕获逻辑全部跑通。" },
-        { id: "SCH_20261025_02", objective_id: "O_super_agent", key_point_id: "K_agent_sandbox", title: "测试沙箱文件白名单与环境变量防护", date: "2026-10-25", start_time: "17:00", end_time: "18:30", status: "in_progress", checkin_note: "正在验证权限逃逸边界，防御策略生效正常。" },
-        { id: "SCH_20261026_01", objective_id: "O_super_agent", key_point_id: "K_agent_core", title: "工具异常熔断与会话恢复测试", date: "2026-10-26", start_time: "10:00", end_time: "12:00", status: "in_progress", checkin_note: "" },
-        { id: "SCH_REC_duolingo", objective_id: "O_learn_english", key_point_id: "K_english_vocab", title: "Duolingo 每日打卡半小时 (习惯提醒)", date: "2026-10-25", start_time: "21:00", end_time: "21:30", status: "pending", checkin_note: "" },
-        { id: "SCH_20261025_04", objective_id: "O_fitness", key_point_id: "K_bench_press_80", title: "胸肩三头训练日：冲刺 75kg 5x5", date: "2026-10-25", start_time: "19:30", end_time: "20:45", status: "pending", checkin_note: "" }
-      ],
-      inspirations: [
-        { id: "INS_01", objective_id: "O_super_agent", date: "2026-10-24", text: "考虑引入检查点快照机制，在每个重要工具调用前后保存增量状态，遇不可逆错误时单步倒带（Undo）。" },
-        { id: "INS_02", objective_id: "O_super_agent", date: "2026-10-20", text: "Tool 参数反射可参考 OpenAPI 3.1 的 Schema Validator，避免 LLM 生成参数不合法时触发 Python 异常。" }
-      ],
-      results: [
-        { id: "R_agent_core_alpha", target_id: "O_super_agent", title: "K1 阶段成果：Core 状态机闭环跑通", score_or_verdict: "达成预期 (90分)", summary: "经过两周集中迭代，工具分发、异常熔断与会话恢复机制全部通过集成测试。" }
-      ]
-    };
-
-    // 自包含高保真深色样式
-    const stylesCss = `
-      .okr-v22-root {
-        all: initial;
-        box-sizing: border-box;
-        position: absolute !important;
-        inset: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        background-color: #0b0f19 !important;
-        color: #f8fafc !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
-        -webkit-font-smoothing: antialiased;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
-        z-index: 25 !important;
+  id: "@local/okr-schedule",
+  factory(require2) {
+    const React = require2("react"), h = React.createElement, { useState, useEffect, useRef } = React;
+    let pluginCtx, workbenchSnapshot = null, removeTraceReturn = null;
+    const workbenchViews = new Set(["records", "actions", "calendar", "pending", "planning", "scheme", "history", "memory"]);
+    const validSpaceId = value => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value);
+    const css = `
+    .okr-app{position:absolute;inset:0;display:flex;flex-direction:column;background:#0b0f19;color:#e5eaf4;font:14px/1.5\
+5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;overflow:hidden}.okr-app *{box-sizing:border-box}.okr-app bu\
+tton,.okr-app input,.okr-app select,.okr-app textarea{font:inherit;color:inherit}.okr-app button{white-space:nowrap;curs\
+or:pointer;border:1px solid #303c53;background:#182237;border-radius:8px;padding:7px 12px}.okr-app button:hover{backgrou\
+nd:#24334d}.okr-app button:disabled{opacity:.45;cursor:default}.okr-app .primary{background:#2563eb;border-color:#3878ff\
+;color:white}.okr-app input,.okr-app select,.okr-app textarea{background:#0c1424;border:1px solid #334155;border-radius:\
+7px;padding:9px;width:100%}.okr-app textarea{min-height:96px;resize:vertical}.okr-app input[type=checkbox]{width:auto}.o\
+kr-app label{display:block;margin:10px 0 5px;color:#aab8d0}.okr-app h1,.okr-app h2,.okr-app h3,.okr-app p{margin:0}.okr-\
+app h1{font-size:21px}.okr-app h2{font-size:17px;margin-bottom:12px}.okr-app h3{font-size:14px;margin-bottom:7px}.okr-ap\
+p header{display:flex;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid #233047}.okr-app header sele\
+ct{width:230px}.okr-app nav{display:flex;gap:5px;padding:10px 24px;border-bottom:1px solid #233047;overflow:auto}.okr-ap\
+p nav button{white-space:nowrap;background:transparent;border-color:transparent;color:#96a7c2}.okr-app nav .active{color\
+:#fff;background:#1b315a}.okr-layout{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}.okr-mai\
+n{padding:24px;overflow:auto}.okr-card{border:1px solid #26334b;background:#111a2b;border-radius:12px;padding:18px;margi\
+n-bottom:15px}.okr-muted{color:#92a3be;font-size:12px}.okr-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.o\
+kr-between{display:flex;align-items:center;justify-content:space-between;gap:14px}.okr-grid{display:grid;grid-template-c\
+olumns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.okr-notice{padding:10px 24px;background:#142b2c;color:#9ee2c5;border\
+-bottom:1px solid #24423f}.okr-error{background:#351e29;color:#ffbdc7}.okr-app table{display:block;overflow-x:auto;width\
+:100%;border-collapse:collapse;font-size:13px}.okr-app th,.okr-app td{text-align:left;padding:12px 9px;border-bottom:1px\
+ solid #253147;vertical-align:top}.okr-app th{white-space:nowrap;color:#91a3c0;font-weight:500}.okr-chat{border-left:1px\
+ solid #26334b;display:flex;flex-direction:column;min-height:0;background:#0e1625}.okr-chat-title{padding:16px;border-bo\
+ttom:1px solid #26334b}.okr-messages{flex:1;overflow:auto;padding:14px}.okr-message{white-space:pre-wrap;overflow-wrap:a\
+nywhere;background:#172238;border:1px solid #2c3b54;border-radius:10px;padding:12px;margin:10px 0}.okr-message.user{back\
+ground:#142b4e;margin-left:26px}.okr-composer{padding:14px;border-top:1px solid #26334b}.okr-tag{font-size:11px;padding:\
+2px 7px;border-radius:5px;background:#1d3150;color:#a8c8ff}.okr-empty{padding:50px 16px;text-align:center;color:#a0b0cb}\
+.okr-app details{margin-top:12px}.okr-app summary{cursor:pointer;color:#9cb6dc}.okr-app pre{white-space:pre-wrap;overflo\
+w-wrap:anywhere;font-size:12px;max-height:400px;overflow:auto}.okr-week{display:grid;grid-template-columns:repeat(7,minm\
+ax(90px,1fr));gap:7px;min-width:680px}.okr-day{min-height:110px;border:1px solid #26334b;border-radius:8px;padding:9px}.\
+okr-day button{display:block;font-size:11px;text-align:left;margin-top:6px;width:100%}.okr-work{padding:9px 0;border-bot\
+tom:1px solid #253147}.okr-app :focus-visible{outline:2px solid #71a8ff;outline-offset:3px}@media(max-width:1000px){.okr\
+-layout{grid-template-columns:1fr}.okr-chat{min-height:360px;border-top:1px solid #26334b}.okr-layout{overflow:auto}.okr\
+-main{overflow:visible}.okr-app header{flex-wrap:wrap;padding:12px}.okr-app nav{padding:8px}.okr-main{padding:14px}}`;
+    const phase = { queued: "等待处理", running: "处理中", waiting_user: "等待补充", waiting_confirmation: "等\
+待确认", waiting_external: "等待结果", delivered: "已交付，可继续", closed: "已结案", cancelled: "已取消",
+    failed: "需要处理" };
+    const actionPhase = { pending: "待开始", in_progress: "进行中", completed: "已完成", skipped: "已跳过", cancelled: "已取消" };
+    function programAccess(program) {
+      let readOnly = Array.isArray(program) && program.length > 0, queries = 0, recordTypeId = null;
+      function walk(nodes) {
+        if (!Array.isArray(nodes)) { readOnly = false; return; }
+        for (const node of nodes) {
+          if (node?.op === "query") queries++;
+          else if (node?.op === "if") { walk(node.then || []); walk(node.else || []); }
+          else if (node?.op !== "output") { readOnly = false; if (["save", "update"].includes(node?.op) && node.typeId) recordTypeId ||= node.typeId; }
+        }
       }
-      .okr-v22-root * { box-sizing: border-box; font-family: inherit; }
-      .okr-v22-root button { font-family: inherit; cursor: pointer; border: none; outline: none; }
-      .okr-v22-root input, .okr-v22-root select, .okr-v22-root textarea { font-family: inherit; outline: none; }
-      .okr-v22-root ::-webkit-scrollbar { width: 6px; height: 6px; }
-      .okr-v22-root ::-webkit-scrollbar-track { background: transparent; }
-      .okr-v22-root ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
-      .okr-v22-root ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.4); }
-
-      .nav-tab-btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 500;
-        color: #94a3b8;
-        background: transparent;
-        transition: all 0.18s ease;
-      }
-      .nav-tab-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.05); }
-      .nav-tab-btn.active {
-        color: #ffffff !important;
-        background: #2563eb !important;
-        box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35) !important;
-        font-weight: 600;
-      }
-
-      .dim-pill-btn {
-        padding: 5px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        color: #94a3b8;
-        background: transparent;
-        transition: all 0.15s ease;
-      }
-      .dim-pill-btn:hover { color: #ffffff; }
-      .dim-pill-btn.active {
-        color: #ffffff !important;
-        background: #2563eb !important;
-        font-weight: 600;
-        box-shadow: 0 1px 6px rgba(37, 99, 235, 0.3) !important;
-      }
-
-      .glass-card {
-        background: #111827 !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        border-radius: 14px;
-      }
-      .okr-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 500;
-        cursor: pointer;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: #1e293b;
-        color: #cbd5e1;
-        transition: all 0.15s ease;
-      }
-      .okr-btn:hover { background: #334155; color: #ffffff; }
-      .okr-btn-primary {
-        background: linear-gradient(135deg, #2563eb, #6366f1) !important;
-        color: #ffffff !important;
-        border: none !important;
-        font-weight: 600;
-        box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
-      }
-      .okr-btn-primary:hover { filter: brightness(1.1); }
-      .okr-btn-danger {
-        background: rgba(239, 68, 68, 0.15) !important;
-        color: #ef4444 !important;
-        border: 1px solid rgba(239, 68, 68, 0.3) !important;
-      }
-
-      /* 24h 时间轴容器 */
-      .week-24h-container {
-        position: relative;
-        height: 600px;
-        overflow-y: auto;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        background: #0d1322;
-      }
-      .hour-row {
-        height: 60px;
-        display: grid;
-        grid-template-columns: 60px repeat(7, 1fr);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      }
-      .hour-label {
-        font-size: 11px;
-        color: #64748b;
-        text-align: right;
-        padding-right: 10px;
-        transform: translateY(-8px);
-        user-select: none;
-      }
-      .grid-day-col {
-        border-left: 1px solid rgba(255, 255, 255, 0.04);
-        position: relative;
-        cursor: pointer;
-      }
-      .grid-day-col:hover {
-        background: rgba(255, 255, 255, 0.015);
-      }
-
-      /* 当前时间标尺红线 */
-      .current-time-line {
-        position: absolute;
-        left: 60px;
-        right: 0;
-        height: 2px;
-        background: #ef4444;
-        z-index: 25;
-        pointer-events: none;
-      }
-      .current-time-tag {
-        position: absolute;
-        left: -58px;
-        top: -9px;
-        background: #ef4444;
-        color: #ffffff;
-        font-size: 10px;
-        font-weight: 700;
-        padding: 1px 5px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        gap: 3px;
-        box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
-      }
-
-      .week-event-card {
-        position: absolute;
-        left: 3px;
-        right: 3px;
-        border-radius: 6px;
-        padding: 6px 8px;
-        font-size: 11px;
-        line-height: 1.35;
-        cursor: pointer;
-        z-index: 20;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        transition: transform 0.15s, box-shadow 0.15s;
-      }
-      .week-event-card:hover {
-        transform: scale(1.02);
-        z-index: 22;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-      }
-      .week-event-in-progress {
-        border-style: dashed !important;
-      }
+      walk(program);
+      return { readOnly: readOnly && queries > 0, recordTypeId };
+    }
+    function workErrorMessage(error) {
+      if (/TIMEOUT/iu.test(error.code || "") || /timed?\s*out|timeout|超时/iu.test(error.message || "")) return "本次工作处理超时，原工作已保留。";
+      if (/UNAVAILABLE|DISABLED/iu.test(error.code || "")) return "模型暂不可用，原工作已保留。";
+      return `本次工作未能继续${error.message ? `：${error.message}` : "，请稍后重试原工作。"}`;
+    }
+    const requestId = () => `web_${crypto.randomUUID()}`;
+    const dialogCss = `
+      .okr-dialog-backdrop{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:#050914cc}
+      .okr-input-dialog{width:min(100%,480px);max-height:calc(100dvh - 40px);overflow:auto;padding:24px;border:1px solid #40516e;border-radius:14px;background:#111a2b;box-shadow:0 24px 80px #0009}
+      .okr-input-dialog h2{margin-bottom:16px}.okr-input-dialog label{margin-bottom:8px}.okr-input-dialog .okr-dialog-help{margin-top:9px;color:#92a3be;font-size:12px}.okr-input-dialog .okr-dialog-buttons{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
     `;
-
-    /** 主 React 应用组件 */
-    function OkrScheduleApp() {
-      const [curData, setCurData] = useState(initialData);
-      const [curView, setCurView] = useState('calendar'); // 'calendar' | 'gantt' | 'workspace'
-      const [curDim, setCurDim] = useState('week'); // 默认展示飞书同款 24h 时间轴
-      const [curOId, setCurOId] = useState('O_super_agent');
-      const [ganttMode, setGanttMode] = useState('timeline'); // 'timeline' | 'board'
-
-      // 多选筛选
-      const [oFilterList, setOFilterList] = useState(['O_super_agent', 'O_learn_english', 'O_fitness', 'O_quant_finance_archive']);
-      const [showFilterPopover, setShowFilterPopover] = useState(false);
-
-      // 弹窗与抽屉状态
-      const [showCheckinModal, setShowCheckinModal] = useState(false);
-      const [showAiDrawer, setShowAiDrawer] = useState(false);
-      const [aiQuery, setAiQuery] = useState('');
-      const [aiLogs, setAiLogs] = useState([
-        { sender: 'ai', text: '您好！我是您的日程与目标管理 AI 伙伴。无论是记录灵感、打卡日程、制定任务清单，还是对归档目标生成长效复盘，只需一句话告诉我即可。' }
-      ]);
-      const [dailyNote, setDailyNote] = useState('');
-
-      // 优化点 1: 全套自主编辑弹窗状态
-      const [editScheduleTarget, setEditScheduleTarget] = useState(null); // null 或者 schedule 对象
-      const [editObjectiveTarget, setEditObjectiveTarget] = useState(null); // null 或者 objective 对象
-      const [editKeypointTarget, setEditKeypointTarget] = useState(null); // null 或者 keypoint 对象
-
-      const curO = curData.objectives.find(o => o.id === curOId) || curData.objectives[0];
-      const scrollRef = useRef(null);
-
-      // 优化点 3: 退出日程回到 DSH 会话 (通过 layout.selectPanel(null) 原生返回 Conversation)
-      const exitToDsh = () => {
+    function InputDialog({ request, onClose }) {
+      const [value, setValue] = useState(request.initialValue), input = useRef(null), panel = useRef(null);
+      const inputId = `okr-dialog-input-${request.id}`, titleId = `okr-dialog-title-${request.id}`, helpId = `okr-dialog-help-${request.id}`;
+      useEffect(() => { input.current?.focus(); input.current?.select(); }, []);
+      function onKeyDown(event) {
+        if (event.key === "Enter" && (event.nativeEvent?.isComposing || event.keyCode === 229)) { event.preventDefault(); return; }
+        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(null); }
+        if (event.key === "Tab") {
+          const elements = panel.current?.querySelectorAll("input,button");
+          const first = elements?.[0], last = elements?.[elements.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        }
+      }
+      return h("div", { className: "okr-dialog-backdrop", onMouseDown: event => { if (event.target === event.currentTarget) { event.preventDefault(); input.current?.focus(); } } },
+        h("form", { className: "okr-input-dialog", role: "dialog", "aria-modal": true, "aria-labelledby": titleId, ref: panel, onKeyDown,
+          onSubmit: event => { event.preventDefault(); onClose(value); } },
+          h("h2", { id: titleId }, "填写内容"), h("label", { htmlFor: inputId }, request.label),
+          h("input", { id: inputId, ref: input, value, "aria-describedby": helpId, onChange: event => setValue(event.target.value) }),
+          h("p", { id: helpId, className: "okr-dialog-help" }, "按 Enter 确定，按 Esc 取消。"),
+          h("div", { className: "okr-dialog-buttons" }, h("button", { type: "button", onClick: () => onClose(null) }, "取消"), h("button", { type: "submit", className: "primary" }, "确定"))));
+    }
+    function App({ onCalendar }) {
+      const resumed = useRef(workbenchSnapshot), mainPanel = useRef(null), restorePosition = useRef(workbenchSnapshot);
+      const [spaces, setSpaces] = useState([]), [selected, setSelected] = useState(workbenchSnapshot?.selected || ""), [view, setView] = useState(workbenchSnapshot?.view || "records"), [data, setData] = useState(null), [chat, setChat] = useState({ messages: [], answers: [], tasks: [] }), [notice, setNotice] = useState(
+      null), [busy, setBusy] = useState(false), [caps, setCaps] = useState({}), [text, setText] = useState(""), [reply, setReply] = useState(
+      null), [form, setForm] = useState(null), [fields, setFields] = useState({}), [title, setTitle] = useState(""), [body,
+      setBody] = useState(""), [mainKId, setMainKId] = useState(""), [typeId, setTypeId] = useState(""), [designText, setDesignText] = useState(
+      ""), [planningText, setPlanningText] = useState(""), [scheme, setScheme] = useState(null), [trials, setTrials] = useState(
+      []), [chosen, setChosen] = useState([]), [history, setHistory] = useState([]), [memories, setMemories] = useState(
+      []), [plan, setPlan] = useState(null), [planChosen, setPlanChosen] = useState([]), [selectedItems, setSelectedItems] = useState(
+      []), [widgetResults, setWidgetResults] = useState({}), [calendarData, setCalendarData] = useState({ occurrences: [] }),
+      [groupTargets, setGroupTargets] = useState([]), [query, setQuery] = useState(""), [stats, setStats] = useState(null),
+      [month, setMonth] = useState((/* @__PURE__ */ new Date()).toISOString().slice(0, 7));
+      const tokens = useRef(/* @__PURE__ */ new Map()), last = useRef(null), current = useRef(selected);
+      const [inputDialog, setInputDialog] = useState(null), dialogQueue = useRef([]), activeDialog = useRef(null), dialogSequence = useRef(0), dialogReturnFocus = useRef(null);
+      const seenAnswerIds = useRef(new Map()), publicationRefreshes = useRef(new Map()), workspaceSequence = useRef(0), appActive = useRef(true);
+      current.current = selected;
+      useEffect(() => {
+        const saved = resumed.current;
+        if (!saved || saved.selected !== selected) return;
+        setText(saved.text || ""); setReply(saved.reply || null); setForm(saved.form || null); setFields(saved.fields || {});
+        setTitle(saved.title || ""); setBody(saved.body || ""); setMainKId(saved.mainKId || ""); setTypeId(saved.typeId || "");
+        setDesignText(saved.designText || ""); setPlanningText(saved.planningText || ""); setScheme(saved.scheme || null);
+        setTrials(saved.trials || []); setChosen(saved.chosen || []); setHistory(saved.history || []); setMemories(saved.memories || []);
+        setPlan(saved.plan || null); setPlanChosen(saved.planChosen || []); setSelectedItems(saved.selectedItems || []);
+        setQuery(saved.query || ""); setGroupTargets(saved.groupTargets || []); if (saved.month) setMonth(saved.month);
+        workbenchSnapshot = null;
+      }, []);
+      useEffect(() => {
+        const saved = restorePosition.current;
+        if (!saved || !data) return;
+        if (mainPanel.current) mainPanel.current.scrollTop = saved.scrollTop || 0;
+        if (saved.messageId) {
+          const target = document.getElementById(`message-${saved.messageId}`);
+          if (!target) return;
+          target.scrollIntoView({ block: "nearest" });
+        }
+        restorePosition.current = null;
+      }, [data, chat]);
+      function openTrace(target = {}) {
+        const source = target.source || (selected ? "private" : "diagnostic");
+        if (!["private", "group", "diagnostic"].includes(source)) return;
+        const objectiveId = target.objectiveId || selected || null;
+        const returnTarget = { objectiveId: selected || null, view, ...(target.messageId ? { messageId: target.messageId } : {}), ...(target.taskId ? { taskId: target.taskId } : {}) };
+        workbenchSnapshot = { selected, view, text, reply, form, fields, title, body, mainKId, typeId, designText, planningText, scheme,
+          trials, chosen, history, memories, plan, planChosen, selectedItems, query, groupTargets, month,
+          scrollTop: mainPanel.current?.scrollTop || 0, messageId: target.messageId || null };
+        const detail = { v: 1, source, objectiveId, returnTarget, ...(target.taskId ? { taskId: target.taskId } : {}),
+          ...(target.groupMessageId ? { groupMessageId: target.groupMessageId } : {}), ...(target.focus ? { focus: target.focus } : {}) };
+        const accepted = !window.dispatchEvent(new CustomEvent("asv-open-bot-trace", { detail, cancelable: true }));
+        if (!accepted) setNotice({ text: "会话可视化插件尚未接入 Bot Trace，请安装并重新加载该插件。", error: true });
+      }
+      function showNextDialog() {
+        if (activeDialog.current || !dialogQueue.current.length) return;
+        activeDialog.current = dialogQueue.current.shift();
+        setInputDialog(activeDialog.current);
+      }
+      function askInput(label, initialValue = "") {
+        if (!activeDialog.current && !dialogReturnFocus.current) dialogReturnFocus.current = document.activeElement;
+        return new Promise(resolve => { dialogQueue.current.push({ id: ++dialogSequence.current, label, initialValue: String(initialValue ?? ""), resolve }); showNextDialog(); });
+      }
+      function closeInputDialog(value, dialogId) {
+        const request = activeDialog.current;
+        if (!request || dialogId !== request.id) return;
+        activeDialog.current = null;
+        setInputDialog(null);
+        request.resolve(value);
+        showNextDialog();
+        queueMicrotask(() => { if (!activeDialog.current && !dialogQueue.current.length) { if (dialogReturnFocus.current?.isConnected) dialogReturnFocus.current.focus(); dialogReturnFocus.current = null; } });
+      }
+      useEffect(() => { appActive.current = true; return () => { appActive.current = false; activeDialog.current?.resolve(null); for (const request of dialogQueue.current) request.resolve(null); activeDialog.current = null; dialogQueue.current = []; }; }, []);
+      async function readResponse(response) {
+        try { return await response.json(); }
+        catch { throw new Error("个人助手服务未就绪，请重新启用插件或重启DSH"); }
+      }
+      async function raw(command, input = {}, space = selected, canRetry = true) {
+        const key = space || "global";
+        let token = tokens.current.get(key);
+        if (!token) {
+          const r = await fetch(`/okr-space/api/bootstrap${space ? `?objectiveId=${encodeURIComponent(space)}` : ""}`, {
+          headers: { "x-okr-client": "workbench" } });
+          const v = await readResponse(r);
+          if (!r.ok) throw new Error(v.error?.message || "无法连接Host");
+          token = v.token;
+          tokens.current.set(key, token);
+        }
+        const response = await fetch("/okr-space/api/action", { method: "POST", headers: { "Content-Type": "application/\
+json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ command, input }) });
+        const result = await readResponse(response);
+        if (response.status === 403 || result.error?.code === "BUNDLE_CONFLICT") tokens.current.delete(key);
+        if (result.error?.code === "BUNDLE_CONFLICT" && canRetry && ["workspace.state", "items.query", "calendar.query",
+        "chat.history", "chat.status", "scheme.get", "scheme.history", "trial.list", "memory.list"].includes(command)) return raw(
+        command, input, space, false);
+        if (!response.ok || ["failed", "error", "rejected", "conflict", "disabled"].includes(result.kind)) throw Object.
+        assign(new Error(result.error?.message || result.data?.reason || "操作未完成"), { result });
+        if (result.kind === "saved" && ["scheme.confirm", "space.migrate"].includes(command)) tokens.current.delete(key);
+        return result;
+      }
+      async function run(command, input = {}, options = {}) {
+        const target = options.space === void 0 ? selected : options.space, args = { ...input, requestId: input.requestId ||
+        requestId() };
+        last.current = { command, input: args, space: target };
+        setBusy(true);
         try {
-          if (pluginCtx && pluginCtx.layout && typeof pluginCtx.layout.selectPanel === 'function') {
-            pluginCtx.layout.selectPanel(null);
+          const result = await raw(command, args, target);
+          setNotice({ text: { saved: "已保存", pending: "已保留待整理，请补充信息", unsupported: "当前空间不支持\
+此内容，未记录", trial: "试用材料已暂存", accepted: "已接收，正在处理" }[result.kind] || "已更新",
+          kind: result.kind });
+          if (options.refresh !== false) await refresh(target);
+          return result;
+        } catch (error) {
+          setNotice({ text: error.message, error: true });
+          return null;
+        } finally {
+          setBusy(false);
+        }
+      }
+      async function refresh(space = selected) {
+        const list = await raw("spaces.list", {}, "");
+        setSpaces(list.data.spaces || []);
+        if (!space) {
+          const result2 = await raw("group.state", {}, "");
+          if (!current.current) setData(result2.data);
+          return;
+        }
+        await readWorkspace(space);
+      }
+      async function readWorkspace(space) {
+        if (!appActive.current || current.current !== space) return;
+        const sequence = ++workspaceSequence.current;
+        try {
+          const result = await raw("workspace.state", {}, space);
+          if (appActive.current && current.current === space && sequence === workspaceSequence.current) setData(result.data);
+        } catch (error) {
+          if (appActive.current && current.current === space && sequence === workspaceSequence.current) throw error;
+        }
+      }
+      function refreshAfterPublication(space, enqueue = true) {
+        let entry = publicationRefreshes.current.get(space);
+        if (!entry) { entry = { requested: 0, completed: 0, promise: null }; publicationRefreshes.current.set(space, entry); }
+        if (enqueue) entry.requested++;
+        if (entry.promise) return entry.promise;
+        let failed = false;
+        entry.promise = (async () => {
+          while (appActive.current && current.current === space && entry.completed < entry.requested) {
+            const requested = entry.requested;
+            await readWorkspace(space);
+            entry.completed = requested;
+          }
+          if (appActive.current && current.current === space) setNotice(previous => previous?.refreshSpace === space ? null : previous);
+        })().catch(error => {
+          failed = true;
+          if (appActive.current && current.current === space) setNotice({ text: `Bot 已回复，但记录刷新未完成：${error.message}`, error: true, refreshSpace: space });
+        }).finally(() => { entry.promise = null; if (!failed && appActive.current && current.current === space && entry.completed < entry.requested) void refreshAfterPublication(space, false); });
+        return entry.promise;
+      }
+      function receiveChat(space, next) {
+        if (!appActive.current || current.current !== space) return;
+        setChat(next);
+        let seen = seenAnswerIds.current.get(space);
+        if (!seen) { seen = new Set(); seenAnswerIds.current.set(space, seen); }
+        let changed = false;
+        for (const answer of next.answers || []) {
+          const answerId = answer.answerId || answer.id;
+          if (answerId && !seen.has(answerId)) { seen.add(answerId); changed = true; }
+        }
+        if (changed) void refreshAfterPublication(space);
+      }
+      useEffect(() => {
+        let live = true;
+        raw("capabilities", {}, "").then((r) => live && setCaps(r.data)).catch((e) => setNotice({ text: e.message, error: true }));
+        refresh("").catch((e) => setNotice({ text: e.message, error: true }));
+        return () => {
+          live = false;
+        };
+      }, []);
+      useEffect(() => {
+        setData(null);
+        setNotice(previous => previous?.refreshSpace ? null : previous);
+        setChat({ messages: [], answers: [], tasks: [], errors: [], pending: 0, retryable: false, running: false });
+        if (resumed.current?.selected === selected) resumed.current = null;
+        else { setForm(null); setReply(null); setScheme(null); setPlan(null); }
+        refresh(selected).catch((e) => setNotice({ text: e.message, error: true }));
+      }, [selected]);
+      useEffect(() => {
+        let live = true;
+        async function update() {
+          try {
+            const result = await raw(selected ? "chat.history" : "group.state", {}, selected);
+            if (live) {
+              setCaps((previous) => ({ ...previous, bot: !!result.data.available }));
+              if (selected) receiveChat(selected, result.data);
+              else setData(result.data);
+            }
+          } catch {
+          }
+        }
+        if (!selected || data?.migrated) {
+          update();
+          const timer = setInterval(update, 1800);
+          return () => {
+            live = false;
+            clearInterval(timer);
+          };
+        }
+        return () => {
+          live = false;
+        };
+      }, [selected, data?.migrated]);
+      useEffect(() => {
+        let live = true;
+        if (view === "calendar") {
+          const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
+          raw("calendar.query", { from: month + "-01", to: month + "-" + String(lastDay).padStart(2, "0") }).then((r) => live &&
+          setCalendarData(r.data)).catch((e) => setNotice({ text: e.message, error: true }));
+        }
+        return () => {
+          live = false;
+        };
+      }, [view, month, selected, data?.actions]);
+      async function send(value = text) {
+        if (!value.trim()) return;
+        const result = await run(selected ? "chat.send" : "group.send", { text: value, messageId: requestId(), ...reply ?
+        { replyTo: reply } : {} }, { refresh: false });
+        if (result) {
+          setText("");
+          setReply(null);
+        }
+      }
+      async function recoverWork(deliveryId) {
+        const target = selected;
+        const result = await run("runtime.recover", { deliveryId }, { space: target, refresh: false });
+        if (result && current.current === target) {
+          const status = await raw("chat.status", {}, target).catch(() => null);
+          if (status && current.current === target) receiveChat(target, status.data);
+        }
+      }
+      function edit(item = null, material = false) {
+        setForm({ item, material });
+        setTypeId(item?.typeId || data?.types?.[0]?.id || "");
+        setTitle(item?.title || "");
+        setBody(item?.body || "");
+        setMainKId(item?.mainKId || "");
+        setFields(item?.fields || {});
+      }
+      async function save() {
+        if (form?.trial) {
+          const draft = scheme.draft.value;
+          const tool = draft.bundle.tools.find((t) => Object.values(t.commands).some((c) => c.program.some((n) => n.op ===
+          "save" && n.typeId === typeId)));
+          if (!tool) {
+            setNotice({ text: "当前草稿没有此类型的试用记录工具", error: true });
             return;
           }
+          const command = Object.keys(tool.commands).find((key) => tool.commands[key].program.some((n) => n.op === "save" &&
+          n.typeId === typeId));
+          const result = await run("scheme.trial", { toolId: tool.id, command, input: { title, body, fields }, requestId: requestId() });
+          if (result) {
+            setForm(null);
+            await loadScheme();
+          }
+          return;
+        }
+        const input = { typeId, title, body, fields, mainKId: mainKId || null, ...form?.item ? form.material ? { materialId: form.
+        item.id, expectedRevision: form.item.revision } : { itemId: form.item.id, expectedRevision: form.item.revision } :
+        {} };
+        const r = await run(form?.material ? "material.complete" : form?.item ? "item.update" : "item.save", input);
+        if (r && r.kind === "saved") setForm(null);
+      }
+      async function loadScheme() {
+        const r = await raw("scheme.get");
+        setScheme(r.data);
+        if (r.data.draft?.value) {
+          const t = await raw("trial.list", { draftId: r.data.draft.value.id });
+          setTrials(t.data.trials || t.data.records || []);
+        } else setTrials([]);
+      }
+      async function openTab(tab) {
+        if (tab === "trace") { openTrace(); return; }
+        setView(tab);
+        try {
+          if (tab === "scheme") await loadScheme();
+          if (tab === "history") setHistory((await raw("scheme.history")).data.states || []);
+          if (tab === "memory") setMemories((await raw("memory.list")).data.items || []);
         } catch (e) {
-          console.error('[OKR-Plugin] Error selecting panel:', e);
+          setNotice({ text: e.message, error: true });
         }
-
-        // 兼容备用方案
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ type: 'dsh-navigate-view', view: 'conversation' }, '*');
+      }
+      const button = (label, onClick, primary = false, disabled = busy) => h("button", { type: "button", onClick, className: primary ?
+      "primary" : "", disabled }, label);
+      const detail = (label, value) => h("details", null, h("summary", null, label), h("pre", null, JSON.stringify(value,
+      null, 2)));
+      const card = (title2, ...children) => h("section", { className: "okr-card" }, h("h2", null, title2), ...children);
+      const formTypes = form?.trial ? scheme?.draft?.value?.bundle?.types || [] : data?.types || [];
+      const type = formTypes.find((t) => t.id === typeId), items = (data?.items || []).filter((i) => !query || `${i.title}\
+ ${i.body}`.includes(query));
+      function recordForm() {
+        return card(form?.material ? "补充待整理" : form?.item ? "修改记录" : "添加记录", h("label", null, "\
+记录类型"), h("select", { value: typeId, onChange: (e) => {
+          setTypeId(e.target.value);
+          setFields({});
+        } }, ...formTypes.map((t) => h("option", { key: t.id, value: t.id }, t.title || t.name || t.id))), h("label", null,
+        "标题"), h("input", { value: title, onChange: (e) => setTitle(e.target.value) }), ...(type?.fields || []).map(
+        (f) => h("label", { key: f.id }, `${f.title || f.name || f.id}${f.required ? " *" : ""}${f.unit ? ` · ${f.unit}` :
+        ""}`, f.kind === "category" || f.kind === "reference" ? h("select", { value: fields[f.id] || "", onChange: (e) => setFields(
+        { ...fields, [f.id]: e.target.value }) }, h("option", { value: "" }, "未选择"), ...(f.kind === "category" ? (data?.
+        categories || []).filter((c) => c.tableId === f.categoryTableId) : data?.items || []).map((v) => h("option", { key: v.
+        id, value: v.id }, v.name || v.title || v.id))) : f.kind === "boolean" ? h("input", { type: "checkbox", checked: !!fields[f.
+        id], onChange: (e) => setFields({ ...fields, [f.id]: e.target.checked }) }) : h("input", { type: f.kind === "dat\
+e" ? "date" : "text", value: fields[f.id] ?? "", onChange: (e) => setFields({ ...fields, [f.id]: f.kind === "integer" &&
+        e.target.value !== "" ? Number(e.target.value) : e.target.value }) }))), h("label", null, "关注维度（可选）"),
+        h("select", { value: mainKId, onChange: (e) => setMainKId(e.target.value) }, h("option", { value: "" }, "不关联维度"),
+        ...(data?.dimensions || []).map((k) => h("option", { key: k.id, value: k.id }, k.title || k.name || k.id))), h("\
+label", null, "正文"), h("textarea", { value: body, onChange: (e) => setBody(e.target.value) }), h("div", { className: "\
+okr-row" }, button("保存", save, true), button("取消", () => setForm(null))));
+      }
+      function pageWidgets() {
+        return (data?.bundle?.page || []).map((widget, n) => {
+          const rows = (data.items || []).filter((item) => !widget.typeId || item.typeId === widget.typeId);
+          const tool = data.bundle.tools.find((tool2) => tool2.id === widget.toolId), declaration = tool?.commands[widget.command];
+          const access = programAccess(declaration?.program);
+          const openForm = () => { edit(); const targetType = widget.typeId || access.recordTypeId; if (targetType) setTypeId(targetType); };
+          let content2;
+          if (widget.kind === "markdown") content2 = h("p", { style: { whiteSpace: "pre-wrap" } }, widget.content || "");
+          else if (widget.kind === "summary") content2 = h("p", null, `${rows.length} 条正式记录`);
+          else if (widget.kind === "form") content2 = button("添加内容", openForm);
+          else if (widget.kind === "actions") content2 = h("p", null, `${(data.actions || []).length} 项行动`, button(
+          "查看行动", () => setView("actions")));
+          else if (["table", "list"].includes(widget.kind)) content2 = h("ul", null, ...rows.slice(0, 20).map((item) => h(
+          "li", { key: item.id }, item.title)));
+          else content2 = h("p", { className: "okr-muted" }, "运行查询后展示真实结果与统计口径。");
+          return React.cloneElement(card(widget.title || ({ summary: "摘要", table: "记录", list: "内容", form: "记\
+录入口", actions: "行动", trend: "趋势", categories: "分类统计" }[widget.kind] || "空间内容"), content2, declaration && access.readOnly &&
+          button("运行查询", async () => {
+            const r = await run("tool.run", { toolId: tool.id, command: widget.command, input: widget.input || {}, requestId: requestId() },
+            { refresh: false });
+            if (r) setWidgetResults({ ...widgetResults, [n]: r.data });
+          }), declaration && !access.readOnly && access.recordTypeId && widget.kind !== "form" && button("填写内容", openForm), widgetResults[n] && detail("结果与口径", widgetResults[n])), { key: `widget-${n}` });
+        });
+      }
+      function dimensions() {
+        return card("关注维度", h("div", { className: "okr-row" }, ...(data?.dimensions || []).map((k) => h("div", {
+        className: "okr-card", key: k.id }, h("strong", null, k.title || k.name || k.id), h("span", { className: "okr-mu\
+ted" }, k.archivedAt ? " · 已归档" : ""), button(k.archivedAt ? "恢复维度" : "归档维度", () => run(k.archivedAt ?
+        "dimension.restore" : "dimension.archive", { id: k.id, expectedRevision: k.revision })))), button("添加关注维度",
+        async () => {
+          const title2 = await askInput("持续关注的子方向是什么？");
+          if (title2) run("dimension.save", { title: title2 });
+        })));
+      }
+      function recordTrace(item) {
+        const task = (chat.tasks || []).find(task => task.operationLinks?.some(link => link.itemId === item.id));
+        const link = task?.operationLinks.find(link => link.itemId === item.id);
+        return button(task ? "查看轨迹" : "无轨迹关联", () => openTrace({ taskId: task.id, focus: { operationId: link.operationId } }), false, !task);
+      }
+      function records() {
+        return h(React.Fragment, null, dimensions(), card("记录", h("div", { className: "okr-between" }, h("input", { value: query,
+        placeholder: "搜索标题和正文", onChange: (e) => setQuery(e.target.value), style: { maxWidth: 360 } }), button(
+        "添加记录", () => edit(), true, busy || !data?.types?.length)), items.length ? h("table", null, h("thead", null,
+        h("tr", null, ...["选择", "内容", "类型", "操作"].map((v) => h("th", { key: v }, v)))), h("tbody", null,
+        ...items.map((item) => h("tr", { key: item.id }, h("td", null, h("input", { type: "checkbox", "aria-label": `选择${item.
+        title}`, checked: selectedItems.includes(item.id), onChange: (e) => setSelectedItems(e.target.checked ? [...selectedItems,
+        item.id] : selectedItems.filter((id) => id !== item.id)) })), h("td", null, h("strong", null, item.title || "未命名"),
+        h("p", { className: "okr-muted" }, item.body?.slice(0, 180)), detail("记录详情", item.fields)), h("td", null,
+        data.types?.find((t) => t.id === item.typeId)?.title || item.typeId), h("td", null, h("div", { className: "okr-r\
+ow" }, button("修改", () => edit(item)), button("加入行动", () => run("action.save", { itemId: item.id })), recordTrace(item))))))) :
+        h("p", { className: "okr-empty" }, "暂无正式记录。保存后会在这里显示。")), form && recordForm(),
+        pageWidgets(), card("查询与统计", h("div", { className: "okr-row" }, h("select", { value: typeId, onChange: (e) => setTypeId(
+        e.target.value), style: { width: 200 } }, h("option", { value: "" }, "全部类型"), ...(data?.types || []).map(
+        (t) => h("option", { key: t.id, value: t.id }, t.title || t.id))), button("查询", async () => {
+          const r = await run("items.query", { typeId: typeId || void 0 }, { refresh: false });
+          if (r) setStats(r.data);
+        }), button("统计", async () => {
+          const dateField = await askInput("采用哪个业务日期字段？留空表示不按日期筛选。");
+          if (dateField === null) return;
+          const field = await askInput("需要汇总哪个数字字段？留空表示计数。");
+          if (field === null) return;
+          const r = await run("items.query", { typeId: typeId || void 0, dateField: dateField || void 0, aggregate: { operation: field ?
+          "sum" : "count", field: field || void 0 } }, { refresh: false });
+          if (r) setStats(r.data);
+        })), stats && detail(`结果 ${stats.total} 条，未纳入 ${stats.excludedCount} 条`, stats)));
+      }
+      function actions() {
+        const list = data?.actions || [];
+        return card("行动与执行", ...list.map((action) => {
+          const item = data.items.find((i) => i.id === action.itemId);
+          return h("article", { className: "okr-card", key: action.itemId }, h("div", { className: "okr-between" }, h("s\
+trong", null, item?.title || action.itemId), h("span", { className: "okr-tag" }, actionPhase[action.state] || action.state)), h("p", { className: "ok\
+r-muted" }, action.schedule?.enabled === false ? "排期已停用" : action.schedule?.start || action.schedule?.date || "\
+尚未排期"), h("div", { className: "okr-row" }, button("安排日期", async () => {
+            const date = await askInput("计划日期（YYYY-MM-DD）");
+            if (date) run("action.save", { itemId: action.itemId, expectedRevision: action.revision, schedule: { date, enabled: true } });
+          }), button("安排时段", async () => {
+            const start = await askInput("开始时间（含时区，例如2026-10-27T10:00:00+08:00）");
+            if (!start) return;
+            const end = await askInput("结束时间（含时区）");
+            if (end) run("action.save", { itemId: action.itemId, expectedRevision: action.revision, schedule: { start, end,
+            enabled: true } });
+          }), button("设置周期", async () => {
+            const date = await askInput("首次日期（YYYY-MM-DD）");
+            if (!date) return;
+            const recurrence = await askInput("周期规则（例如daily或weekly）");
+            if (recurrence) run("action.save", { itemId: action.itemId, expectedRevision: action.revision, schedule: { date,
+            recurrence, enabled: true } });
+          }), button("打卡", async () => {
+            const occurrenceKey = action.schedule?.recurrence ? await askInput("本次执行日期（YYYY-MM-DD）") : void 0;
+            if (occurrenceKey === null) return;
+            const note = await askInput("执行心得（可空）");
+            if (note !== null) run("execution.save", { itemId: action.itemId, occurrenceKey, note });
+          }), button("取消排期", () => run("action.save", { itemId: action.itemId, expectedRevision: action.revision,
+          schedule: { ...action.schedule, enabled: false } }))));
+        }), !list.length && h("p", { className: "okr-empty" }, "从记录中选择“加入行动”，再明确安排时间。"),
+        detail("执行记录", data?.executions || []));
+      }
+      function calendar() {
+        const start = /* @__PURE__ */ new Date(month + "-01T00:00:00"), count = new Date(start.getFullYear(), start.getMonth() +
+        1, 0).getDate();
+        return card("日历", calendarData.hasMore ? h("p", { className: "okr-muted" }, `本页显示${calendarData.occurrences.
+        length}/${calendarData.total}次排期，请缩小范围`) : null, calendarData.unsupported?.length ? detail("未投\
+影的排期", calendarData.unsupported) : null, h("input", { type: "month", value: month, onChange: (e) => setMonth(e.target.
+        value), style: { width: 180, marginBottom: 16 } }), h("div", { style: { overflow: "auto" } }, h("div", { className: "\
+okr-week" }, ...Array.from({ length: count }, (_, n) => {
+          const date = `${month}-${String(n + 1).padStart(2, "0")}`;
+          return h("div", { key: date, className: "okr-day" }, h("span", { className: "okr-muted" }, n + 1), ...(calendarData.
+          occurrences || []).filter((a) => a.date === date).map((a) => h("button", { key: `${a.objectiveId || selected}:${a.
+          itemId}:${a.occurrenceKey}`, onClick: () => {
+            if (a.objectiveId) setSelected(a.objectiveId);
+            setView("actions");
+          } }, a.title)));
+        }))));
+      }
+      function schemeView() {
+        const draft = scheme?.draft?.value;
+        return h(React.Fragment, null, card(draft ? "方案草稿" : "空间能力", h("p", { className: "okr-muted" }, "\
+通过对话描述页面、记录规则或工具的调整。确认前正式方案继续可用。"), h("textarea", { value: designText,
+        onChange: (e) => setDesignText(e.target.value), placeholder: "例如：维护学习资料，支持资料收藏、笔记和按周回顾" }),
+        h("div", { className: "okr-row" }, button("生成或调整草稿", async () => {
+          const r = await run("scheme.generate", { purpose: data?.space?.purpose, instruction: designText });
+          if (r) await loadScheme();
+        }, true, !caps.bot || busy), button("刷新审查", loadScheme)), draft && h(React.Fragment, null, h("h3", null,
+        draft.bundle.title || "待启用方案"), h("p", null, draft.bundle.description), ...draft.bundle.types.map((t) => h(
+        "div", { className: "okr-card", key: t.id }, h("strong", null, t.title || t.id), h("p", { className: "okr-muted" },
+        t.fields.map((f) => `${f.title || f.id}${f.required ? "（必填）" : ""}`).join("、")))), button("运行试用检查",
+        async () => {
+          await run("scheme.review");
+          await loadScheme();
+        }), draft.review && h("p", null, draft.review.passed ? "实际样例检查通过" : "检查未通过，请调整草稿"),
+        detail("工具、CLI 与使用 Skill", draft.bundle.tools), detail("检查结果", draft.review), draft.compatibility &&
+        detail(`历史影响：${draft.compatibility.affectedItems}条事项保持原值`, draft.compatibility), button(
+        "添加真实试用记录", () => {
+          setForm({ trial: true });
+          setTitle("");
+          setBody("");
+          setFields({});
+          setTypeId(draft.bundle.types[0]?.id || "");
+        }), form?.trial && recordForm(), ...trials.filter((t) => t.provenance === "real").map((t) => h("label", { key: t.
+        id }, h("input", { type: "checkbox", checked: chosen.includes(t.id), onChange: (e) => setChosen(e.target.checked ?
+        [...chosen, t.id] : chosen.filter((id) => id !== t.id)) }), t.title || t.value?.title || t.id)), button("确认启用当前方\
+案", async () => {
+          const r = await run("scheme.confirm", { expectedRevision: scheme.draft.revision, hash: draft.hash, selectedTrialIds: chosen });
+          if (r) {
+            await loadScheme();
+            const saved = r.data.transfers.filter((t) => t.result.kind === "saved").length;
+            setNotice({ text: `方案已启用，已转入 ${saved} 条记录，其余真实材料可在待整理中继续。` });
+          }
+        }, true, busy || !draft.review?.passed))), !draft && data?.bundle && detail("当前能力与使用说明", data.
+        bundle));
+      }
+      function planView() {
+        return card("规划与阶段复盘", h("textarea", { value: planningText, onChange: (e) => setPlanningText(e.target.
+        value), placeholder: "描述希望推进的目标、时间范围与约束" }), h("div", { className: "okr-row" },
+        button("生成行动建议", async () => {
+          const r = await run("plan.generate", { goal: planningText }, { refresh: false });
+          if (r) {
+            setPlan(r.data.value || r.data);
+            setPlanChosen([]);
+          }
+        }, true, !caps.bot || busy), button("生成复盘草稿", async () => {
+          const r = await run("review.generate", { question: planningText }, { refresh: false });
+          if (r) setPlan(r.data.value || r.data);
+        }, false, !caps.bot || busy)), plan && h("div", { className: "okr-card" }, h("h3", null, plan.title), h("p", null,
+        plan.summary || ""), ...(plan.suggestions || []).map((s, n) => h("label", { key: n }, h("input", { type: "checkb\
+ox", checked: planChosen.includes(n), onChange: (e) => setPlanChosen(e.target.checked ? [...planChosen, n] : planChosen.
+        filter((i) => i !== n)) }), s.title, h("p", { className: "okr-muted" }, s.reason))), plan.kind === "review" ? button(
+        "核对后保存复盘", () => run("review.save", { id: plan.id, hash: plan.hash }), true) : button("仅将选中建议加入行动",
+        () => run("plan.adopt", { id: plan.id, hash: plan.hash, selected: planChosen }), true, !planChosen.length || busy),
+        detail("依据与假设", plan)), ...(data?.results || []).map((r) => h(React.Fragment, { key: r.id }, card(r.title,
+        h("p", null, r.body || r.summary), detail("评价依据", r.evidence || []), button("补充评价", async () => {
+          const body2 = await askInput("补充阶段评价", r.body || r.summary || "");
+          if (body2 !== null) run("result.save", { id: r.id, targetId: r.targetId, title: r.title, body: body2, evidence: r.
+          evidence || [], expectedRevision: r.revision });
+        })))));
+      }
+      function content() {
+        if (!data) return h("div", { className: "okr-empty" }, "正在读取空间…");
+        if (!selected && view === "calendar") return h(React.Fragment, null, button("返回综合群聊", () => setView(
+        "records")), calendar(), calendarData.errors?.length ? detail("未纳入的空间", calendarData.errors) : null);
+        if (!selected) return card("综合空间", h("p", null, "向协调 Bot 提出多空间需求，或明确 @ 成员。结果和补充会留在原群。"),
+        h("div", { className: "okr-row" }, button("全局日历", () => setView("calendar")), button("查询选中空间",
+        () => run("group.query", { objectiveIds: groupTargets, text: text || "查询这些空间的相关记录", messageId: requestId() }),
+        false, busy || !caps.bot || !groupTargets.length), button("规划选中空间", () => run("group.plan", { objectiveIds: groupTargets,
+        text: text || "根据这些空间的事实提出行动建议", messageId: requestId() }), false, busy || !caps.bot ||
+        !groupTargets.length)), h("div", { className: "okr-grid" }, ...spaces.map((s) => h("article", { className: "okr-\
+card", key: s.id }, h("h3", null, s.title), h("label", null, h("input", { type: "checkbox", checked: groupTargets.includes(
+        s.id), onChange: (e) => setGroupTargets(e.target.checked ? [...groupTargets, s.id] : groupTargets.filter((id) => id !==
+        s.id)) }), "纳入查询或规划"), h("p", { className: "okr-muted" }, s.purpose || ""), button("打开空间",
+        () => setSelected(s.id)), button("调整空间", async () => {
+          const instruction = await askInput("希望怎样调整这个空间？");
+          if (!instruction) return;
+          const r = await run("group.scheme", { action: "generate", objectiveId: s.id, instruction });
+          if (r) {
+            setSelected(s.id);
+            setView("scheme");
+          }
+        }, false, !caps.bot || busy)))), detail("协作进展", data.parts || data.tasks || []));
+        if (!data.migrated) return card("升级此空间", h("p", null, "先检查并备份，再明确执行迁移。旧文件保持保留，升级不会补造历史执行。"),
+        h("div", { className: "okr-row" }, button("检查升级条件", async () => {
+          const r = await run("space.inspect", {}, { refresh: false });
+          if (r) setStats(r.data);
+        }), button("备份旧文件", () => run("space.backup", {}, { refresh: false })), button("迁移此空间", () => stats?.
+        inspectionHash ? run("space.migrate", { confirmed: true, inspectionHash: stats.inspectionHash }) : setNotice({ text: "\
+请先检查升级条件", error: true }), true)), stats && detail("检查报告", stats), detail("当前目标与日程",
+        data));
+        if (view === "records") return records();
+        if (view === "actions") return actions();
+        if (view === "calendar") return calendar();
+        if (view === "scheme") return schemeView();
+        if (view === "planning") return planView();
+        if (view === "pending") return card("待整理", ...(data.pending_materials || []).map((m) => h("article", { className: "\
+okr-card", key: m.id }, h("h3", null, m.title || "待补充材料"), h("p", { className: "okr-muted" }, m.reason === "ar\
+chived" ? "空间已归档，请先恢复" : m.reason === "trial_not_selected" ? "真实试用尚未选择转入，可继续保存" :
+        m.reason === "transfer_incomplete" ? "试用转入未完成，可继续处理" : `缺少：${(m.missing || []).join(
+        "、")}`), button("补充内容", () => edit(m, true)))), form && recordForm(), !(data.pending_materials || []).
+        length && h("p", { className: "okr-empty" }, "暂无待整理材料。"));
+        if (view === "history") return card("方案历史", ...history.map((s) => h("article", { className: "okr-card", key: s.
+        key }, h("h3", null, s.value.title || s.key), button("生成恢复草稿", async () => {
+          const r = await run("scheme.restore", { bundleId: s.key });
+          if (r) {
+            await loadScheme();
+            setView("scheme");
+          }
+        }))), button("恢复未完成的试用转入", () => run("scheme.resumeTransfers")), h("h3", { style: { marginTop: 20 } },
+        "批量历史变更"), button("预览修改选定记录", async () => {
+          if (!selectedItems.length) {
+            setNotice({ text: "请先在记录列表选择需要修改的内容", error: true });
+            return;
+          }
+          const title2 = await askInput("统一改成的标题");
+          if (title2 === null) return;
+          const r = await run("batch.preview", { changes: selectedItems.map((itemId) => ({ itemId, title: title2 })) }, {
+          refresh: false });
+          if (r) setPlan(r.data.value || r.data);
+        }), plan?.changes && h(React.Fragment, null, detail(`影响${plan.changes.length}条记录`, plan.changes), button(
+        "确认此批变更", () => run("batch.confirm", { planId: plan.id, hash: plan.hash }), true)));
+        if (view === "memory") return card("空间记忆", ...memories.map((m) => h("article", { className: "okr-card", key: m.
+        id }, h("p", null, m.text), detail("来源", m.sourceRefs), h("div", { className: "okr-row" }, button("修改", async () => {
+          const text2 = await askInput("修改偏好", m.text);
+          if (text2) {
+            await run("memory.update", { id: m.id, expectedRevision: m.revision, text: text2 });
+            await openTab("memory");
+          }
+        }), button("删除", async () => {
+          await run("memory.delete", { id: m.id, expectedRevision: m.revision });
+          await openTab("memory");
+        })))), !memories.length && h("p", { className: "okr-empty" }, "有依据的长期偏好会显示在这里，可随时修改或删除。"));
+      }
+      const messages = selected ? [...chat.messages || [], ...(chat.answers || []).map((a) => ({ ...a, role: "assistant" }))].
+      sort((a, b) => (a.seq || 0) - (b.seq || 0)) : data?.messages || [];
+      const workErrors = selected ? chat.errors || [] : [];
+      return h("div", { className: "okr-app" }, h("style", null, css + dialogCss), inputDialog && h(InputDialog, { key: inputDialog.id, request: inputDialog, onClose: value => closeInputDialog(value, inputDialog.id) }), h("header", null, h("h1", null, "🧭 个人日常助手"),
+      h("select", { "aria-label": "选择空间", value: selected, onChange: (e) => {
+        setSelected(e.target.value);
+        setView("records");
+        setStats(null);
+      } }, h("option", { value: "" }, "综合空间 · 群聊"), ...spaces.map((s) => h("option", { key: s.id, value: s.
+      id }, s.title))), button("新建空间", async () => {
+        const title2 = await askInput("空间名称");
+        if (!title2) return;
+        const purpose = await askInput("希望记录什么、怎样查看和使用？");
+        if (purpose === null) return;
+        const r = await run("scheme.create", { title: title2, purpose }, { space: "", refresh: false });
+        if (r) {
+          setSelected(r.data.objectiveId);
+          setView("scheme");
         }
-        const sidebarSession = document.querySelector('[data-session-id], .sidebar-session-row');
-        if (sidebarSession) sidebarSession.click();
-      };
-
-      // 优化点 1: 全局网状互跳
-      const navigateTo = ({ view, oId, dim }) => {
-        if (oId) setCurOId(oId);
-        if (dim) setCurDim(dim);
-        if (view) setCurView(view);
-      };
-
-      // 优化点 2: 键盘切换尺度与翻页
+      }), h("span", { className: "okr-muted" }, caps.bot ? "Bot 已连接" : "Bot 未配置 · 可使用已有工具"), !selected && button("Bot 诊断总览", () => openTrace()), button(
+      "返回 DSH", () => pluginCtx?.layout?.selectPanel(null)), button("日程总览", onCalendar)), notice && h("div", { className: `okr-notice${notice.error ?
+      " okr-error" : ""}`, role: "status" }, notice.text, notice.error && (notice.refreshSpace ? button("刷新记录", () => refreshAfterPublication(notice.refreshSpace)) : last.current && button("重试原请求", () => run(
+      last.current.command, last.current.input, { space: last.current.space })))), selected && h("nav", null, ...[["recor\
+ds", "记录"], ["actions", "行动与执行"], ["calendar", "日历"], ["pending", "待整理"], ["planning", "规划与复盘"],
+      ["trace", "执行轨迹"], ["scheme", "内容与能力审查"], ["history", "方案历史"], ["memory", "空间记忆"]].map(([key, label]) => h(
+      "button", { key, className: view === key ? "active" : "", onClick: () => openTab(key) }, label))), h("div", { className: "\
+okr-layout" }, h("main", { className: "okr-main", ref: mainPanel }, selected && data?.space && h("div", { className: "okr-between", style: {
+      marginBottom: 20 } }, h("div", null, h("h1", null, data.space.title), h("p", { className: "okr-muted" }, data.space.
+      purpose || "")), data.migrated && button(data.space.archivedAt ? "恢复空间" : "归档空间", () => run(data.space.
+      archivedAt ? "space.restore" : "space.archive", { expectedRevision: data.space.revision }))), content()), h("aside",
+      { className: "okr-chat" }, h("div", { className: "okr-chat-title" }, h("strong", null, selected ? "空间 Bot" : "\
+综合空间群聊"), selected && button("查看 Bot 轨迹", () => openTrace()), h("p", { className: "okr-muted" }, "记录、查询和继续讨论")), h("div", { className: "okr-\
+messages" }, ...messages.map((m, n) => h("article", { className: `okr-message ${m.role === "user" ? "user" : ""}`, key: m.
+      id || n, id: `message-${m.id}` }, h("p", null, m.text || m.content || ""), button("回复", () => setReply(m.answerId ||
+      m.id)), button("查看轨迹", () => openTrace(selected ? {
+        taskId: m.taskId || (chat.tasks || []).find(task => (task.inputRefs || []).includes(`message:${m.id}`))?.id,
+        messageId: m.id, focus: { messageId: m.id, ...(m.answerId ? { answerId: m.answerId } : {}) }
+      } : { source: "group", objectiveId: m.objectiveId || null, taskId: m.taskId,
+        groupMessageId: m.role === "user" ? m.id : m.replyTo || m.id, messageId: m.id,
+        focus: { messageId: m.id, ...(m.botAnswerId ? { answerId: m.botAnswerId } : {}) } })))), !messages.length && h("p", { className: "okr-muted" }, "暂无对话。输入需求后开始处理。"),
+      ...workErrors.map(error => h("section", { className: "okr-message okr-error", role: "alert", key: error.deliveryId || error.code },
+        h("strong", null, "工作需要处理"), h("p", null, workErrorMessage(error)),
+        button("查看失败轨迹", () => openTrace({ taskId: (chat.tasks || []).find(task => task.runId === `run:${error.deliveryId}`)?.id, focus: { deliveryId: error.deliveryId } }), false, false),
+        error.retryable && button("重试原工作", () => recoverWork(error.deliveryId), false, busy || !caps.bot))),
+      selected && h("details", { open: true }, h("summary", null, "当前工作与工作记录"), ...(chat.tasks || []).
+      map((t) => h("div", { className: "okr-work", key: t.id }, h("strong", null, t.title), h("p", { className: "okr-mut\
+ed" }, phase[t.phase] || t.phase), button("继续", () => {
+        setReply(t.lastAnswerRef?.replace("answer:", ""));
+        setText(`继续：${t.title}`);
+      }), button("查看轨迹", () => openTrace({ taskId: t.id })), button("取消", () => run("task.control", { taskId: t.id, expectedRevision: t.revision, action: "cancel" })))))),
+      h("div", { className: "okr-composer" }, reply && h("p", { className: "okr-muted" }, "正在回复选定消息 ", button(
+      "取消引用", () => setReply(null))), h("textarea", { "aria-label": "发送给Bot", value: text, onChange: (e) => setText(
+      e.target.value), placeholder: selected ? "向本空间 Bot 提问或补充信息" : "输入多空间需求，或 @ 成员" }),
+      h("div", { className: "okr-between", style: { marginTop: 8 } }, h("span", { className: "okr-muted" }, chat.pending ?
+      (workErrors.length ? chat.running ? "有工作正在处理" : "有工作需要处理" : "后台处理中") : workErrors.length ? "有工作需要处理" : "文字输入"), button("发送", () => send(), true, busy || !caps.bot || !!selected && !data?.
+      migrated))))));
+    }
+    let resumeTrace = false;
+    function CalendarPanel() {
+      const [legacy, setLegacy] = useState(() => resumeTrace);
+      const frame = useRef(null);
       useEffect(() => {
-        const handleKeyDown = (e) => {
-          if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-          if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setCurDim(prev => (prev === 'day' ? 'week' : 'month'));
-          } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setCurDim(prev => (prev === 'month' ? 'week' : 'day'));
-          } else if (e.key === 't' || e.key === 'T') {
-            e.preventDefault();
-            setCurDim('week');
+        resumeTrace = false;
+        const navigate = event => {
+          if (!frame.current || event.source !== frame.current.contentWindow || event.origin !== location.origin) return;
+          if (event.data?.type === 'okr-return-to-dsh') pluginCtx.layout.selectPanel(null);
+          if (event.data?.type === 'okr-open-workbench') {
+            if (validSpaceId(event.data.oid)) workbenchSnapshot = { selected: event.data.oid, view: 'records' };
+            setLegacy(true);
           }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        window.addEventListener('message', navigate);
+        return () => window.removeEventListener('message', navigate);
       }, []);
-
-      // 滚动周视图到当前时间 (13:00 附近)
-      useEffect(() => {
-        if (curDim === 'week' && curView === 'calendar' && scrollRef.current) {
-          scrollRef.current.scrollTop = 760;
-        }
-      }, [curDim, curView]);
-
-      const toggleSchedule = (id) => {
-        setCurData(prev => ({
-          ...prev,
-          schedules: prev.schedules.map(s => s.id === id ? {
-            ...s,
-            status: s.status === 'completed' ? 'in_progress' : 'completed',
-            checkin_note: s.status === 'completed' ? '' : (s.checkin_note || '执行完成，打卡确认')
-          } : s)
-        }));
-      };
-
-      const toggleArchive = () => {
-        setCurData(prev => ({
-          ...prev,
-          objectives: prev.objectives.map(o => o.id === curO.id ? { ...o, is_archived: !o.is_archived } : o),
-          key_points: prev.key_points.map(k => k.objective_id === curO.id ? { ...k, is_archived: !curO.is_archived } : k)
-        }));
-      };
-
-      const handleAiSend = (textInput) => {
-        const text = textInput || aiQuery.trim();
-        if (!text) return;
-        const newLogs = [...aiLogs, { sender: 'user', text }];
-        setAiLogs(newLogs);
-        if (!textInput) setAiQuery('');
-
-        setTimeout(() => {
-          let reply = `已收到指令：“${text}”。已自动为您更新上下文与日程状态。`;
-          if (text.includes('Duolingo') || text.includes('打卡')) {
-            setCurData(prev => ({
-              ...prev,
-              schedules: prev.schedules.map(s => s.id === 'SCH_REC_duolingo' ? { ...s, status: 'completed', checkin_note: 'AI 自动打卡完成' } : s)
-            }));
-            reply = '✅ 已为您自动完成今日 Duolingo 打卡，更新了英语目标的活跃度！';
-          } else if (text.includes('灵感') || text.includes('WASM')) {
-            const newIns = { id: 'INS_' + Date.now(), objective_id: curO.id, date: '2026-10-25', text };
-            setCurData(prev => ({ ...prev, inspirations: [newIns, ...prev.inspirations] }));
-            reply = '💡 灵感已成功沉淀并归纳至目标草稿箱！';
-          }
-          setAiLogs([...newLogs, { sender: 'ai', text: reply }]);
-        }, 500);
-      };
-
-      // -------------------------------------------------------------
-      // 视角 1: 整合日历 (含飞书同款 24h 周视图与红线)
-      // -------------------------------------------------------------
-      const renderCalendarView = () => {
-        const filtered = curData.schedules.filter(s => oFilterList.includes(s.objective_id));
-
-        return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '16px', flex: '1 1 auto' } },
-          // 控制栏
-          h('div', { className: 'glass-card', style: { padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: '16px' } },
-              h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-                h('h2', { style: { margin: 0, fontSize: '18px', fontWeight: 700, color: '#ffffff' } }, '2026年 10月'),
-                h('div', { style: { display: 'flex', alignItems: 'center', background: '#1e293b', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255, 255, 255, 0.08)' } },
-                  h('button', { style: { width: '24px', height: '22px', color: '#94a3b8', background: 'transparent' } }, '◀'),
-                  h('button', { style: { padding: '0 8px', height: '22px', fontSize: '11px', color: '#cbd5e1', background: 'transparent', fontWeight: 500 } }, '今天'),
-                  h('button', { style: { width: '24px', height: '22px', color: '#94a3b8', background: 'transparent' } }, '▶')
-                )
-              ),
-
-              // 多选 O 筛选器 Popover
-              h('div', { style: { position: 'relative' } },
-                h('button', {
-                  className: 'okr-btn',
-                  onClick: () => setShowFilterPopover(!showFilterPopover)
-                }, `🎯 目标筛选 (${oFilterList.length}/${curData.objectives.length}) ▼`),
-
-                showFilterPopover && h('div', {
-                  style: { position: 'absolute', top: 'calc(100% + 8px)', left: 0, width: '280px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px', zIndex: 50, boxShadow: '0 12px 32px rgba(0,0,0,0.6)' }
-                },
-                  h('div', { style: { display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '8px', fontSize: '11px' } },
-                    h('span', { style: { fontWeight: 700, color: '#94a3b8' } }, '多选展示目标'),
-                    h('div', { style: { display: 'flex', gap: '8px' } },
-                      h('button', { style: { background: 'none', color: '#38bdf8', fontSize: '11px' }, onClick: () => setOFilterList(curData.objectives.map(o => o.id)) }, '全选'),
-                      h('button', { style: { background: 'none', color: '#94a3b8', fontSize: '11px' }, onClick: () => setOFilterList([]) }, '清空')
-                    )
-                  ),
-                  curData.objectives.map(o => {
-                    const isChecked = oFilterList.includes(o.id);
-                    return h('label', {
-                      key: o.id,
-                      style: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: isChecked ? '#FFF' : '#64748b', padding: '4px 0' }
-                    },
-                      h('input', {
-                        type: 'checkbox',
-                        checked: isChecked,
-                        onChange: () => setOFilterList(prev => isChecked ? prev.filter(x => x !== o.id) : [...prev, o.id])
-                      }),
-                      h('span', { style: { width: '8px', height: '8px', borderRadius: '50%', background: o.color } }),
-                      h('span', null, o.title.split(' ')[0]),
-                      o.is_archived && h('span', { style: { fontSize: '10px', color: '#a855f7' } }, '(归档)')
-                    );
-                  })
-                )
-              ),
-
-              // 快捷操作提示
-              h('div', { style: { display: 'flex', gap: '6px', fontSize: '11px', color: '#64748b' } },
-                h('span', { style: { padding: '2px 8px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)', color: '#94a3b8' } }, '↑/↓ 切换尺度'),
-                h('span', { style: { padding: '2px 8px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)', color: '#94a3b8' } }, '←/→ 翻页'),
-                h('span', { style: { padding: '2px 8px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)', color: '#94a3b8' } }, 'T 今天')
-              )
-            ),
-
-            // 尺度切换
-            h('div', { style: { display: 'flex', alignItems: 'center', background: '#1e293b', padding: '3px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' } },
-              h('button', { className: `dim-pill-btn ${curDim === 'month' ? 'active' : ''}`, onClick: () => setCurDim('month') }, '月视图'),
-              h('button', { className: `dim-pill-btn ${curDim === 'week' ? 'active' : ''}`, onClick: () => setCurDim('week') }, '周视图 (24h)'),
-              h('button', { className: `dim-pill-btn ${curDim === 'day' ? 'active' : ''}`, onClick: () => setCurDim('day') }, '今日聚焦 (日)')
-            )
-          ),
-
-          // 月视图网格
-          curDim === 'month' && h('div', { className: 'glass-card', style: { padding: '16px', display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: '580px' } },
-            h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 600, color: '#64748b' } },
-              ['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map(w => h('div', { key: w, style: w.includes('周六') || w.includes('周日') ? { color: '#60a5fa' } : null }, w))
-            ),
-            h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '1fr', gap: '8px', flex: '1 1 auto' } },
-              Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
-                const isToday = (day === 25);
-                const dateStr = `2026-10-${String(day).padStart(2, '0')}`;
-                const daySchs = filtered.filter(s => s.date === dateStr);
-
-                return h('div', {
-                  key: day,
-                  onDoubleClick: () => setCurDim('day'),
-                  style: {
-                    backgroundColor: isToday ? '#172554' : '#1e293b',
-                    border: isToday ? '1.5px solid #2563eb' : '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: '10px',
-                    padding: '8px',
-                    minHeight: '96px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer'
-                  }
-                },
-                  h('div', null,
-                    h('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: '11px' } },
-                      h('span', { style: { fontWeight: 700, color: isToday ? '#38bdf8' : '#94a3b8' } }, day),
-                      daySchs.length > 0 && h('span', { style: { fontSize: '10px', color: '#64748b' } }, `${daySchs.length}项`)
-                    ),
-                    h('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' } },
-                      daySchs.map(s => {
-                        const obj = curData.objectives.find(o => o.id === s.objective_id) || {};
-                        const isDone = (s.status === 'completed');
-                        return h('div', {
-                          key: s.id,
-                          onClick: (e) => { e.stopPropagation(); setEditScheduleTarget(s); },
-                          title: '点击编辑日程',
-                          style: {
-                            backgroundColor: '#0f172a',
-                            border: `1px solid ${obj.color}`,
-                            color: obj.color,
-                            padding: '3px 6px',
-                            borderRadius: '5px',
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            textDecoration: isDone ? 'line-through' : 'none',
-                            opacity: isDone ? 0.75 : 1
-                          }
-                        },
-                          h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, `${s.start_time || ''} ${s.title}`),
-                          isDone && h('span', { style: { color: '#34d399' } }, '✓')
-                        );
-                      })
-                    )
-                  ),
-                  h('div', { style: { textAlign: 'right', fontSize: '9px', color: '#475569' } }, isToday ? '今天' : '')
-                );
-              })
-            )
-          ),
-
-          // 优化点 2: 飞书同款 24 小时排期周视图
-          curDim === 'week' && h('div', { className: 'glass-card', style: { padding: '16px', display: 'flex', flexDirection: 'column', flex: '1 1 auto' } },
-            // 表头
-            h('div', { style: { display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', textAlign: 'center', fontSize: '12px', fontWeight: 600, paddingBottom: '12px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' } },
-              h('div', { style: { color: '#64748b', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' } }, 'GMT+8'),
-              [
-                { name: '周日', date: '25', isToday: true, banner: '冲刺日', bannerColor: '#f87171' },
-                { name: '周一', date: '26', banner: 'Core评审', bannerColor: '#fbbf24' },
-                { name: '周二', date: '27' },
-                { name: '周三', date: '28', banner: 'Activity Day', bannerColor: '#c084fc' },
-                { name: '周四', date: '29' },
-                { name: '周五', date: '30' },
-                { name: '周六', date: '31' }
-              ].map(d => h('div', { key: d.date, style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' } },
-                h('span', { style: { fontSize: '11px', color: d.isToday ? '#60a5fa' : '#94a3b8' } }, d.name),
-                d.isToday ? h('span', { style: { width: '26px', height: '26px', borderRadius: '50%', background: '#2563eb', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, margin: '0 auto' } }, d.date)
-                          : h('span', { style: { fontSize: '14px', fontWeight: 700, color: '#f8fafc', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center' } }, d.date),
-                d.banner && h('span', { style: { fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: `${d.bannerColor}20`, color: d.bannerColor, border: `1px solid ${d.bannerColor}40`, margin: '2px auto 0 auto' } }, d.banner)
-              ))
-            ),
-
-            // 24小时滚动网格 (00:00 - 24:00)
-            h('div', { ref: scrollRef, className: 'week-24h-container', style: { marginTop: '10px' } },
-              // 实时时间红线 (14:58 处)
-              h('div', { className: 'current-time-line', style: { top: '898px' } },
-                h('div', { className: 'current-time-tag' },
-                  h('span', null, '●'),
-                  h('span', null, '14:58')
-                )
-              ),
-
-              // 24 小时行
-              Array.from({ length: 24 }, (_, hour) => {
-                const hourStr = String(hour).padStart(2, '0') + ':00';
-                return h('div', { key: hour, className: 'hour-row' },
-                  h('div', { className: 'hour-label' }, hourStr),
-                  ['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31'].map(dateStr => h('div', {
-                    key: dateStr,
-                    className: 'grid-day-col',
-                    onClick: () => {
-                      const start = String(hour).padStart(2, '0') + ':00';
-                      const end = String(hour + 1).padStart(2, '0') + ':00';
-                      setEditScheduleTarget({ id: '', title: '', date: dateStr, start_time: start, end_time: end, objective_id: curOId, status: 'pending' });
-                    }
-                  }))
-                );
-              }),
-
-              // 绘制日程卡片
-              filtered.map(s => {
-                const weekDates = ['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31'];
-                const dayIdx = weekDates.indexOf(s.date);
-                if (dayIdx === -1) return null;
-
-                const startParts = (s.start_time || '10:00').split(':');
-                const startMin = parseInt(startParts[0], 10) * 60 + parseInt(startParts[1] || '0', 10);
-
-                let durationMin = 60;
-                if (s.end_time) {
-                  const endParts = s.end_time.split(':');
-                  const endMin = parseInt(endParts[0], 10) * 60 + parseInt(endParts[1] || '0', 10);
-                  durationMin = Math.max(30, endMin - startMin);
-                }
-
-                const topPx = startMin;
-                const heightPx = durationMin;
-                const colWidthPct = 100 / 7;
-                const leftPct = (dayIdx * colWidthPct);
-
-                const obj = curData.objectives.find(o => o.id === s.objective_id) || {};
-                const isDone = (s.status === 'completed');
-                const isInProgress = (s.status === 'in_progress');
-
-                return h('div', {
-                  key: s.id,
-                  onClick: (e) => { e.stopPropagation(); setEditScheduleTarget(s); },
-                  className: `week-event-card ${isInProgress ? 'week-event-in-progress' : ''}`,
-                  style: {
-                    top: `${topPx}px`,
-                    height: `${heightPx}px`,
-                    left: `calc(60px + ${leftPct}% + 4px)`,
-                    width: `calc(${colWidthPct}% - 8px)`,
-                    background: `${obj.color}18`,
-                    border: `1.5px solid ${obj.color}`,
-                    color: '#ffffff'
-                  }
-                },
-                  h('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: obj.color } },
-                    h('span', null, `${s.start_time} - ${s.end_time || ''}`),
-                    h('span', null, isDone ? '✓已完成' : isInProgress ? '●进行中' : '')
-                  ),
-                  h('div', { style: { fontWeight: 600, marginTop: '2px', textDecoration: isDone ? 'line-through' : 'none' } }, s.title),
-                  h('div', { style: { fontSize: '9.5px', color: '#94a3b8', marginTop: '2px' } }, obj.title.split(' ')[0])
-                );
-              })
-            )
-          ),
-
-          // 日视图
-          curDim === 'day' && h('div', { style: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' } },
-            h('div', { className: 'glass-card', style: { padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' } },
-              h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '10px' } },
-                h('h4', { style: { margin: '0', fontSize: '15px', fontWeight: 700, color: '#ffffff' } }, '今日聚焦待办日程 (2026-10-25)'),
-                h('button', {
-                  className: 'okr-btn okr-btn-primary',
-                  onClick: () => setEditScheduleTarget({ id: '', title: '', date: '2026-10-25', start_time: '18:00', end_time: '19:00', objective_id: curOId, status: 'pending' })
-                }, '+ 添加今日日程')
-              ),
-              filtered.filter(s => s.date === '2026-10-25').map(s => {
-                const obj = curData.objectives.find(o => o.id === s.objective_id) || {};
-                const isDone = (s.status === 'completed');
-                return h('div', {
-                  key: s.id,
-                  style: { background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }
-                },
-                  h('div', { style: { display: 'flex', gap: '10px' } },
-                    h('input', { type: 'checkbox', checked: isDone, onChange: () => toggleSchedule(s.id), style: { cursor: 'pointer', marginTop: '3px' } }),
-                    h('div', null,
-                      h('div', { style: { display: 'flex', gap: '6px', alignItems: 'center' } },
-                        h('span', {
-                          onClick: () => navigateTo({ view: 'workspace', oId: s.objective_id }),
-                          style: { padding: '2px 7px', borderRadius: '9999px', background: `${obj.color}20`, color: obj.color, fontSize: '10px', cursor: 'pointer' }
-                        }, `${obj.title.split(' ')[0]} ➔`),
-                        h('span', { style: { fontSize: '11px', color: '#94a3b8' } }, `${s.start_time} - ${s.end_time || ''}`)
-                      ),
-                      h('div', {
-                        onClick: () => setEditScheduleTarget(s),
-                        style: { fontSize: '13px', fontWeight: 600, color: isDone ? '#94a3b8' : '#FFF', textDecoration: isDone ? 'line-through' : 'none', marginTop: '4px', cursor: 'pointer' }
-                      }, `${s.title} ✏️`),
-                      s.checkin_note && h('div', { style: { fontSize: '11px', color: '#10b981', marginTop: '4px' } }, `💭 心得: ${s.checkin_note}`)
-                    )
-                  ),
-                  h('button', {
-                    onClick: () => setEditScheduleTarget(s),
-                    className: 'okr-btn',
-                    style: { padding: '4px 8px', fontSize: '11px' }
-                  }, '编辑')
-                );
-              })
-            ),
-
-            h('div', { className: 'glass-card', style: { padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' } },
-              h('h4', { style: { margin: 0, fontSize: '14px', fontWeight: 700, color: '#ffffff' } }, '📝 每日反思与收获便签'),
-              h('p', { style: { margin: 0, fontSize: '11.5px', color: '#94a3b8', lineHeight: 1.5 } }, '随手记下今日感悟，AI 将自动结构化分流至 ~/.dsh_okr 对应目标中。'),
-              h('textarea', {
-                value: dailyNote,
-                onChange: (e) => setDailyNote(e.target.value),
-                rows: 8,
-                placeholder: '记录今日在各目标上的感悟与灵感...',
-                style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', color: '#f8fafc', fontSize: '12px', lineHeight: 1.6, resize: 'none' }
-              }),
-              h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                h('button', {
-                  onClick: () => { setShowAiDrawer(true); handleAiSend(`请帮我把这段心得归集到目标复盘中：${dailyNote}`); },
-                  style: { background: 'none', color: '#c084fc', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }
-                }, '✨ 让 AI 提炼分流'),
-                h('button', {
-                  className: 'okr-btn okr-btn-primary',
-                  onClick: () => { alert('已保存为本地 Markdown 反思便签！'); setDailyNote(''); }
-                }, '保存便签')
-              )
-            )
-          )
-        );
-      };
-
-      // -------------------------------------------------------------
-      // 视角 2: 甘特与看板
-      // -------------------------------------------------------------
-      const renderGanttView = () => {
-        const kps = curData.key_points.filter(k => k.objective_id === curO.id);
-        const kpIds = kps.map(k => k.id);
-        const schs = curData.schedules.filter(s => kpIds.includes(s.key_point_id));
-
-        return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '16px' } },
-          // 控制栏
-          h('div', { className: 'glass-card', style: { padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
-              h('span', { style: { fontSize: '12px', color: '#94a3b8' } }, '聚焦目标 (O):'),
-              h('select', {
-                value: curOId,
-                onChange: (e) => setCurOId(e.target.value),
-                style: { background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.15)', color: '#ffffff', fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }
-              }, curData.objectives.map(o => h('option', { key: o.id, value: o.id }, `${o.icon} ${o.title} ${o.is_archived ? '(已归档)' : ''}`))),
-              h('span', {
-                style: {
-                  fontSize: '11px', padding: '2px 8px', borderRadius: '9999px',
-                  background: curO.is_archived ? 'rgba(139,92,246,0.2)' : 'rgba(16, 185, 129, 0.15)',
-                  color: curO.is_archived ? '#c084fc' : '#34d399',
-                  border: curO.is_archived ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(16, 185, 129, 0.3)'
-                }
-              }, curO.is_archived ? '🔒 已归档封存 (仅 R 可更新)' : '🟢 正常推进中'),
-              h('button', { className: 'okr-btn', onClick: toggleArchive }, curO.is_archived ? '解封此目标' : '模拟归档封存'),
-              h('button', {
-                className: 'okr-btn',
-                style: { color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' },
-                onClick: () => navigateTo({ view: 'workspace', oId: curO.id })
-              }, '🎯 浏览专属网页 ↗')
-            ),
-
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: '14px' } },
-              h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#94a3b8' } },
-                h('span', null, `支撑点: ${kps.length}个`),
-                h('span', null, `关联日程: ${schs.length}项`),
-                h('span', null, '完成度:'),
-                h('div', { style: { width: '80px', height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' } },
-                  h('div', { style: { width: `${curO.progress}%`, height: '100%', background: '#2563eb' } })
-                ),
-                h('span', { style: { fontWeight: 700, color: '#ffffff' } }, `${curO.progress}%`)
-              ),
-
-              h('div', { style: { display: 'flex', alignItems: 'center', background: '#1e293b', padding: '3px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' } },
-                h('button', { className: `dim-pill-btn ${ganttMode === 'timeline' ? 'active' : ''}`, onClick: () => setGanttMode('timeline') }, '甘特时间轴'),
-                h('button', { className: `dim-pill-btn ${ganttMode === 'board' ? 'active' : ''}`, onClick: () => setGanttMode('board') }, '状态泳道看板')
-              ),
-
-              h('button', {
-                className: 'okr-btn okr-btn-primary',
-                onClick: () => { setShowAiDrawer(true); handleAiSend(`请帮我在【${curO.title}】下智能拆解下周的具体日程`); }
-              }, '✨ AI 智能拆解日程')
-            )
-          ),
-
-          // 甘特时间轴
-          ganttMode === 'timeline' && h('div', { className: 'glass-card', style: { padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' } },
-            h('div', { style: { display: 'grid', gridTemplateColumns: '320px repeat(4, 1fr)', gap: '10px', fontSize: '12px', fontWeight: 600, color: '#94a3b8', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '10px' } },
-              h('div', null, '核心支撑点 (Key Point) 与下属敏捷日程 (Schedule)'),
-              h('div', { style: { textAlign: 'center' } }, '10月第1周 (10.01~10.07)'),
-              h('div', { style: { textAlign: 'center' } }, '10月第2周 (10.08~10.14)'),
-              h('div', { style: { textAlign: 'center', background: 'rgba(37,99,235,0.2)', color: '#38bdf8', padding: '2px', borderRadius: '6px' } }, '10月第3周 (本周)'),
-              h('div', { style: { textAlign: 'center' } }, '10月第4周 (10.22~10.31)')
-            ),
-
-            kps.map(kp => {
-              const related = curData.schedules.filter(s => s.key_point_id === kp.id);
-              return h('div', {
-                key: kp.id,
-                style: { background: '#1e293b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '14px' }
-              },
-                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                  h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-                    h('span', null, '🔑'),
-                    h('span', {
-                      onClick: () => setEditKeypointTarget(kp),
-                      style: { fontSize: '13px', fontWeight: 700, color: '#ffffff', cursor: 'pointer' }
-                    }, `${kp.title} ✏️`),
-                    h('span', { style: { fontSize: '11px', padding: '1px 7px', borderRadius: '9999px', background: 'rgba(255,255,255,0.06)', color: '#94a3b8' } }, kp.target_window)
-                  ),
-                  h('span', { style: { fontSize: '12px', fontWeight: 700, color: '#38bdf8' } }, `${kp.progress}%`)
-                ),
-
-                h('div', { style: { marginTop: '8px' } },
-                  related.map(s => {
-                    const isDone = (s.status === 'completed');
-                    return h('div', {
-                      key: s.id,
-                      style: { display: 'grid', gridTemplateColumns: '320px 1fr', gap: '10px', alignItems: 'center', padding: '6px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }
-                    },
-                      h('div', {
-                        onClick: () => setEditScheduleTarget(s),
-                        style: { fontSize: '12px', color: '#cbd5e1', paddingLeft: '20px', cursor: 'pointer' }
-                      }, `${s.title} ✏️`),
-                      h('div', {
-                        onClick: () => navigateTo({ view: 'calendar', dim: 'day' }),
-                        title: '点击跳转至日历对应日期',
-                        style: {
-                          background: isDone ? 'linear-gradient(90deg, #059669, #10B981)' : 'linear-gradient(90deg, #2563EB, #3B82F6)',
-                          color: '#FFF',
-                          borderRadius: '6px',
-                          padding: '5px 12px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          maxWidth: '75%'
-                        }
-                      },
-                        h('span', null, `${s.date.slice(5)} ${s.start_time}`),
-                        h('span', null, isDone ? '已完成' : '进行中')
-                      )
-                    );
-                  })
-                )
-              );
-            })
-          ),
-
-          // 看板模式
-          ganttMode === 'board' && h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' } },
-            ['pending', 'in_progress', 'completed'].map((st, idx) => {
-              const colTitle = idx === 0 ? '待开始 (To Do)' : idx === 1 ? '进行中 (In Progress)' : '已完成 (Done)';
-              const colColor = idx === 0 ? '#e2e8f0' : idx === 1 ? '#38bdf8' : '#34d399';
-              const items = schs.filter(s => s.status === st);
-              return h('div', { key: st, className: 'glass-card', style: { padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' } },
-                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: colColor } },
-                  h('span', null, colTitle),
-                  h('span', { style: { fontSize: '11px', padding: '1px 7px', borderRadius: '9999px', background: 'rgba(255,255,255,0.1)' } }, items.length)
-                ),
-                items.map(s => h('div', {
-                  key: s.id,
-                  style: { background: '#1e293b', padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }
-                },
-                  h('div', {
-                    onClick: () => setEditScheduleTarget(s),
-                    style: { fontSize: '12px', fontWeight: 600, color: '#FFF', cursor: 'pointer' }
-                  }, `${s.title} ✏️`),
-                  h('div', { style: { fontSize: '11px', color: '#94a3b8', marginTop: '4px' } }, `${s.date} ${s.start_time || ''}`),
-                  h('div', { style: { display: 'flex', justifyContent: 'flex-end', marginTop: '8px', gap: '6px' } },
-                    h('button', {
-                      className: 'okr-btn',
-                      style: { padding: '3px 8px', fontSize: '10px' },
-                      onClick: () => setEditScheduleTarget(s)
-                    }, '编辑'),
-                    h('button', {
-                      className: 'okr-btn',
-                      style: { padding: '3px 8px', fontSize: '10px' },
-                      onClick: () => toggleSchedule(s.id)
-                    }, s.status === 'completed' ? '撤销' : '完成')
-                  )
-                ))
-              );
-            })
-          )
-        );
-      };
-
-      // -------------------------------------------------------------
-      // 视角 3: O 专属空间
-      // -------------------------------------------------------------
-      const renderWorkspaceView = () => {
-        const kps = curData.key_points.filter(k => k.objective_id === curO.id);
-        const results = curData.results.filter(r => r.target_id === curO.id);
-        const inss = curData.inspirations.filter(i => i.objective_id === curO.id);
-
-        return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '18px' } },
-          // 愿景 Hero 卡片
-          h('div', {
-            className: 'glass-card',
-            style: { padding: '24px 28px', background: 'linear-gradient(135deg, rgba(30,58,138,0.25), rgba(15, 23, 42, 0.95))', border: '1px solid rgba(59, 130, 246, 0.35)' }
-          },
-            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } },
-              h('div', { style: { display: 'flex', gap: '20px', alignItems: 'center' } },
-                h('div', { style: { fontSize: '40px', padding: '12px 16px', borderRadius: '16px', background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.12)' } }, curO.icon),
-                h('div', null,
-                  h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-                    h('h2', { style: { margin: 0, fontSize: '22px', fontWeight: 800, color: '#ffffff' } }, curO.title),
-                    h('span', { style: { fontSize: '11px', fontWeight: 600, padding: '2px 9px', borderRadius: '9999px', background: 'rgba(59, 130, 246, 0.18)', color: '#60a5fa' } }, curO.category),
-                    h('span', { style: { fontSize: '11px', fontWeight: 600, padding: '2px 9px', borderRadius: '9999px', background: curO.is_archived ? 'rgba(139,92,246,0.2)' : 'rgba(16, 185, 129, 0.15)', color: curO.is_archived ? '#c084fc' : '#34d399' } }, curO.is_archived ? '🔒 已归档' : '🟢 正常推进中'),
-                    h('button', {
-                      className: 'okr-btn',
-                      style: { padding: '2px 8px', fontSize: '11px', marginLeft: '6px' },
-                      onClick: () => setEditObjectiveTarget(curO)
-                    }, '✏️ 编辑目标')
-                  ),
-                  h('p', { style: { margin: '8px 0 0 0', fontSize: '13.5px', color: '#e2e8f0', lineHeight: 1.65, maxWidth: '900px' } }, curO.vision)
-                )
-              ),
-              h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-                h('select', {
-                  value: curOId,
-                  onChange: (e) => setCurOId(e.target.value),
-                  style: { background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.15)', color: '#ffffff', fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }
-                }, curData.objectives.map(o => h('option', { key: o.id, value: o.id }, `${o.icon} ${o.title}`))),
-                h('button', { className: 'okr-btn', onClick: toggleArchive }, curO.is_archived ? '解封' : '模拟归档封存'),
-                h('button', {
-                  className: 'okr-btn okr-btn-primary',
-                  onClick: () => setEditObjectiveTarget({ id: '', title: '', icon: '🎯', category: '个人成长', color: '#3B82F6', vision: '' })
-                }, '+ 新建大目标')
-              )
-            ),
-
-            h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '12px', color: '#94a3b8' } },
-              h('div', { style: { display: 'flex', alignItems: 'center', gap: '14px' } },
-                h('span', null, '总体推进完成度:'),
-                h('div', { style: { width: '280px', height: '8px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '9999px', overflow: 'hidden' } },
-                  h('div', { style: { width: `${curO.progress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #6366f1)', borderRadius: '9999px' } })
-                ),
-                h('span', { style: { fontSize: '13px', fontWeight: 700, color: '#ffffff' } }, `${curO.progress}%`)
-              ),
-              h('div', { style: { display: 'flex', gap: '20px' } },
-                h('span', null, `Key Points: ${kps.length}个`),
-                h('span', null, `执行日程: 3项`),
-                h('span', null, `成果复盘 (R): ${results.length}篇`)
-              )
-            )
-          ),
-
-          // 四宫格
-          h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' } },
-            // K 态势
-            h('div', { className: 'glass-card', style: { padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' } },
-              h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                h('h4', { style: { margin: 0, fontSize: '14px', fontWeight: 700, color: '#ffffff' } }, '🔑 核心支撑点 (Key Points) 态势'),
-                h('button', {
-                  className: 'okr-btn',
-                  style: { padding: '2px 8px', fontSize: '11px' },
-                  onClick: () => setEditKeypointTarget({ id: '', title: '', target_window: '11月第1周 ~ 11月第4周', progress: 0, doc_path: 'keypoints/K_new.md' })
-                }, '+ 新建支撑点 (K)')
-              ),
-              kps.map(kp => h('div', {
-                key: kp.id,
-                style: { background: '#1e293b', padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
-              },
-                h('div', { style: { flex: 1 } },
-                  h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-                    h('span', { style: { fontSize: '13px', fontWeight: 600, color: '#FFF' } }, kp.title),
-                    h('span', { style: { fontSize: '11px', color: '#38bdf8' } }, `${kp.progress}%`)
-                  ),
-                  h('div', { style: { fontSize: '11px', color: '#94a3b8', marginTop: '4px' } }, `排期: ${kp.target_window} · ${kp.doc_path}`)
-                ),
-                h('div', { style: { display: 'flex', gap: '6px' } },
-                  h('button', {
-                    className: 'okr-btn',
-                    style: { padding: '2px 6px', fontSize: '10px' },
-                    onClick: () => setEditKeypointTarget(kp)
-                  }, '编辑'),
-                  h('button', {
-                    className: 'okr-btn',
-                    style: { padding: '2px 6px', fontSize: '10px', color: '#38bdf8' },
-                    onClick: () => navigateTo({ view: 'gantt', oId: curO.id })
-                  }, '看板 ➔')
-                )
-              ))
-            ),
-
-            // 灵感箱
-            h('div', { className: 'glass-card', style: { padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' } },
-              h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                h('h4', { style: { margin: 0, fontSize: '14px', fontWeight: 700, color: '#ffffff' } }, '💡 灵感与想法草稿箱'),
-                h('span', { style: { fontSize: '11px', color: '#c084fc' } }, '支持跨会话继承与转化')
-              ),
-              h('div', { style: { display: 'flex', gap: '8px' } },
-                h('input', {
-                  placeholder: '输入一条突发奇想的架构灵感/思考，点击添加...',
-                  onKeyDown: (e) => {
-                    if (e.key === 'Enter' && e.target.value.trim()) {
-                      handleAiSend(`灵感记录：${e.target.value.trim()}`);
-                      e.target.value = '';
-                    }
-                  },
-                  style: { flex: 1, background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 12px', color: '#ffffff', fontSize: '12px' }
-                }),
-                h('button', { className: 'okr-btn okr-btn-primary' }, '添加灵感')
-              ),
-              inss.map(ins => h('div', {
-                key: ins.id,
-                style: { background: '#1e293b', padding: '10px', borderRadius: '8px', fontSize: '12px', color: '#cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
-              },
-                h('span', null, `• ${ins.text}`),
-                h('button', {
-                  onClick: () => setEditScheduleTarget({ id: '', title: ins.text, date: '2026-10-25', start_time: '14:00', end_time: '15:00', objective_id: curOId, status: 'pending' }),
-                  style: { background: 'none', border: 'none', color: '#38bdf8', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }
-                }, '排入日程 ➔')
-              ))
-            ),
-
-            // 资料库
-            h('div', { className: 'glass-card', style: { padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' } },
-              h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                h('h4', { style: { margin: 0, fontSize: '14px', fontWeight: 700, color: '#ffffff' } }, '📚 关联技术资料与文档库'),
-                h('span', { style: { fontSize: '11px', color: '#64748b' } }, '双向绑定本地 Markdown 与代码')
-              ),
-              [
-                { name: "Agent状态机设计说明书.md", path: "AI/Agent/StateMachine.md" },
-                { name: "Sandbox多层级安全规范.md", path: "AI/Agent/Sandbox_Security.md" },
-                { name: "ToolSchema反射协议.ts", path: "AI/Agent/ToolSchema.ts" }
-              ].map(doc => h('div', {
-                key: doc.name,
-                style: { background: '#1e293b', padding: '10px 14px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }
-              },
-                h('span', { style: { color: '#ffffff', fontWeight: 500 } }, `📄 ${doc.name}`),
-                h('span', { style: { color: '#64748b', fontFamily: 'monospace' } }, doc.path)
-              ))
-            ),
-
-            // R 复盘
-            h('div', { className: 'glass-card', style: { padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' } },
-              h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                h('h4', { style: { margin: 0, fontSize: '14px', fontWeight: 700, color: '#ffffff' } }, '🏆 阶段成果与复盘 (Results)'),
-                h('button', {
-                  className: 'okr-btn',
-                  style: { color: '#34d399', borderColor: 'rgba(52, 211, 153, 0.3)', fontSize: '11px' },
-                  onClick: () => {
-                    const text = prompt('追加阶段成果评价 (即便目标归档，R 依然终身开放追加):');
-                    if (text) {
-                      setCurData(prev => ({
-                        ...prev,
-                        results: [{ id: 'R_' + Date.now(), target_id: curO.id, title: '阶段复盘', score_or_verdict: '达成预期 (95分)', summary: text }, ...prev.results]
-                      }));
-                    }
-                  }
-                }, '+ 追加 R 复盘 (归档后仍可用)')
-              ),
-              results.map(r => h('div', {
-                key: r.id,
-                style: { background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', padding: '12px', borderRadius: '10px' }
-              },
-                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                  h('span', { style: { fontSize: '13px', fontWeight: 700, color: '#34d399' } }, r.title),
-                  h('span', { style: { fontSize: '11px', padding: '2px 8px', borderRadius: '9999px', background: 'rgba(16,185,129,0.2)', color: '#34d399' } }, r.score_or_verdict)
-                ),
-                h('p', { style: { margin: '6px 0 0 0', fontSize: '12px', color: '#e2e8f0', lineHeight: 1.5 } }, r.summary)
-              ))
-            )
-          )
-        );
-      };
-
-      // -------------------------------------------------------------
-      // 主装配
-      // -------------------------------------------------------------
-      return h('div', { className: 'okr-v22-root' },
-        h('style', null, stylesCss),
-
-        // 顶部全局导航栏 (增加 padding-left: 96px 彻底避让 macOS 红黄绿交通灯)
-        h('header', { style: { flex: '0 0 60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px 0 96px', background: '#0f172a', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', zIndex: 30 } },
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: '14px' } },
-            h('div', { style: { width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #06b6d4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)', fontSize: '18px' } }, '🧭'),
-            h('div', null,
-              h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-                h('span', { style: { fontSize: '15px', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.01em' } }, '目标日程罗盘'),
-                h('span', { style: { fontSize: '11px', fontWeight: 600, padding: '1px 7px', borderRadius: '9999px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' } }, 'OKR+GTD Hybrid'),
-                h('span', { style: { fontSize: '11px', fontWeight: 600, padding: '1px 7px', borderRadius: '9999px', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' } }, 'DSH 原生插件')
-              ),
-              h('p', { style: { margin: '2px 0 0 0', fontSize: '11px', color: '#94a3b8' } }, '大目标长期牵引 · 小日程敏捷落地 · AI 全程协同与复盘')
-            ),
-
-            // 避开交通灯后的返回按钮
-            h('button', {
-              onClick: exitToDsh,
-              className: 'okr-btn',
-              style: { background: 'rgba(255, 255, 255, 0.08)', color: '#e2e8f0', fontWeight: 600, padding: '5px 12px', borderColor: 'rgba(255,255,255,0.15)' },
-              title: '返回 DSH 会话工作台'
-            }, '◀ 返回会话')
-          ),
-
-          // 主 Tab
-          h('nav', { style: { display: 'flex', alignItems: 'center', background: 'rgba(30, 41, 59, 0.7)', padding: '3px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.08)' } },
-            h('button', { className: `nav-tab-btn ${curView === 'calendar' ? 'active' : ''}`, onClick: () => setCurView('calendar') }, '📅 整合日历'),
-            h('button', { className: `nav-tab-btn ${curView === 'gantt' ? 'active' : ''}`, onClick: () => setCurView('gantt') }, '📊 甘特与看板'),
-            h('button', { className: `nav-tab-btn ${curView === 'workspace' ? 'active' : ''}`, onClick: () => setCurView('workspace') }, '🎯 O 专属空间')
-          ),
-
-          // 右侧动作区 (新增显眼的退出按钮)
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-            h('button', {
-              onClick: () => setShowCheckinModal(true),
-              style: { position: 'relative', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '12px', fontWeight: 500 }
-            },
-              h('span', { style: { width: '7px', height: '7px', borderRadius: '9999px', background: '#fbbf24', position: 'absolute', top: '-2px', right: '-2px', boxShadow: '0 0 6px #fbbf24' } }),
-              h('span', null, '今日打卡')
-            ),
-            h('button', {
-              onClick: () => setShowAiDrawer(true),
-              style: { display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '8px', background: 'linear-gradient(135deg, #2563eb, #6366f1)', color: '#ffffff', fontSize: '12px', fontWeight: 600, boxShadow: '0 2px 10px rgba(37, 99, 235, 0.35)' }
-            }, '✨ AI Copilot'),
-            h('button', {
-              onClick: () => setEditScheduleTarget({ id: '', title: '', date: '2026-10-25', start_time: '14:00', end_time: '15:00', objective_id: curOId, status: 'pending' }),
-              className: 'okr-btn',
-              style: { width: '32px', height: '32px', padding: 0, justifyContent: 'center' }
-            }, '+'),
-            // 右侧无遮挡退出按钮
-            h('button', {
-              onClick: exitToDsh,
-              className: 'okr-btn',
-              style: { background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.25)', fontWeight: 600, padding: '6px 12px' },
-              title: '退出目标日程，返回 DSH 会话'
-            }, '✕ 退出到会话')
-          )
-        ),
-
-        // 主体视口
-        h('main', { style: { flex: '1 1 auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', overflowY: 'auto', background: '#0b0f19' } },
-          curView === 'calendar' && renderCalendarView(),
-          curView === 'gantt' && renderGanttView(),
-          curView === 'workspace' && renderWorkspaceView()
-        ),
-
-        // 优化点 1: 日程编辑/新建弹窗
-        editScheduleTarget && h('div', {
-          style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }
-        },
-          h('div', { className: 'glass-card', style: { width: '480px', background: '#0f172a', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '24px', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' } },
-            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' } },
-              h('h3', { style: { margin: 0, fontSize: '16px', fontWeight: 700, color: '#ffffff' } }, editScheduleTarget.id ? '编辑日程' : '新建日程'),
-              h('button', { onClick: () => setEditScheduleTarget(null), style: { background: 'none', color: '#94a3b8', fontSize: '18px' } }, '✕')
-            ),
-            h('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12px' } },
-              h('div', null,
-                h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '日程标题'),
-                h('input', {
-                  value: editScheduleTarget.title,
-                  onChange: (e) => setEditScheduleTarget({ ...editScheduleTarget, title: e.target.value }),
-                  style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                })
-              ),
-              h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' } },
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '所属目标 (O)'),
-                  h('select', {
-                    value: editScheduleTarget.objective_id,
-                    onChange: (e) => setEditScheduleTarget({ ...editScheduleTarget, objective_id: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  }, curData.objectives.map(o => h('option', { key: o.id, value: o.id }, o.title)))
-                ),
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '所属支撑点 (K)'),
-                  h('select', {
-                    value: editScheduleTarget.key_point_id || '',
-                    onChange: (e) => setEditScheduleTarget({ ...editScheduleTarget, key_point_id: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  }, curData.key_points.filter(k => k.objective_id === editScheduleTarget.objective_id).map(k => h('option', { key: k.id, value: k.id }, k.title)))
-                )
-              ),
-              h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' } },
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '日期'),
-                  h('input', {
-                    type: 'date',
-                    value: editScheduleTarget.date,
-                    onChange: (e) => setEditScheduleTarget({ ...editScheduleTarget, date: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  })
-                ),
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '开始时间'),
-                  h('input', {
-                    type: 'time',
-                    value: editScheduleTarget.start_time || '10:00',
-                    onChange: (e) => setEditScheduleTarget({ ...editScheduleTarget, start_time: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  })
-                ),
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '结束时间'),
-                  h('input', {
-                    type: 'time',
-                    value: editScheduleTarget.end_time || '11:00',
-                    onChange: (e) => setEditScheduleTarget({ ...editScheduleTarget, end_time: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  })
-                )
-              ),
-              h('div', null,
-                h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '执行状态'),
-                h('select', {
-                  value: editScheduleTarget.status || 'pending',
-                  onChange: (e) => setEditScheduleTarget({ ...editScheduleTarget, status: e.target.value }),
-                  style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                },
-                  h('option', { value: 'pending' }, '待开始 (To Do)'),
-                  h('option', { value: 'in_progress' }, '进行中 (In Progress)'),
-                  h('option', { value: 'completed' }, '已完成 (Done)'),
-                  h('option', { value: 'skipped' }, '已跳过 (Skipped)')
-                )
-              ),
-              h('div', null,
-                h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '执行心得 / 反思随记'),
-                h('textarea', {
-                  value: editScheduleTarget.checkin_note || '',
-                  onChange: (e) => setEditScheduleTarget({ ...editScheduleTarget, checkin_note: e.target.value }),
-                  rows: 3,
-                  placeholder: '记录本次执行的实际体会、心得或灵感...',
-                  style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff', resize: 'none' }
-                })
-              )
-            ),
-            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px', marginTop: '16px' } },
-              editScheduleTarget.id ? h('button', {
-                className: 'okr-btn okr-btn-danger',
-                onClick: () => {
-                  if (confirm('确定删除此日程吗？')) {
-                    setCurData(prev => ({ ...prev, schedules: prev.schedules.filter(s => s.id !== editScheduleTarget.id) }));
-                    setEditScheduleTarget(null);
-                  }
-                }
-              }, '删除日程') : h('div', null),
-              h('div', { style: { display: 'flex', gap: '8px' } },
-                h('button', { className: 'okr-btn', onClick: () => setEditScheduleTarget(null) }, '取消'),
-                h('button', {
-                  className: 'okr-btn okr-btn-primary',
-                  onClick: () => {
-                    if (!editScheduleTarget.title) return alert('请输入标题');
-                    if (editScheduleTarget.id) {
-                      setCurData(prev => ({
-                        ...prev,
-                        schedules: prev.schedules.map(s => s.id === editScheduleTarget.id ? editScheduleTarget : s)
-                      }));
-                    } else {
-                      setCurData(prev => ({
-                        ...prev,
-                        schedules: [...prev.schedules, { ...editScheduleTarget, id: 'SCH_' + Date.now() }]
-                      }));
-                    }
-                    setEditScheduleTarget(null);
-                  }
-                }, '保存修改')
-              )
-            )
-          )
-        ),
-
-        // 优化点 1: 大目标 O 编辑/新建弹窗
-        editObjectiveTarget && h('div', {
-          style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }
-        },
-          h('div', { className: 'glass-card', style: { width: '480px', background: '#0f172a', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '24px', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' } },
-            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' } },
-              h('h3', { style: { margin: 0, fontSize: '16px', fontWeight: 700, color: '#ffffff' } }, editObjectiveTarget.id ? '编辑大目标 (Objective)' : '新建大目标 (Objective)'),
-              h('button', { onClick: () => setEditObjectiveTarget(null), style: { background: 'none', color: '#94a3b8', fontSize: '18px' } }, '✕')
-            ),
-            h('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12px' } },
-              h('div', { style: { display: 'grid', gridTemplateColumns: '80px 1fr', gap: '10px' } },
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '图标 Emoji'),
-                  h('input', {
-                    value: editObjectiveTarget.icon,
-                    onChange: (e) => setEditObjectiveTarget({ ...editObjectiveTarget, icon: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff', textAlign: 'center', fontSize: '18px' }
-                  })
-                ),
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '目标标题'),
-                  h('input', {
-                    value: editObjectiveTarget.title,
-                    onChange: (e) => setEditObjectiveTarget({ ...editObjectiveTarget, title: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  })
-                )
-              ),
-              h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' } },
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '分类标签'),
-                  h('input', {
-                    value: editObjectiveTarget.category,
-                    onChange: (e) => setEditObjectiveTarget({ ...editObjectiveTarget, category: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  })
-                ),
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '主题色标'),
-                  h('input', {
-                    type: 'color',
-                    value: editObjectiveTarget.color,
-                    onChange: (e) => setEditObjectiveTarget({ ...editObjectiveTarget, color: e.target.value }),
-                    style: { width: '100%', height: '35px', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer' }
-                  })
-                )
-              ),
-              h('div', null,
-                h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '核心愿景描述 (Vision)'),
-                h('textarea', {
-                  value: editObjectiveTarget.vision,
-                  onChange: (e) => setEditObjectiveTarget({ ...editObjectiveTarget, vision: e.target.value }),
-                  rows: 3,
-                  style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff', resize: 'none' }
-                })
-              )
-            ),
-            h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px', marginTop: '16px' } },
-              h('button', { className: 'okr-btn', onClick: () => setEditObjectiveTarget(null) }, '取消'),
-              h('button', {
-                className: 'okr-btn okr-btn-primary',
-                onClick: () => {
-                  if (!editObjectiveTarget.title) return alert('请输入目标标题');
-                  if (editObjectiveTarget.id) {
-                    setCurData(prev => ({
-                      ...prev,
-                      objectives: prev.objectives.map(o => o.id === editObjectiveTarget.id ? editObjectiveTarget : o)
-                    }));
-                  } else {
-                    const newId = 'O_' + Date.now();
-                    setCurData(prev => ({
-                      ...prev,
-                      objectives: [...prev.objectives, { ...editObjectiveTarget, id: newId, progress: 0, is_archived: false }]
-                    }));
-                    setCurOId(newId);
-                  }
-                  setEditObjectiveTarget(null);
-                }
-              }, '保存目标')
-            )
-          )
-        ),
-
-        // 优化点 1: 支撑点 K 编辑/新建弹窗
-        editKeypointTarget && h('div', {
-          style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }
-        },
-          h('div', { className: 'glass-card', style: { width: '480px', background: '#0f172a', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '24px', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' } },
-            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' } },
-              h('h3', { style: { margin: 0, fontSize: '16px', fontWeight: 700, color: '#ffffff' } }, editKeypointTarget.id ? '编辑核心支撑点 (Key Point)' : '新建核心支撑点 (Key Point)'),
-              h('button', { onClick: () => setEditKeypointTarget(null), style: { background: 'none', color: '#94a3b8', fontSize: '18px' } }, '✕')
-            ),
-            h('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12px' } },
-              h('div', null,
-                h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '支撑点标题'),
-                h('input', {
-                  value: editKeypointTarget.title,
-                  onChange: (e) => setEditKeypointTarget({ ...editKeypointTarget, title: e.target.value }),
-                  style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                })
-              ),
-              h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' } },
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '排期时间窗口'),
-                  h('input', {
-                    value: editKeypointTarget.target_window,
-                    onChange: (e) => setEditKeypointTarget({ ...editKeypointTarget, target_window: e.target.value }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  })
-                ),
-                h('div', null,
-                  h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '完成度百分比 (%)'),
-                  h('input', {
-                    type: 'number',
-                    min: 0,
-                    max: 100,
-                    value: editKeypointTarget.progress,
-                    onChange: (e) => setEditKeypointTarget({ ...editKeypointTarget, progress: parseInt(e.target.value || '0', 10) }),
-                    style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                  })
-                )
-              ),
-              h('div', null,
-                h('label', { style: { color: '#94a3b8', display: 'block', marginBottom: '4px' } }, '关联文档路径'),
-                h('input', {
-                  value: editKeypointTarget.doc_path || '',
-                  onChange: (e) => setEditKeypointTarget({ ...editKeypointTarget, doc_path: e.target.value }),
-                  style: { width: '100%', background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px', color: '#ffffff' }
-                })
-              )
-            ),
-            h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px', marginTop: '16px' } },
-              h('button', { className: 'okr-btn', onClick: () => setEditKeypointTarget(null) }, '取消'),
-              h('button', {
-                className: 'okr-btn okr-btn-primary',
-                onClick: () => {
-                  if (!editKeypointTarget.title) return alert('请输入支撑点标题');
-                  if (editKeypointTarget.id) {
-                    setCurData(prev => ({
-                      ...prev,
-                      key_points: prev.key_points.map(k => k.id === editKeypointTarget.id ? editKeypointTarget : k)
-                    }));
-                  } else {
-                    setCurData(prev => ({
-                      ...prev,
-                      key_points: [...prev.key_points, { ...editKeypointTarget, id: 'K_' + Date.now(), objective_id: curOId }]
-                    }));
-                  }
-                  setEditKeypointTarget(null);
-                }
-              }, '保存支撑点')
-            )
-          )
-        ),
-
-        // 打卡弹窗
-        showCheckinModal && h('div', {
-          style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }
-        },
-          h('div', { className: 'glass-card', style: { width: '480px', background: '#0f172a', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '24px', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' } },
-            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' } },
-              h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-                h('span', { style: { fontSize: '22px' } }, '🔔'),
-                h('div', null,
-                  h('h3', { style: { margin: 0, fontSize: '16px', fontWeight: 700, color: '#ffffff' } }, '今日日程执行打卡'),
-                  h('span', { style: { fontSize: '11px', color: '#94a3b8' } }, '每天养成打卡习惯，记录点滴收获')
-                )
-              ),
-              h('span', { style: { fontSize: '11px', padding: '2px 8px', borderRadius: '9999px', background: 'rgba(255,255,255,0.08)', color: '#94a3b8' } }, '4 项日程')
-            ),
-
-            h('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '280px', overflowY: 'auto', marginBottom: '20px' } },
-              curData.schedules.filter(s => s.date === '2026-10-25').map(s => {
-                const isDone = (s.status === 'completed');
-                return h('div', {
-                  key: s.id,
-                  style: { background: '#111827', padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
-                },
-                  h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-                    h('input', { type: 'checkbox', checked: isDone, onChange: () => toggleSchedule(s.id), style: { cursor: 'pointer' } }),
-                    h('div', null,
-                      h('div', { style: { fontSize: '13px', fontWeight: 600, color: isDone ? '#94a3b8' : '#FFF', textDecoration: isDone ? 'line-through' : 'none' } }, s.title),
-                      h('div', { style: { fontSize: '11px', color: '#64748b' } }, `${s.start_time || ''} · ${s.objective_id}`)
-                    )
-                  ),
-                  h('button', {
-                    onClick: () => toggleSchedule(s.id),
-                    className: 'okr-btn',
-                    style: { padding: '4px 10px', fontSize: '11px', color: isDone ? '#34d399' : '#94a3b8', background: isDone ? 'rgba(16,185,129,0.2)' : '#1e293b' }
-                  }, isDone ? '已打卡 ✓' : '待打卡')
-                );
-              })
-            ),
-
-            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px' } },
-              h('span', { style: { fontSize: '11px', color: '#64748b' } }, '数据自动落盘至 ~/.dsh_okr 并同步至各视图'),
-              h('button', { className: 'okr-btn okr-btn-primary', onClick: () => setShowCheckinModal(false) }, '完成打卡')
-            )
-          )
-        ),
-
-        // AI 抽屉
-        showAiDrawer && h('div', {
-          style: { position: 'fixed', top: 0, right: 0, width: '360px', height: '100%', background: '#0f172a', borderLeft: '1px solid rgba(255, 255, 255, 0.1)', boxShadow: '-10px 0 32px rgba(0,0,0,0.6)', zIndex: 110, display: 'flex', flexDirection: 'column' }
-        },
-          h('div', { style: { padding: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-              h('span', { style: { fontSize: '20px' } }, '🤖'),
-              h('div', null,
-                h('div', { style: { fontSize: '14px', fontWeight: 700, color: '#ffffff' } }, 'AI 日程管家'),
-                h('div', { style: { fontSize: '10px', color: '#34d399' } }, '● 已加载全量 OKR 上下文与本地文档')
-              )
-            ),
-            h('button', { style: { background: 'none', color: '#94a3b8', fontSize: '18px', cursor: 'pointer' }, onClick: () => setShowAiDrawer(false) }, '✕')
-          ),
-
-          h('div', { style: { padding: '12px', background: '#090d16', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' } },
-            h('div', { style: { fontSize: '11px', color: '#64748b', marginBottom: '8px' } }, '快捷指令触发:'),
-            h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
-              h('button', { className: 'okr-btn', style: { padding: '4px 8px', fontSize: '11px' }, onClick: () => handleAiSend('帮我将今天 Duolingo 学习标记为完成') }, '✅ 标记 Duolingo 完成'),
-              h('button', { className: 'okr-btn', style: { padding: '4px 8px', fontSize: '11px' }, onClick: () => handleAiSend('我突然有个灵感：Super Agent 可以用 WebAssembly 隔离运行工具，以实现极低开销的跨平台安全沙箱。') }, '💡 记录 WASM 灵感'),
-              h('button', { className: 'okr-btn', style: { padding: '4px 8px', fontSize: '11px' }, onClick: () => handleAiSend('帮我拆解明天的卧推热身动作清单') }, '🏋️ 拆解卧推热身')
-            )
-          ),
-
-          h('div', { style: { flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' } },
-            aiLogs.map((log, idx) => h('div', {
-              key: idx,
-              style: {
-                alignSelf: log.sender === 'user' ? 'flex-end' : 'flex-start',
-                background: log.sender === 'user' ? '#2563eb' : '#1e293b',
-                color: '#f8fafc',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                fontSize: '12px',
-                lineHeight: 1.5,
-                maxWidth: '88%'
-              }
-            }, log.text))
-          ),
-
-          h('div', { style: { padding: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', gap: '8px' } },
-            h('input', {
-              value: aiQuery,
-              onChange: (e) => setAiQuery(e.target.value),
-              onKeyDown: (e) => e.key === 'Enter' && handleAiSend(),
-              placeholder: '输入指令，如：今天跟读了BBC新闻并打卡...',
-              style: { flex: 1, background: '#090d16', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', padding: '8px 12px', color: '#ffffff', fontSize: '12px' }
-            }),
-            h('button', { className: 'okr-btn okr-btn-primary', onClick: () => handleAiSend() }, '发送')
-          )
-        )
-      );
+      if (legacy) return h(App, { onCalendar: () => setLegacy(false) });
+      return h('iframe', { ref: frame, title: '目标日程工作区', src: '/okr-space/ui/index.html',
+        style: { width: '100%', height: '100%', position: 'absolute', inset: 0, border: 0, background: '#f8fafc' } });
     }
-
-    // 侧边栏常驻入口
-    function SidebarPanelIcon() {
-      return h('div', {
-        title: '目标日程罗盘',
-        style: { width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', cursor: 'pointer' }
-      }, '🧭');
-    }
-
-    return {
-      inject: ['slots', 'layout'],
-      apply(ctx) {
-        pluginCtx = ctx;
-        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-          name: 'sidebar.panellist',
-          id: 'okr-schedule',
-          order: 12,
-          label: '目标日程'
-        }, SidebarPanelIcon));
-
-        ctx.slots.inject('main', () => ctx.slots.register({
-          name: 'main',
-          key: 'okr-schedule'
-        }, OkrScheduleApp));
-      }
-    };
+    return { inject: ["slots", "layout"], apply(ctx) {
+      pluginCtx = ctx;
+      removeTraceReturn?.();
+      const returnFromTrace = event => {
+        const target = event.detail;
+        if (!target || typeof target !== "object" || target.objectiveId != null && !validSpaceId(target.objectiveId)) return;
+        const nextView = workbenchViews.has(target.view) ? target.view : "records";
+        workbenchSnapshot = { ...(workbenchSnapshot || {}), selected: target.objectiveId || "", view: nextView,
+          messageId: typeof target.messageId === "string" && target.messageId.length < 512 ? target.messageId : null };
+        resumeTrace = true;
+        ctx.layout?.selectPanel("okr-schedule");
+      };
+      window.addEventListener("asv-return-bot-trace", returnFromTrace);
+      removeTraceReturn = () => window.removeEventListener("asv-return-bot-trace", returnFromTrace);
+      ctx.effect?.(() => removeTraceReturn);
+      ctx.slots.inject("sidebar.panellist", () => ctx.slots.register({ name: "sidebar.panellist", id: "okr-schedule", order: 12,
+      label: "目标日程" }, () => h("span", { title: "个人日常助手" }, "🧭")));
+      ctx.slots.inject("main", () => ctx.slots.register({ name: "main", key: "okr-schedule" }, CalendarPanel));
+    } };
   }
 });

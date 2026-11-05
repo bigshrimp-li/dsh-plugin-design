@@ -20,7 +20,7 @@
       "skills": [],
       "source": {
         "kind": "local",
-        "importRecord": "docs/imports/okr-schedule.json"
+        "importRecord": "plugins/okr-schedule/provenance/import-2026-10-26.json"
       }
     },
     {
