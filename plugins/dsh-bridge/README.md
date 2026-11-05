@@ -4,6 +4,8 @@
 
 本插件从 `agent-loop-core/clients/dsh-bridge` 迁入，包名仍为 `@super-agent/dsh-bridge`。Core 服务及其模型、工具和持久任务状态继续由原仓库维护，插件通过公开 SDK 连接服务。SDK 和协议的固定源码快照随本插件构建，因此安装插件不要求旁边另有 Core 源码；实际执行任务仍需要运行中的兼容 Core。
 
+当前插件版本为 0.1.3，支持 DSH 0.2.1-rc.5。连接支持后台任务的 Go Core 后，在 Conversation 的“后台任务”区域可转后台、查看退出码和分流日志、停止任务或创建有限期的周期检查。服务关闭新建时，已有任务仍可查看和停止。参见[宿主验收与操作说明](docs/2026-11-05-background-tasks/spec.md)和 [SDK 快照来源](provenance/sdk-background-tasks-2026-11-05.json)。
+
 ## 安装与运行
 
 1. 准备 Node.js ≥ 22.19.0、npm 和 DSH，在仓库根目录执行 `npm ci`。
@@ -53,6 +55,7 @@ npm run check
 npm test
 SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/agent-loop-core npm run test:core
 SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/built-agent-loop-core DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:goal-host-core
+SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/built-agent-loop-core DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:background-host-core
 DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:host
 npm pack --dry-run
 ```

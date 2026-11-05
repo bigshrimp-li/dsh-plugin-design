@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "dsh-bridge",
+  "syncedAt": "2026-11-05",
+  "kind": "repository-commit-snapshot",
+  "sourceRepository": "https://github.com/bigshrimp-li/agent-loop-core",
+  "sourceRepositoryCommit": "5fb5b74e228e87ee353dcfe5b66f65e001f2b974",
+  "reason": "后台任务、监控与周期检查的公开 SDK 和协议",
+  "snapshots": {
+    "client": {
+      "originalPath": "packages/client",
+      "files": {
+        "package.json": "2272e86c1b1e591fedddc57ba2ad4e0c61883cadc49d6c81459fb01481104adc",
+        "src/attachments.ts": "968c8e69a305b7ae0718284ec5e4d820240b2e752ee948680a89d5ebd98a827d",
+        "src/background-tasks.ts": "1fee8ac8c6e48ceb8886cb415cb2b0ea58fe05d83e16ab61293ea71927e1ceb7",
+        "src/client.ts": "6b4c62e4a07b6987a531526f92459e535e1b35d75c605d5b4314909e10bf4b6c",
+        "src/errors.ts": "78e0b01e5ae3338e364ba41a88701b6ce965c0a49074426d623104101fa86f50",
+        "src/goals.ts": "a99db7422bd85369bbd4e52d687381a60342ad60ce7ea9a4838cba4a43e534d2",
+        "src/index.ts": "0ab8231dbf9298a1e42c3f41139ada6feb0de7e384a490cb2e72e494d7c2f8d4",
+        "src/managed-workspaces.ts": "daa811a585eddd63cc24951a7b023b2faf4a8a4e8f44391974544dbbed55d68f",
+        "src/settings.ts": "af4071733f4d46b7d6683d079b8222dc5f3af02d450222251783f353197d98a4",
+        "src/skill-installations.ts": "09b2c31ca54616bcfb2e14f7c73d696146fcce2c8832df4edc9cf90bac685421",
+        "src/skill-sources.ts": "a589053ede595c20a207ed3284ce897f5fd18caba35643679cf50d2808157ba5",
+        "src/sse.ts": "bed42b0db863ed13a201a86c36170d00b09e931ff930bce9601a365769781236",
+        "src/subscription.ts": "b6b3807c1c7167c16666ec16c62b8070a4c46c0b70b9b4a8b2a1cf136be0e61c",
+        "src/transport.ts": "9977808248f845eb1686bfd634bb1f16efc05b896d58809aa9c7fe2e20d927a1",
+        "src/workspace-files.ts": "a3e696e3ad47635bc721871976fee4818953ba5fc467bc50a822440f7194cb9d"
+      }
+    },
+    "protocol": {
+      "originalPath": "packages/protocol",
+      "files": {
+        "package.json": "d4b34a8e249ecc123dc0c820782680ebd12febf9a5b1c736545c35837b4be75b",
+        "src/attachments.ts": "d0fd0b10ef331d27cc20bd0cb510a2475d5e42476a48648efcc2d42e056c766e",
+        "src/background-tasks.ts": "acfcc943a7c736b5fa320fd3503d30c2e2837bbaf4c2bdcde6a4ed040392ff21",
+        "src/composer.ts": "d8c0fedf9656195f8f23d4fd88b65eaaa2e96fa7d777de73215dd809b19c1e0c",
+        "src/errors.ts": "eacd57ef1c6a50e518462a9d10e8007cb8a54794eb3acc0c9f0ea64c16c570bd",
+        "src/events.ts": "d7e4642b5b47ec8caea47beedee94e5717eaa653881810fe025dac707f0e17f7",
+        "src/executions.ts": "6f0abc9e49aeb37685e798ef82f23cc19a138e787311992623864c63e6fd41f5",
+        "src/goals.ts": "6103fc318ae8157b17ebeebc54bc7001cdcaed762a9d2563e52587646e7565e0",
+        "src/index.ts": "ffca415ab10439fb0ec3365d8a7fd77230379b2d8f81253edb2f3b65d57b2938",
+        "src/json.ts": "170a7977f8ffb1354a288d0f9126cc0e27a6c126b9bc4de8fe0a41bcbc943204",
+        "src/layout.ts": "941568dc311c81f4d5d3a19eff39505cecf2746a51069438c7a486c3538a5a4f",
+        "src/observation.ts": "e30ef32fb8836c57a5a4abf01ff897f3e5d37f34f65c2f75ac4d4d1bf1868c2b",
+        "src/p1-contracts.ts": "73700c0c3bd4d9535d5559c94105fd6a133fac0d2393ca0ff6913547e86aeda8",
+        "src/routes.ts": "f135785dc08be864b9bc13aafb71ca572e98b952d95d435ae9990218efc88e42",
+        "src/settings.ts": "b22a365abd23cfd7284a894f735e53b69985c5435cb261380d454d9080fe2062",
+        "src/skill-installations.ts": "abfdd9a85637d088bd755f5e618fabfa923bc7e70268b13eda93d94cbc5552a2",
+        "src/version.ts": "5de75f507e9f31c571fe5cde131f6abf29e124be3b0d783827381805e71de7e3",
+        "src/views.ts": "8b8de5916f65dd4c37c3a1dca50cba460a48edb1aa8bab3868c475ee836008f8",
+        "src/workspace-files.ts": "5d2fb3468b9d57fe5d1ec8967d5119112d6ba1a45a23dec817584535373beaa1"
+      }
+    }
+  }
+}

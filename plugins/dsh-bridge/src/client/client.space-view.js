@@ -1169,6 +1169,84 @@ ${COMPOSER_CSS}`;
           h("span", { className: "sa-stats-item" }, `${partial ? "已知用量 " : ""}${formatTokens(tokens)} · 缓存命中 ${cache}`),
           h("span", { className: "sa-stats-item" }, `上下文 ${percent}`));
       }
+      function ScheduleForm({ s }) {
+        const [notice, setNotice] = React.useState(""), [busy, setBusy] = React.useState(false);
+        const pending = React.useRef(null);
+        async function submit(event) {
+          event.preventDefault();
+          const form = event.currentTarget, values = new FormData(form);
+          const data = Object.fromEntries(["target", "prompt", "stopCondition"].map(name => [name, String(values.get(name)).trim()]));
+          const hours = Number(values.get("hours"));
+          data.intervalSec = Number(values.get("minutes")) * 60;
+          const fingerprint = JSON.stringify([data, hours]);
+          if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, args: { ...data, expiresAt: Date.now() + hours * 3600000, requestId: controller.taskRequestId("schedule") } };
+          setBusy(true); setNotice("");
+          try {
+            const receipt = await controller.createTaskSchedule(pending.current.args);
+            pending.current = null; form.reset(); setNotice("已受理：" + receipt.resourceId);
+          } catch (error) { setNotice(error.message); } finally { setBusy(false); }
+        }
+        const field = (name, label, props = {}) => h("label", { key: name, style: { display: "grid", gap: 4 } }, label,
+          h("input", { name, required: true, disabled: busy, maxLength: 2048, ...props }));
+        return h("details", { className: "sa-run-card" }, h("summary", null, "新建周期检查"),
+          h("form", { onSubmit: submit, style: { display: "grid", gap: 8 } },
+            field("target", "检查对象", { placeholder: "例如 PR #42" }), field("prompt", "检查内容"), field("stopCondition", "停止条件"),
+            field("minutes", "间隔（分钟）", { type: "number", min: 1, max: 10080, defaultValue: 5 }),
+            field("hours", "有效期（小时）", { type: "number", min: 1, max: 168, defaultValue: 24 }),
+            h("small", null, "立即检查一次。每次最多调用模型 4 次，每日最多检查 24 次。"),
+            h("button", { className: "sa-chip", type: "submit", disabled: busy || !s.ready }, "创建计划"), notice && h("p", { role: "status" }, notice)));
+      }
+      function BackgroundCard({ task, s }) {
+        const key = "sa.task-log:" + JSON.stringify([s.coreInstanceId, s.targetId, task.threadId, task.taskId]);
+        const [log, setLog] = React.useState(() => {
+          try { return JSON.parse(sessionStorage.getItem(key) || "{}"); } catch { return {}; }
+        }), [detail, setDetail] = React.useState(null);
+        const [notice, setNotice] = React.useState(""), [busy, setBusy] = React.useState(false);
+        const pending = React.useRef(null);
+        const labels = { awaiting_approval: "等待审批", queued: "已排队", starting: "正在启动", running: "运行中", stopping: "正在停止", failed: "失败", cancelled: "已取消", timed_out: "超时", succeeded: "成功", unknown: "结果未知", active: "已启用", paused: "已暂停", done: "已完成", expired: "已到期" };
+        async function read(action, stream) {
+          setBusy(true); setNotice("");
+          try {
+            if (action === "output") {
+              const prior = log[stream], page = await controller.backgroundAction(task, action, { stream, ...(prior?.nextCursor ? { cursor: prior.nextCursor } : {}) });
+              const next = { ...log, [stream]: { nextCursor: page.nextCursor, eof: page.eof, text: ((prior?.text || "") + (page.encoding === "base64" ? "[base64] " : "") + page.data).slice(-65536) } };
+              setLog(next);
+              // Persist positions only. Reload does not retain user output in browser storage.
+              try { sessionStorage.setItem(key, JSON.stringify(Object.fromEntries(Object.entries(next).map(([name, row]) => [name, { nextCursor: row.nextCursor }])))); } catch {}
+            } else if (action === "get") {
+              setDetail(await controller.backgroundAction(task, action));
+            } else {
+              const retry = pending.current?.action === action ? pending.current : { action, requestId: controller.taskRequestId(action), expectedRevision: task.revision };
+              pending.current = retry;
+              const receipt = await controller.backgroundAction(task, action, { requestId: retry.requestId, expectedRevision: retry.expectedRevision });
+              pending.current = null; setNotice("已受理：" + receipt.requestId + "。状态以服务回传为准。");
+            }
+          } catch (error) { if (error.code === "VERSION_CONFLICT") pending.current = null; setNotice(error.message); }
+          finally { setBusy(false); }
+        }
+        const acts = task.allowedActions || [], button = (label, click, disabled = false) => h("button", { key: label, type: "button", className: "sa-chip", disabled: busy || disabled || !s.ready, onClick: click }, label);
+        const kind = { shell: "命令", monitor: "日志监控", schedule: "周期检查", delegation: "子 Agent" }[task.kind];
+        return h("details", { className: "sa-run-card", "data-background-task": task.taskId },
+          h("summary", null, kind + " · " + (labels[task.status] || task.status) + (task.exitCode == null ? "" : " · 退出码 " + task.exitCode)),
+          h("p", null, task.summary), h("small", null, "编号 " + task.taskId + " · Conversation " + task.conversationId),
+          task.monitor && h("p", null, `监控 ${task.monitor.status} · 匹配 ${task.monitor.matches} · 丢弃 ${task.monitor.dropped} · 偏移 ${task.monitor.offset}`),
+          task.waitReason && h("p", null, "等待：" + ({ workspace_busy: "工作区正被占用", background_capacity_exceeded: "后台名额已满", capacity: "后台名额已满" }[task.waitReason] || task.waitReason) + (task.blockedByTaskId ? " · 占用任务 " + task.blockedByTaskId : "")),
+          task.stopReason && h("p", null, "原因：" + task.stopReason), task.truncated && h("p", null, "日志已截断"),
+          task.kind === "schedule" && button("计划详情", () => void read("get")),
+          detail && h("div", null, h("p", null, "下次检查：" + (detail.status === "active" ? new Date(detail.nextAt).toLocaleString() : "—") + " · 错过 " + detail.missedCount + " 次"),
+            h("p", null, detail.target + " · 每 " + detail.intervalSeconds + " 秒 · 到期 " + new Date(detail.expiresAt).toLocaleString()),
+            h("p", null, "停止条件：" + detail.stopCondition + " · 每次最多 " + detail.maxModelCalls + " 次模型调用 · 每日最多 " + detail.dailyLimit + " 次检查"),
+            h("p", null, [detail.skipReason, detail.activeOccurrenceId, detail.lastResult?.summary].filter(Boolean).join(" · ")),
+            ...(detail.occurrences || []).map(o => h("p", { key: o.occurrenceId }, new Date(o.scheduledAt).toLocaleString() + " · " + (o.skipReason || o.result?.summary || "等待结果"),
+              o.conversationId && button("查看检查 " + o.conversationId, () => void controller.selectThread(task.threadId, o.conversationId))))),
+          ...["detach", "cancel", "pause", "resume"].filter(a => acts.includes(a)).map(a => button({ detach: "转入后台", cancel: "请求停止", pause: "暂停计划", resume: "恢复计划" }[a], () => void read(a))),
+          acts.includes("report") && task.childConversationId && button("查看子会话报告", () => void controller.selectThread(task.threadId, task.childConversationId)),
+          acts.includes("verify") && h("p", null, "请在下方“外部动作结果未知”中核对执行 " + task.executionId + " 并填写证据。"),
+          ...["stdout", "stderr"].filter(() => acts.includes("output")).map(stream => h("div", { key: stream },
+            button((log[stream] ? "续读 " : "读取 ") + stream, () => void read("output", stream), log[stream]?.eof),
+            log[stream] && h("pre", { style: { overflow: "auto", maxHeight: 180 } }, log[stream].text || "（暂无输出）"))),
+          notice && h("p", { role: "status" }, notice));
+      }
       function GoalCard({ s }) {
         const [increase, setIncrease] = React.useState(""), [objective, setObjective] = React.useState("");
         const goal = s.goal;
@@ -1411,6 +1489,9 @@ ${COMPOSER_CSS}`;
                 title: current ? title(s, current) : s.selected.conversationId, threadTitle: current ? title(s, current) : s.selected.threadId,
                 messages: s.messages, initialFocus: traceFocus, controller,
                 onOpenConversation: conversationId => void controller.selectThread(s.selected.threadId, conversationId) }))),
+            !tracing && s.selected && s.taskFeatures?.backgroundTasksV1 && (s.backgroundTasks?.length || s.taskReadError || s.taskFeatures?.taskCreation?.schedules) ? h("section", { className: "sa-message-list", "aria-label": "后台任务", style: { flex: "none", maxHeight: "35vh", overflowY: "auto" } },
+              h("strong", null, "后台任务"), s.taskFeatures?.taskCreation?.schedules && h(ScheduleForm, { key: s.targetId + ":" + s.selected.conversationId, s }), s.taskReadError && h("p", { role: "alert" }, s.taskReadError),
+              ...s.backgroundTasks.filter(task => task.conversationId === s.selected.conversationId).map(task => h(BackgroundCard, { key: s.targetId + ":" + task.taskId, task, s }))) : null,
             !tracing && s.goal && h("div", { className: "sa-message-list", style: { flex: "none", paddingBottom: 0 } }, h(GoalCard, { key: s.goal.goalId, s })),
             hero && h("div", { className: "sa-hero" }, fish && h("svg", { className: "sa-hero-logo", viewBox: `0 0 ${fish.width} ${fish.height}`, "aria-hidden": true }, h("path", { d: primitives.FISH_LOGO_PATH, fill: "currentColor" })),
               h("span", null, "探索未至之境"), h("span", { className: "sa-badge" }, "Super Agent")),
@@ -1446,7 +1527,7 @@ ${COMPOSER_CSS}`;
         componentDidCatch(error, info) { console.error("[super-agent] isolated view failure", error, info?.componentStack); }
         render() { return this.state.error ? h("div", { className: "sa-error", role: "alert" }, `局部界面读取失败：${this.state.error.message}`, h("button", { type: "button", onClick: () => { this.setState({ error: null }); void controller.refresh(); } }, "重试")) : this.props.children; }
       };
-      return { GoalCard, Space: Boundary ? props => h(Boundary, { key: "space" }, h(Space, props)) : Space, DirectorySection, DiffPanel, groupChatRuns, latestModelAttempts, metricsFromTrace };
+      return { ScheduleForm, BackgroundCard, GoalCard, Space: Boundary ? props => h(Boundary, { key: "space" }, h(Space, props)) : Space, DirectorySection, DiffPanel, groupChatRuns, latestModelAttempts, metricsFromTrace };
     }
     return { createSpaceView, CSS, diffLayout, diffSections, codeTokens, attachmentRangeLabel, currentAttachmentState, compactionStatusLabel, skillCatalogRowKey, skillChoiceState };
   },

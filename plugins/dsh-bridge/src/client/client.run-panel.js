@@ -1000,6 +1000,24 @@ window.__ModuleLoader__.load({
        * fixture otherwise, which is what makes the three layouts differ without
        * any of them pretending: unreachable, connected-and-idle, and running.
        */
+      function BackgroundTasks({ state, revision }) {
+        const [items, setItems] = React.useState([]), [note, setNote] = React.useState("");
+        const supported = state.info?.runtimeFeatures?.backgroundTasksV1 === true, conversationId = state.conversationId;
+        React.useEffect(() => {
+          let current = true;
+          if (supported && conversationId) void services.run("task.list", { conversationId, limit: 12 }).then(response => {
+            if (!current) return;
+            if (response?.status === "done") { setItems(response.result.items); setNote(""); }
+            else setNote(response?.reason || "任务列表暂时不可用");
+          });
+          return () => { current = false; };
+        }, [supported, conversationId, revision]);
+        if (!supported || !conversationId) return null;
+        return h("section", { "aria-label": "后台任务" }, h("strong", null, "后台任务"),
+          ...items.filter(task => task.conversationId === conversationId).map(task =>
+            h("p", { key: task.taskId }, task.taskId + " · " + task.status + (task.exitCode == null ? "" : " · 退出码 " + task.exitCode))),
+          note && h("p", { role: "status" }, note));
+      }
       function RunPanel(props) {
         const state = useStore(services.viewState);
         const t = props.t;
@@ -1194,6 +1212,7 @@ window.__ModuleLoader__.load({
               // resuming what a stop left behind, and archiving are about the
               // Thread, and the moment they matter most is when nothing is
               // running.
+              h(BackgroundTasks, { key: "background", state, revision }),
               h(ThreadControls, { key: "threadControls", services, t, threadId: threadOnScreen, enabled: true, revision }),
               // "No active Run" is not "nothing here": the Thread's own history
               // — its finished Runs, their Turns, and this Conversation's
@@ -1374,6 +1393,7 @@ window.__ModuleLoader__.load({
               ),
             ),
             h(SupplementReceipt, { key: "receipt-supplement", outcome: supplement, t }),
+            !demoRun && h(BackgroundTasks, { key: "background", state, revision }),
             h(ThreadControls, {
               key: "threadControls",
               services,

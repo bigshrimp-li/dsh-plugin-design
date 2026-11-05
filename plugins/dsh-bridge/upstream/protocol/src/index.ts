@@ -22,3 +22,4 @@ export * from "./attachments.js";
 export * from "./skill-installations.js";
 export * from "./composer.js";
 export * from "./goals.js";
+export * from "./background-tasks.js";

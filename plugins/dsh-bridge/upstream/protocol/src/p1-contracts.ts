@@ -112,7 +112,7 @@ export const MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
 
 export type MessageRole = (typeof MESSAGE_ROLES)[number];
 
-export const MESSAGE_SOURCES = ["core", "user", "agent", "tool", "subagent"] as const;
+export const MESSAGE_SOURCES = ["core", "user", "agent", "tool", "subagent", "orchestration", "goal", "background_task"] as const;
 
 export type MessageSource = (typeof MESSAGE_SOURCES)[number];
 

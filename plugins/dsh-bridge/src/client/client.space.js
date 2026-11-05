@@ -129,7 +129,7 @@ window.__ModuleLoader__.load({
         attachments: restoreAttachments(saved.attachments), attachmentRemovals: saved.attachmentRemovals || [], attachmentDraftId: saved.attachmentDraftId || null,
         attachmentCapabilities: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "",
         skillCatalog: [], selectedSkills: Array.isArray(saved.selectedSkills) ? saved.selectedSkills : [], skillCatalogError: "", attachmentNotice: "",
-        goalsSupported: false, goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0,
+        taskFeatures: {}, backgroundTasks: [], taskReadError: "", goalsSupported: false, goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0,
         busy: false, error: "", historyError: "", ready: false, loaded: false, inspector: false, workspaceForm: false,
         coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: saved.workspaceRequest || null,
         thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, fileSelection: null, delivery: "new_run", targetRunId: null,
@@ -429,6 +429,11 @@ window.__ModuleLoader__.load({
         if (view.connection !== "ready") {
           set({ ready: false, loaded: true, error: view.core?.error?.message || "Core 未连接，请检查本机服务后刷新" }); return;
         }
+        let backgroundTasks = [], taskReadError = "";
+        if (selected && state.taskFeatures?.backgroundTasksV1) {
+          try { backgroundTasks = await pageAll("task.list", { conversationId: selected.conversationId }); }
+          catch (error) { taskReadError = error.message; }
+        }
         let goal = null, goalError = "";
         try { goal = await readGoal(selected); } catch (error) { goalError = error.message; }
         if (disposed || at !== epoch) return;
@@ -478,7 +483,7 @@ window.__ModuleLoader__.load({
         if (disposed || at !== epoch) return;
         const committed = new Set(messages.map(m => m.generationKey).filter(Boolean));
         const finalRuns = new Set(messages.filter(message => message.isFinal === true).map(message => message.runId));
-        set({ ready: true, loaded: true, goal, goalError, messages, thread, conversation, runDetails, waits, executions, contextView, contextError, historyError, branches, branchError,
+        set({ ready: true, loaded: true, backgroundTasks, taskReadError, goal, goalError, messages, thread, conversation, runDetails, waits, executions, contextView, contextError, historyError, branches, branchError,
           live: state.live.filter(m => !committed.has(m.generationKey) && !(terminalRunIds.has(m.runId) && historySucceeded && (historyCaughtUp || finalRuns.has(m.runId)))) });
       };
       const refresh = async () => {
@@ -488,7 +493,7 @@ window.__ModuleLoader__.load({
           try {
             const [catalog, listed, settings, info] = await Promise.allSettled([call("models.list"), pageAll("thread.list", { deleted: "include" }), call("settings.get"), call("server.info")]);
             if (disposed || at !== epoch) return;
-            set({ goalsSupported: info.status === "fulfilled" ? info.value?.runtimeFeatures?.goalsV1 === true : state.goalsSupported });
+            set({ taskFeatures: info.status === "fulfilled" ? info.value?.runtimeFeatures || {} : {}, goalsSupported: info.status === "fulfilled" ? info.value?.runtimeFeatures?.goalsV1 === true : state.goalsSupported });
             const modelsResult = catalog.status === "fulfilled" ? catalog.value : state.models;
             const models = Array.isArray(modelsResult) ? modelsResult.filter(m => m && typeof m.id === "string") : Array.isArray(modelsResult?.items) ? modelsResult.items : [];
             const summaries = listed.status === "fulfilled" ? listed.value : state.threads;
@@ -530,7 +535,7 @@ window.__ModuleLoader__.load({
       const selectThread = async (threadId, conversationId) => {
         rememberDraft(); epoch++; runLookups.clear(); liveCursors.clear(); terminalRunIds.clear(); runDiffCache.clear();
         const item = state.threads.find(t => t.threadId === threadId);
-        set({ busy: false, goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", selected: { threadId, conversationId }, root: item?.conversation?.config?.cwd || "",
+        set({ busy: false, backgroundTasks: [], taskReadError: "", goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", selected: { threadId, conversationId }, root: item?.conversation?.config?.cwd || "",
           ...(composerDrafts.get(conversationId) || { attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkills: [] }), skillCatalog: [], inputPreview: null, previewError: "", previewLoading: false,
           draft: drafts.get(conversationId) || "", materials: materialDrafts.get(conversationId)?.materials || [], selectedSkillIds: materialDrafts.get(conversationId)?.selectedSkillIds || [], fileSelection: null, targetRunId: null, diffSelection: null, messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, historyError: "", error: "" });
         ctx.layout.selectPanel(SPACE_ID);
@@ -795,6 +800,24 @@ window.__ModuleLoader__.load({
       };
       const controller = {
         getSnapshot: () => state, subscribe: fn => { listeners.add(fn); return () => listeners.delete(fn); },
+        async createTaskSchedule(fields) {
+          const at = epoch, selected = state.selected, targetId = state.targetId;
+          if (!selected || !state.taskFeatures?.taskCreation?.schedules) throw new Error("当前会话不能新建周期检查");
+          const receipt = await call("schedule.create", { ...fields, conversationId: selected.conversationId, targetId });
+          if (at !== epoch || state.targetId !== targetId) throw new Error("会话已切换");
+          await syncSelection();
+          return receipt;
+        },
+        async backgroundAction(task, action, fields = {}) {
+          const at = epoch, selected = state.selected, targetId = state.targetId;
+          if (!selected || task.conversationId !== selected.conversationId || !state.backgroundTasks.some(row => row.taskId === task.taskId)) throw new Error("任务不属于当前对话");
+          const schedule = task.kind === "schedule", id = schedule ? { scheduleId: task.taskId } : { taskId: task.taskId };
+          const data = await call((schedule ? "schedule." : "task.") + action, { ...fields, ...id, targetId });
+          if (at !== epoch || state.targetId !== targetId) throw new Error("会话已切换");
+          if (["cancel", "pause", "detach", "resume"].includes(action)) await syncSelection();
+          return data;
+        },
+        taskRequestId: action => requestId(action),
         getThread: threadId => call("thread.get", { threadId }),
         refresh, selectThread, newConversation, registerWorkspace, browseManagedWorkspace, openManagedWorkspace, send, receiveLive,
         loadAttachmentCapabilities, previewInput, receiveEvent,
@@ -1427,7 +1450,7 @@ window.__ModuleLoader__.load({
           pendingInputs.clear(); for (const [key, value] of restorePendingInputs(cached.pendingInputs)) pendingInputs.set(key, value);
           pendingGoalOperations.clear(); for (const [key, value] of restoreGoalOperations(cached.pendingGoalOperations)) pendingGoalOperations.set(key, value);
           createAttempt = cached.createAttempt && typeof cached.createAttempt.id === "string" && typeof cached.createAttempt.signature === "string" ? cached.createAttempt : null;
-          set({ goal: null, goalsSupported: false, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0, attachments: restoreAttachments(cached.attachments), attachmentRemovals: cached.attachmentRemovals || [], attachmentDraftId: cached.attachmentDraftId || null, selectedSkills: cached.selectedSkills || [], skillCatalog: [], skillCatalogError: "", attachmentCapabilities: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "", attachmentNotice: "", busy: false, inspector: false, targetId, workspaceForm: false, coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: cached.workspaceRequest || null, selected: cached.selected || null, directories: Array.isArray(cached.directories) ? cached.directories : [], removedRoots: cached.removedRoots || [], titles: cached.titles || {}, pinnedThreadIds: cached.pinnedThreadIds || [], archivedThreadIds: cached.archivedThreadIds || [], models: [], threads: [], messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, root: cached.root || "", modelId: cached.modelId || "", modelSource: cached.modelSource || (cached.modelId ? "conversation_override" : "service_default"), thinkingLevel: typeof cached.thinkingLevel === "string" ? cached.thinkingLevel : null, defaultModelId: "", permissionMode: cached.permissionMode || null, delivery: "new_run", targetRunId: null, diffSelection: cached.diffSelection && typeof cached.diffSelection.runId === "string" ? cached.diffSelection : null, draft: typeof cached.draft === "string" ? cached.draft : "", materials: Array.isArray(cached.materials) ? cached.materials : [], selectedSkillIds: Array.isArray(cached.selectedSkillIds) ? cached.selectedSkillIds : [], fileSelection: null, ready: false, error: "", historyError: "" });
+          set({ taskFeatures: {}, backgroundTasks: [], taskReadError: "", goal: null, goalsSupported: false, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0, attachments: restoreAttachments(cached.attachments), attachmentRemovals: cached.attachmentRemovals || [], attachmentDraftId: cached.attachmentDraftId || null, selectedSkills: cached.selectedSkills || [], skillCatalog: [], skillCatalogError: "", attachmentCapabilities: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "", attachmentNotice: "", busy: false, inspector: false, targetId, workspaceForm: false, coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: cached.workspaceRequest || null, selected: cached.selected || null, directories: Array.isArray(cached.directories) ? cached.directories : [], removedRoots: cached.removedRoots || [], titles: cached.titles || {}, pinnedThreadIds: cached.pinnedThreadIds || [], archivedThreadIds: cached.archivedThreadIds || [], models: [], threads: [], messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, root: cached.root || "", modelId: cached.modelId || "", modelSource: cached.modelSource || (cached.modelId ? "conversation_override" : "service_default"), thinkingLevel: typeof cached.thinkingLevel === "string" ? cached.thinkingLevel : null, defaultModelId: "", permissionMode: cached.permissionMode || null, delivery: "new_run", targetRunId: null, diffSelection: cached.diffSelection && typeof cached.diffSelection.runId === "string" ? cached.diffSelection : null, draft: typeof cached.draft === "string" ? cached.draft : "", materials: Array.isArray(cached.materials) ? cached.materials : [], selectedSkillIds: Array.isArray(cached.selectedSkillIds) ? cached.selectedSkillIds : [], fileSelection: null, ready: false, error: "", historyError: "" });
           services.resetForTarget?.();
           services.viewState.set({ connection: "offline", threadId: null, conversationId: null, snapshot: null, run: null, threads: [], info: null, eventSeq: null });
           if (started) connectEvents(); void refresh();

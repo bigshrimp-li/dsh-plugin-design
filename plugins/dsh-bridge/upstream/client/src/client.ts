@@ -63,6 +63,7 @@ import { createAttachmentClient, type AttachmentClient } from "./attachments.js"
 import { createSkillInstallationClient, type SkillInstallationClient } from "./skill-installations.js";
 import { createWorkspaceFileClient, type WorkspaceFileClient } from "./workspace-files.js";
 import { createManagedWorkspaceClient, type ManagedWorkspaceClient } from "./managed-workspaces.js";
+import { createBackgroundTaskClient, createScheduleClient, type BackgroundTaskClient, type ScheduleClient } from "./background-tasks.js";
 import { createGoalClient, type GoalClient } from "./goals.js";
 
 import { CoreClientError, clientErrorFromEnvelope, parseErrorEnvelope } from "./errors.js";
@@ -116,6 +117,8 @@ export type ListWaitsOptions = PageOptions & {
 };
 
 export interface CoreClient {
+  readonly backgroundTasks: BackgroundTaskClient;
+  readonly schedules: ScheduleClient;
   readonly goals: GoalClient;
   readonly attachments: AttachmentClient;
   readonly skillInstallations: SkillInstallationClient;
@@ -223,6 +226,8 @@ export function createClient(options: ClientOptions): CoreClient {
 }
 
 class Client implements CoreClient {
+  readonly backgroundTasks: BackgroundTaskClient;
+  readonly schedules: ScheduleClient;
   readonly goals: GoalClient;
   readonly attachments: AttachmentClient;
   readonly skillInstallations: SkillInstallationClient;
@@ -256,6 +261,8 @@ class Client implements CoreClient {
     this.caller = options.caller;
     this.#heartbeatIntervalMs = options.heartbeatIntervalMs;
     this.#requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    this.backgroundTasks = createBackgroundTaskClient((method, path, body) => this.#taskRequest("backgroundTasksV1", method, path, body));
+    this.schedules = createScheduleClient((method, path, body) => this.#taskRequest("taskSchedulesV1", method, path, body));
     this.goals = createGoalClient((method, path, body) => method === "GET"
       ? this.#query(path) : this.#command({ method, path, requestId: String(body?.["requestId"] ?? ""), body: body ?? {} }));
     this.attachments = createAttachmentClient((method, path, body) => method === "GET"
@@ -268,6 +275,15 @@ class Client implements CoreClient {
       ? this.#query(path) : this.#command({ method, path, requestId: String(body?.["requestId"] ?? ""), body: body ?? {} }));
     this.managedWorkspaces = createManagedWorkspaceClient((method, path, body) => method === "GET"
       ? this.#query(path) : this.#command({ method, path, requestId: String(body?.["requestId"] ?? ""), body: body ?? {} }));
+  }
+
+  async #taskRequest<T extends object>(feature: "backgroundTasksV1" | "taskSchedulesV1", method: "GET" | "POST", path: string, body?: Record<string, unknown>): Promise<T> {
+    const info = await this.getServerInfo();
+    if (!info.runtimeFeatures?.[feature]) throw new CoreClientError({
+      code: "NOT_SUPPORTED", httpStatus: httpStatusForError("NOT_SUPPORTED"), message: `Server does not support ${feature}`,
+    });
+    if (method === "GET") return this.#query<T>(path);
+    return this.#command<T>({ method, path, requestId: String(body?.["requestId"] ?? ""), body: body ?? {} });
   }
 
   async getServerInfo(): Promise<ServerInfo> {

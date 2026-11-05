@@ -390,6 +390,7 @@ window.__ModuleLoader__.load({
        * Only actions with a real Core operation are listed — see the note above.
        */
       const OPERATIONS = {
+        ...Object.fromEntries(["task.list", "task.get", "task.output", "task.detach", "task.cancel", "schedule.create", "schedule.list", "schedule.get", "schedule.pause", "schedule.resume", "schedule.cancel"].map(action => [action, payload => [action, { ...payload }]])),
         ...Object.fromEntries(["create", "update", "steer", "pause", "resume", "cancel", "get", "status", "list"].map(method => [`goal.${method}`, payload => {
           const action = `goal.${method}`;
           if (["create", "update", "steer", "pause", "resume", "cancel"].includes(method)) requireField(payload, "requestId");

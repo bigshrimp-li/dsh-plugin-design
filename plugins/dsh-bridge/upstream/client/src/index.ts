@@ -56,3 +56,4 @@ export { createSkillSourceClient } from "./skill-sources.js";
 export type { SkillSourceClient } from "./skill-sources.js";
 export { createManagedWorkspaceClient } from "./managed-workspaces.js";
 export type { ManagedWorkspaceClient } from "./managed-workspaces.js";
+export * from "./background-tasks.js";

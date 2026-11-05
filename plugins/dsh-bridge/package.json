@@ -1,6 +1,6 @@
 {
   "name": "@super-agent/dsh-bridge",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
   "description": "Independent Super Agent workspace for DeepSeek Harness.",
@@ -31,11 +31,11 @@
     }
   },
   "engines": {
-    "dsh": "0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "dsh": "0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.5",
     "node": ">=22.19.0"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-scope": "0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3"
+    "@deepseek-ai/dsh-scope": "0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.5"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-scope": {
@@ -53,7 +53,8 @@
     "test": "npm run build && vitest run",
     "test:unit": "vitest run",
     "test:core": "node scripts/test-core.mjs",
-    "test:goal-host-core": "npm run build && node scripts/test-goal-host-core.mjs",
+    "test:goal-host-core": "npm run build && node scripts/test-goal-host-core.mjs test/host/goal-host-core.test.mjs",
+    "test:background-host-core": "npm run build && node scripts/test-goal-host-core.mjs test/host/background-host-core.test.mjs",
     "test:host": "npm run build && node scripts/test-host.mjs"
   },
   "devDependencies": {
