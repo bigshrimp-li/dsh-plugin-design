@@ -446,7 +446,7 @@ describe("independent Super Agent space controller", () => {
     expect(value.controller.getSnapshot().messages.map((message) => message.messageId)).toEqual(["m1", "m2"]);
     expect(value.services.viewState.get()).toMatchObject({ threadId: "thread-1", conversationId: "conversation-1" });
     expect(value.requests.filter((item) => item.action === "thread.list").map((item) => item.payload.cursor ?? null)).toEqual([null, "threads-page-2"]);
-    expect(value.requests.filter((item) => item.action === "messages.list").map((item) => item.payload.cursor ?? null)).toEqual([null, "conversation-1-messages-page-2"]);
+    expect(value.requests.filter((item) => item.action === "messages.list" && item.payload.limit !== 16).map((item) => item.payload.cursor ?? null)).toEqual([null, "conversation-1-messages-page-2"]);
     value.controller.dispose();
   });
 
@@ -688,7 +688,7 @@ describe("independent Super Agent space controller", () => {
   });
 
   it("discovers an empty fork branch from the Thread graph and opens its Conversation", async () => {
-    const value = await refreshed();
+    const value = await refreshed({ summaries: [{ threadId: "thread-1", mainConversationId: "conversation-1" }] });
     value.services.observations = {
       graph: async threadId => ({
         threadId,
@@ -701,7 +701,8 @@ describe("independent Super Agent space controller", () => {
     };
     await value.controller.selectThread("thread-1", "conversation-1");
     expect(await value.controller.loadBranches()).toEqual([
-      { conversationId: "conversation-empty", forkedFromConversationId: "conversation-1", startedAt: null },
+      { conversationId: "conversation-1", forkedFromConversationId: null, main: true, startedAt: null },
+      { conversationId: "conversation-empty", forkedFromConversationId: "conversation-1", main: false, startedAt: null },
     ]);
     expect(value.controller.getSnapshot().branchesLoaded).toBe(true);
     await value.controller.selectThread("thread-1", "conversation-empty");
@@ -992,14 +993,14 @@ describe("materials and independent wait actions", () => {
     expect(inputs[0].payload).toEqual(inputs[1].payload);
   });
 
-  it("freezes material versions and explicit Skills with the original input request", async () => {
+  it("freezes material versions with the original input request", async () => {
     let fail = true;
-    const value = await refreshed({ action: { "input.submit": async () => fail ? response({ error: { code: "TIMEOUT", message: "receipt unknown" } }, 504) : response({ result: { accepted: true } }) } });
+    const value = await refreshed({ action: { "attachments.capabilities": async () => response({ result: { supported: true, skillSelection: false } }), "input.submit": async () => fail ? response({ error: { code: "TIMEOUT", message: "receipt unknown" } }, 504) : response({ result: { accepted: true } }) } });
     const materials = [{ kind: "image", snapshotId: "fixed-snapshot", path: "diagram.png", mediaType: "image/png" }];
-    value.controller.setMaterials(materials); value.controller.setSelectedSkills(["skill@hash"]); value.controller.setDraft("read fixed input");
+    value.controller.setMaterials(materials); value.controller.setDraft("read fixed input");
     await value.controller.send();
     const first = value.requests.find(request => request.action === "input.submit").payload;
-    expect(first).toMatchObject({ materials, selectedSkillIds: ["skill@hash"] });
+    expect(first).toMatchObject({ materials });
     value.controller.setMaterials([{ ...materials[0], snapshotId: "different-version" }]); await value.controller.send();
     expect(value.requests.filter(request => request.action === "input.submit")).toHaveLength(1);
     expect(value.controller.getSnapshot().error).toContain("原输入回执");
@@ -1135,7 +1136,7 @@ describe("composer attachment drafts", () => {
   it("negotiates restored explicit Skills before sending and runs modern preview while preserving legacy text support", async () => {
     const skill = { skillId: "skill-fixed", status: "available", sourceId: "reviewed-source", snapshotId: "frozen-v1", sourceRevision: 1, policyRevision: 1 };
     const value = await refreshed({ action: newActions({ "skills.catalog": async () => response({ result: { items: [skill] } }) }) }); value.controller.newConversation("");
-    value.controller.setDraft("用已选 Skill 完成任务"); value.controller.selectSkill(skill, true);
+    await value.controller.loadAttachmentCapabilities(); value.controller.setDraft("用已选 Skill 完成任务"); value.controller.selectSkill(skill, true);
     await value.controller.send();
     expect(value.requests.find(item => item.action === "input.submit").payload.previewId).toBe("plan-fixed"); value.controller.dispose();
     const legacy = await refreshed(); legacy.controller.newConversation(""); legacy.controller.setDraft("纯文本任务");
@@ -1154,7 +1155,7 @@ describe("composer attachment drafts", () => {
   it("rejects an old workspace source even when all its frozen reference fields are still present", async () => {
     const old = { skillId: "scope-check", status: "available", workspaceId: "workspace-a", sourceId: "source-a", snapshotId: "a-v1", sourceRevision: 1, policyRevision: 1 };
     const value = await refreshed({ action: newActions({ "skills.catalog": async () => response({ result: { items: [{ ...old, workspaceId: null, sourceId: "global", snapshotId: "global-v1" }] } }) }) });
-    value.controller.newConversation("/workspace-b"); value.controller.selectSkill(old, true); value.controller.setDraft("保留旧范围选择");
+    value.controller.newConversation("/workspace-b"); await value.controller.loadAttachmentCapabilities(); value.controller.selectSkill(old, true); value.controller.setDraft("保留旧范围选择");
     await expect(value.controller.previewInput()).rejects.toThrow("适用范围已变化"); await value.controller.send();
     expect(value.controller.getSnapshot().selectedSkills[0].sourceId).toBe("source-a");
     expect(value.requests.some(item => ["attachments.drafts.create", "input.preview", "thread.create", "input.submit"].includes(item.action))).toBe(false); value.controller.dispose();
@@ -1548,4 +1549,113 @@ it("allows switching permission during a Run using the pending configuration rev
   await value.controller.setPermissionMode("approve_all");
   expect(value.requests.find(item => item.action === "conversation.updateConfig").payload).toMatchObject({ expectedConfigRevision: "pending", patch: { permissionMode: "approve_all" } });
   value.controller.dispose();
+});
+
+it("reads Thread facts before explicitly retrying the original resume across a reload", async () => {
+  const values = new Map(), storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) };
+  const calls = [];
+  let lose = true;
+  const actions = {
+    "thread.get": async ({ threadId }) => {
+      calls.push("read");
+      return response({ result: { threadId, status: "paused_by_user", runs: [{ runId: "cancelled", conversationId: "fork", status: "cancelled" }],
+        activeRuns: [], queuedRuns: [], queuedInputIds: [{ inputId: "queued", conversationId: "main" }] } });
+    },
+    "thread.resume": async payload => {
+      calls.push(structuredClone(payload));
+      if (lose) { lose = false; throw Error("lost receipt"); }
+      return response({ result: { requestId: payload.requestId, state: "accepted" } });
+    },
+  };
+  const first = fixture({ action: actions, storage });
+  await expect(first.controller.controlThreadTarget("thread-1", "resume", {
+    continueRunIds: ["cancelled"], queuedInputs: [{ inputId: "queued", action: "run" }],
+  })).rejects.toThrow("lost receipt");
+  expect(calls.at(-1)).toBe("read");
+  const original = calls.find(call => typeof call === "object");
+  expect(original).toMatchObject({ threadId: "thread-1", continueRunIds: ["cancelled"], queuedInputs: [{ inputId: "queued", action: "run" }] });
+  first.controller.dispose();
+  const reloaded = fixture({ action: actions, storage });
+  await reloaded.controller.refresh();
+  expect(calls.filter(call => typeof call === "object")).toHaveLength(1);
+  expect(reloaded.controller.pendingThreadControl("thread-1").payload).toEqual(original);
+  await expect(reloaded.controller.controlThreadTarget("thread-1", "stop")).rejects.toThrow("未确认");
+  calls.length = 0;
+  await reloaded.controller.retryThreadControl("thread-1");
+  expect(calls.slice(0, 2)).toEqual(["read", original]);
+  expect(reloaded.controller.pendingThreadControl("thread-1")).toBeUndefined();
+  reloaded.controller.dispose();
+});
+
+it("offers Thread controls for active work across Conversations, including a schedule without an active Run", async () => {
+  const controller = fixture().controller;
+  expect(controller.threadActions({ status: "completed", activeRuns: [] })).toEqual([]);
+  expect(controller.threadActions({ status: "paused_by_user" })).toEqual(["resume"]);
+  expect(controller.threadActions({ status: "paused_by_user", activeRuns: ["other-conversation"] })).toEqual(["resume", "stop"]);
+  expect(controller.threadActions({ status: "idle" }, [{ kind: "schedule", status: "running" }])).toEqual(["pause", "stop"]);
+  expect(controller.threadActions({ status: "archived", activeRuns: ["run"] })).toEqual([]);
+  expect(controller.threadActions({ status: "running", deletedAt: "2026-11-01" })).toEqual([]);
+  controller.dispose();
+});
+
+describe("workspace target and selection changes", () => {
+  it.each(["target", "uds_replacement"])("discards a late full capability report after %s and keeps the new report", async transition => {
+    const first = deferred(), started = deferred();
+    let processId = 12, reads = 0;
+    const c = (await refreshed({ action: {
+      "server.info": () => response({ result: { pid: processId, startedAt: "boot-" + processId } }),
+      "attachments.capabilities": () => ++reads === 1 ? (started.resolve(), first.promise) :
+        response({ result: { supported: true, projectFiles: false, inputPreview: false, skillSelection: false } }),
+    } })).controller;
+    const pending = c.loadAttachmentCapabilities();
+    try {
+      await started.promise;
+      processId++;
+      if (transition === "target") c.targetChanged("another");
+      await c.refresh();
+      await c.loadAttachmentCapabilities({ force: true });
+      first.resolve(response({ result: { supported: true, projectFiles: true, inputPreview: true, skillSelection: true } }));
+      await expect(pending).rejects.toThrow("已切换");
+      expect(c.getSnapshot().attachmentCapabilities).toEqual({ supported: true, projectFiles: false, inputPreview: false, skillSelection: false });
+      expect(c.getSnapshot().attachmentCapabilityError).toBe("");
+    } finally { c.dispose(); }
+  });
+
+  it("does not send a rename to the newly selected target after reading the old revision", async () => {
+    const gate = deferred(), reading = deferred();
+    const v = await refreshed({ action: { "thread.get": () => (reading.resolve(), gate.promise) } });
+    try {
+      const pending = v.controller.renameThread({ threadId: "same-id" }, "old target title");
+      await reading.promise;
+      v.controller.targetChanged("replacement");
+      gate.resolve(response({ result: { threadId: "same-id", controlRevision: 1 } })); await pending;
+      expect(v.requests.filter(r => r.action === "thread.metadata")).toHaveLength(0);
+    } finally { v.controller.dispose(); }
+  });
+
+  it.each(["message", "transport"])("a late %s fork result cannot select a branch in a different target", async entrance => {
+    const gate = deferred(), sent = deferred();
+    const v = await refreshed({ action: { "conversation.fork": () => (sent.resolve(), gate.promise) } });
+    try {
+      await v.controller.selectThread("same-thread", "origin");
+      const pending = entrance === "message" ? v.controller.fork({ entryId: 3 }) :
+        v.transport.call("run.fork", { conversationId: "origin", sourceEntryId: 3 });
+      await sent.promise; v.controller.targetChanged("replacement"); await v.controller.selectThread("same-thread", "own-branch");
+      v.controller.setDraft("replacement draft");
+      gate.resolve(response({ result: { threadId: "same-thread", conversationId: "old-branch" } })); await pending;
+      expect(v.controller.getSnapshot()).toMatchObject({ targetId: "replacement", draft: "replacement draft", selected: { conversationId: "own-branch" } });
+    } finally { v.controller.dispose(); }
+  });
+});
+
+it("names a Thread from its first durable human input after paged orchestration reports", async () => {
+  const v = await refreshed({
+    summaries: [{ threadId: "t", mainConversationId: "history" }],
+    messagePages: { history: [
+      [{ messageId: "automatic", kind: "agent_message", role: "user", source: "orchestration", text: "自动巡检提醒" }],
+      [{ messageId: "human", kind: "user", role: "user", source: "user", text: "人工提交的目标" }],
+    ] },
+  });
+  try { expect(v.controller.getSnapshot().threads[0].fallbackTitle).toBe("人工提交的目标"); }
+  finally { v.controller.dispose(); }
 });

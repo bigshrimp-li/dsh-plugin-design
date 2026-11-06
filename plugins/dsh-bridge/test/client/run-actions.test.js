@@ -438,7 +438,7 @@ describe("the transport's actions", () => {
     const transport = transportOver(fetch);
     const answer = await transport.call("core.start", {});
     expect(answer.status).toBe(ACTION.UNSUPPORTED);
-    expect(answer.reason).toMatch(/不代拉起/);
+    expect(answer.reason).toMatch(/没有对应的 Core 操作/);
     expect(fetch.calls).toEqual([]);
   });
 

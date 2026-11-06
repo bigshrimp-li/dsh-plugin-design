@@ -4,7 +4,11 @@
 
 本插件从 `agent-loop-core/clients/dsh-bridge` 迁入，包名仍为 `@super-agent/dsh-bridge`。Core 服务及其模型、工具和持久任务状态继续由原仓库维护，插件通过公开 SDK 连接服务。SDK 和协议的固定源码快照随本插件构建，因此安装插件不要求旁边另有 Core 源码；实际执行任务仍需要运行中的兼容 Core。
 
-当前插件版本为 0.1.3，支持 DSH 0.2.1-rc.5。连接支持后台任务的 Go Core 后，在 Conversation 的“后台任务”区域可转后台、查看退出码和分流日志、停止任务或创建有限期的周期检查。服务关闭新建时，已有任务仍可查看和停止。参见[宿主验收与操作说明](docs/2026-11-05-background-tasks/spec.md)和 [SDK 快照来源](provenance/sdk-background-tasks-2026-11-05.json)。
+当前插件版本为 0.1.3，支持 DSH 0.2.1-rc.5。连接支持后台任务的 Go Core 后，在 Conversation 的“后台任务”区域可转后台、查看退出码和分流日志、停止任务或创建有限期的周期检查。服务关闭新建时，已有任务仍可查看和停止。参见[宿主验收与操作说明](docs/2026-11-05-background-tasks/spec.md)和[后台任务 SDK 来源](provenance/sdk-background-tasks-2026-11-05.json)。
+
+Go 提供 `delegationsV1` 时，可以在父任务详情中查看单条真实委派、区分子任务状态和报告交付，并仅取消选中的委派。见[委派管理与验收](docs/2026-11-07-delegation-details/spec.md)和[当前 SDK 快照](provenance/sdk-delegations-2026-11-07.json)。
+
+当前桌面的升级路径、14 张 ticket 和复验入口见[工作区 UI 与 Go 发布验收](docs/2026-11-07-workspace-ui/spec.md)。
 
 ## 安装与运行
 
@@ -26,10 +30,15 @@
 | `<home>/dsh-content-uploads/` | 本机 UDS 连接的上传候选、内容块、操作与回执。 |
 | `<home>/dsh-artifact-applies/` | 本机 UDS 连接的产物回传与冲突处理日志。 |
 | `<home>/targets/<摘要>/` | 各 HTTPS Core 实例的本机上传缓存和回传记录，按入口与实例隔离。 |
+| `<home>/task-receipts/`、`<home>/targets/<摘要>/task-receipts/` | UDS 或 HTTPS 的后台命令回执缓存。Host 保存已接收的回执摘要，读取时重新向 Core 核对当前身份及资源归属。 |
 | DSH 浏览器 `localStorage` | `super-agent.space.v1` 及各入口后缀 key，保存界面与草稿等本机状态。 |
 | 用户选择的工作目录 | 任务输入来源，以及用户明确选择回传的目标文件；插件按原有版本和冲突检查写入。 |
 
 Core 的会话、运行、事件、配置和模型数据仍由 Core 服务在原数据目录中管理。本次迁移不移动业务数据，不改存储 key，不将文件放入仓库 `.scratch/`。清理开发材料时保留上述用户数据和恢复记录。
+
+设置中的“执行已连接”表示 Host 读到了当前 Core 的就绪状态。UDS 可以执行任务。配置管理需要已配对的 HTTPS 入口。查看或修改模型时核对当前目标和基于的版本；版本冲突后重新审阅保留的草稿。丢失配置回执时使用“查询原操作”，界面读回同一实例的激活版本后再显示成功。
+
+周期检查默认创建后立即开始，也可选择等待一个间隔。提交前界面将原授权、绝对截止时间和请求编号保存在当前操作分区。结果待确认时可先查询原回执，或明确选择重试原操作；页面刷新不会替用户重新发送命令。HTTPS 使用实例和操作者分区；UDS 无持久实例标识时使用原进程身份，替换本机服务后不会将旧操作送给新进程。
 
 ## 持续目标
 
@@ -56,6 +65,7 @@ npm test
 SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/agent-loop-core npm run test:core
 SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/built-agent-loop-core DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:goal-host-core
 SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/built-agent-loop-core DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:background-host-core
+SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/built-agent-loop-core DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:settings-host-core
 DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:host
 npm pack --dry-run
 ```

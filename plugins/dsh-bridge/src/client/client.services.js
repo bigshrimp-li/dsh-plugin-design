@@ -532,22 +532,6 @@ window.__ModuleLoader__.load({
       };
 
       /**
-       * Actions the interface offers that this build cannot carry out, each with
-       * the reason the user is shown. They are listed rather than left to fall
-       * through, because "we do not do this" and "we do not know this action"
-       * are different answers and only one of them is a bug.
-       */
-      const UNAVAILABLE = {
-        "core.start": "启动 Core 由安装与运维负责，插件不代拉起进程",
-        "core.restart": "重启 Core 由安装与运维负责，插件不代拉起进程",
-        "core.openConfig": "打开配置目录是桌面动作，浏览器这一侧没有这个能力",
-        "snapshot.switchModel": "修改会话配置在本次里程碑未实现",
-        "snapshot.switchPermission": "修改会话配置在本次里程碑未实现",
-        "delegation.cancel": "取消子 Agent 委派在本次里程碑未实现",
-        "delegation.view": "子 Agent 详情在本次里程碑未实现",
-      };
-
-      /**
        * The Session on screen, when this build has one.
        *
        * Read at the moment of each request rather than captured once: the whole
@@ -812,9 +796,6 @@ window.__ModuleLoader__.load({
           // A fork is not one command either: it is the Core's fork, a dsh
           // session opened on it, the record that ties them, and the selection.
           if (action === "run.fork") return await fork(payload ?? {});
-          if (UNAVAILABLE[action] !== undefined) {
-            return { status: ACTION.UNSUPPORTED, reason: UNAVAILABLE[action], result: null };
-          }
           const build = OPERATIONS[action];
           if (build === undefined) {
             return { status: ACTION.UNSUPPORTED, reason: `${action} 没有对应的 Core 操作`, result: null };

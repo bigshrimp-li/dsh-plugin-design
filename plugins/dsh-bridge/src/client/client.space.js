@@ -109,7 +109,15 @@ window.__ModuleLoader__.load({
       if (bytes.includes(0)) return null;
       try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return null; }
     };
-    function createSpace({ kernel, services, transport, ctx, Panel, createSpaceView, ConversationTrace, primitives, directoryBrowser, fetchImpl = globalThis.fetch, storage = globalThis.localStorage, EventSourceImpl = globalThis.EventSource }) {
+    const terminalTask = task => ["completed", "failed", "cancelled", "expired", "unknown"].includes(task.status);
+    function threadActions(thread, tasks = []) {
+      if (!thread || thread.deletedAt || thread.status === "archived") return [];
+      const working = !!(thread.activeRuns?.length || thread.queuedRuns?.length || thread.pendingWaits || thread.pendingInputs ||
+        ["running", "waiting"].includes(thread.status) || tasks.some(task => !terminalTask(task)));
+      if (thread.status === "paused_by_user") return working ? ["resume", "stop"] : ["resume"];
+      return working ? ["pause", "stop"] : [];
+    }
+    function createSpace({ kernel, services, transport, ctx, Panel, createSpaceView, ConversationTrace, primitives, directoryBrowser, workspaceTools, fetchImpl = globalThis.fetch, storage = globalThis.localStorage, EventSourceImpl = globalThis.EventSource }) {
       const { React, h } = kernel;
       let saved = {};
       try { saved = JSON.parse(storage?.getItem(STORAGE_KEY) || "{}"); } catch {}
@@ -127,9 +135,9 @@ window.__ModuleLoader__.load({
         titles: saved.titles || {}, selected: saved.selected || null,
         root: saved.root || "", modelId: saved.modelId || "", modelSource: saved.modelSource || (saved.modelId ? "conversation_override" : "service_default"), thinkingLevel: typeof saved.thinkingLevel === "string" ? saved.thinkingLevel : null, defaultModelId: "", permissionMode: saved.permissionMode || null, models: [], threads: [], messages: [], live: [], materials: Array.isArray(saved.materials) ? saved.materials : [], selectedSkillIds: Array.isArray(saved.selectedSkillIds) ? saved.selectedSkillIds : [], draft: typeof saved.draft === "string" ? saved.draft : "",
         attachments: restoreAttachments(saved.attachments), attachmentRemovals: saved.attachmentRemovals || [], attachmentDraftId: saved.attachmentDraftId || null,
-        attachmentCapabilities: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "",
+        attachmentCapabilities: null, inputServiceIdentity: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "",
         skillCatalog: [], selectedSkills: Array.isArray(saved.selectedSkills) ? saved.selectedSkills : [], skillCatalogError: "", attachmentNotice: "",
-        taskFeatures: {}, backgroundTasks: [], taskReadError: "", goalsSupported: false, goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0,
+        taskFeatures: {}, taskScope: null, pendingTaskOperations: [], backgroundTasks: [], taskReadError: "", goalsSupported: false, goal: null, goalCancelIntent: null, waitReceipt: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0,
         busy: false, error: "", historyError: "", ready: false, loaded: false, inspector: false, workspaceForm: false,
         coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: saved.workspaceRequest || null,
         thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, fileSelection: null, delivery: "new_run", targetRunId: null,
@@ -140,7 +148,7 @@ window.__ModuleLoader__.load({
       const restorePendingInputs = value => new Map(Object.entries(value && typeof value === "object" ? value : {}).filter(([, attempt]) =>
         attempt && typeof attempt === "object" && typeof attempt.text === "string" && typeof attempt.signature === "string" &&
         typeof attempt.requestId === "string" && attempt.payload && typeof attempt.payload === "object"));
-      const listeners = new Set(), metadata = new Map(), drafts = new Map(Object.entries(saved.drafts || {})), pendingInputs = restorePendingInputs(saved.pendingInputs), pendingWaitActions = new Map(), materialDrafts = new Map(Object.entries(saved.materialDrafts || {}));
+      const listeners = new Set(), metadata = new Map(), firstTitles = new Map(), drafts = new Map(Object.entries(saved.drafts || {})), pendingInputs = restorePendingInputs(saved.pendingInputs), pendingWaitActions = new Map(), materialDrafts = new Map(Object.entries(saved.materialDrafts || {}));
       const restoreGoalOperations = value => new Map(Object.entries(value || {}).filter(([, record]) => record && /^goal\.(update|steer|pause|resume|cancel)$/.test(record.action) && record.payload && typeof record.payload.requestId === "string" && typeof record.payload.goalId === "string"));
       const pendingGoalOperations = restoreGoalOperations(saved.pendingGoalOperations);
       let disposed = false, started = false, epoch = 0, timer, source, refreshing = null, refreshAfterCurrent = false;
@@ -152,20 +160,25 @@ window.__ModuleLoader__.load({
       const composerRecord = () => ({ attachments: state.attachments, attachmentRemovals: state.attachmentRemovals, attachmentDraftId: state.attachmentDraftId, selectedSkills: state.selectedSkills });
       const serializableComposer = record => ({ ...record, attachments: (record.attachments || []).map(({ thumbnailUrl, ...item }) => item) });
       const pendingThreadDeletions = new Map();
+      const restoreThreadOperations = value => new Map(Object.entries(value || {}).filter(([threadId, record]) =>
+        ["pause", "resume", "stop"].includes(record?.action) && record.payload?.threadId === threadId && typeof record.payload.requestId === "string"));
+      const pendingThreadOperations = restoreThreadOperations(saved.pendingThreadOperations);
+      const sendingThreadOperations = new Set();
+
       let workspaceReadVersion = 0, workspaceBrowseAbort = null;
-      const persist = (strict = false) => {
+      const persist = (strict = false, operation = "目标操作") => {
         const cache = { directories: state.directories, titles: state.titles, removedRoots: state.removedRoots,
           pinnedThreadIds: state.pinnedThreadIds, archivedThreadIds: state.archivedThreadIds, manualThreadOrder: state.manualThreadOrder,
           viewOptions: state.viewOptions, selected: state.selected, root: state.root, modelId: state.modelId, modelSource: state.modelSource, thinkingLevel: state.thinkingLevel, permissionMode: state.permissionMode, targetId: state.targetId, workspaceRequest: state.workspaceRequest, diffSelection: state.diffSelection, diffWidth: state.diffWidth,
           draft: state.draft, materials: state.materials, selectedSkillIds: state.selectedSkillIds, selectedSkills: state.selectedSkills,
           attachments: serializableComposer(composerRecord()).attachments, attachmentRemovals: state.attachmentRemovals, attachmentDraftId: state.attachmentDraftId,
           composerDrafts: Object.fromEntries([...composerDrafts, [composerKey(), composerRecord()]].map(([key, value]) => [key, serializableComposer(value)])),
-          pendingInputs: Object.fromEntries(pendingInputs), pendingGoalOperations: Object.fromEntries(pendingGoalOperations), createAttempt,
+          pendingInputs: Object.fromEntries(pendingInputs), pendingGoalOperations: Object.fromEntries(pendingGoalOperations), pendingThreadOperations: Object.fromEntries(pendingThreadOperations), createAttempt,
           materialDrafts: { ...Object.fromEntries(materialDrafts), [state.selected?.conversationId || "new"]: { materials: state.materials, selectedSkillIds: state.selectedSkillIds } }, drafts: { ...Object.fromEntries(drafts), [state.selected?.conversationId || "new"]: state.draft } };
         try {
           if (strict && typeof storage?.setItem !== "function") throw new Error("浏览器未提供操作恢复存储");
           const value = JSON.stringify(cache); storage?.setItem(STORAGE_KEY, value); storage?.setItem(`${STORAGE_KEY}.${state.targetId || "uds"}`, value);
-        } catch (error) { if (strict) throw new Error(`无法保存原目标操作，尚未发送：${error.message}`); }
+        } catch (error) { if (strict) throw new Error(`无法保存原${operation}，尚未发送：${error.message}`); }
       };
       const set = patch => { if (disposed) return;
         if (["draft", "materials", "attachments", "attachmentRemovals", "selectedSkillIds", "selectedSkills", "delivery", "targetRunId", "modelId", "thinkingLevel", "permissionMode", "fileSelection", "root"].some(key => Object.hasOwn(patch, key) && JSON.stringify(patch[key]) !== JSON.stringify(state[key])) && !Object.hasOwn(patch, "inputPreview")) patch = { ...patch, inputPreview: null, previewError: "" };
@@ -251,28 +264,26 @@ window.__ModuleLoader__.load({
         try { new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { throw new Error("文件不是 UTF-8 文本，请转换编码后重新选择"); }
         return { kind: "file", mediaType: "text/plain" };
       };
-      let capabilityRequest = null;
+      let capabilityRequest = null, capabilityGeneration = 0;
       const loadAttachmentCapabilities = async ({ force = false } = {}) => {
         if (!force && state.attachmentCapabilities) return state.attachmentCapabilities;
-        if (!force && capabilityRequest?.targetId === state.targetId) return capabilityRequest.promise;
-        const targetId = state.targetId;
+        const targetId = state.targetId, instanceId = state.coreInstanceId;
+        if (!force && capabilityRequest?.targetId === targetId && capabilityRequest.instanceId === instanceId) return capabilityRequest.promise;
+        const generation = ++capabilityGeneration;
+        const current = () => !disposed && generation === capabilityGeneration && targetId === state.targetId && instanceId === state.coreInstanceId;
         const promise = (async () => {
           try {
-            const result = await call("attachments.capabilities", { targetId });
-            const capabilities = result && (typeof result.supported === "boolean" || result.runtime || result.formats || result.limits) ? result : { legacy: true, supported: true, formats: ["image/png", "image/jpeg", "image/webp", "image/gif", "text/plain"] };
-            if (!disposed && targetId === state.targetId) set({ attachmentCapabilities: capabilities, attachmentCapabilityError: "" });
+            const capabilities = await call("attachments.capabilities", { targetId });
+            if (!current()) throw new Error("执行服务已切换，请在当前服务重新检测输入能力");
+            if (typeof capabilities?.supported !== "boolean") throw new Error("服务没有声明附件能力");
+            set({ attachmentCapabilities: capabilities, attachmentCapabilityError: "" });
             return capabilities;
           } catch (error) {
-            if (!["NOT_FOUND", "UNSUPPORTED", "METHOD_NOT_FOUND"].includes(error.code)) {
-              if (targetId === state.targetId) set({ attachmentCapabilityError: error.message });
-              throw error;
-            }
-            const capabilities = { legacy: true, supported: true, formats: ["image/png", "image/jpeg", "image/webp", "image/gif", "text/plain"] };
-            if (targetId === state.targetId) set({ attachmentCapabilities: capabilities, attachmentCapabilityError: "" });
-            return capabilities;
+            if (current()) set({ attachmentCapabilities: null, attachmentCapabilityError: error.message });
+            throw error;
           }
         })();
-        capabilityRequest = { targetId, promise };
+        capabilityRequest = { targetId, instanceId, promise };
         try { return await promise; } finally { if (capabilityRequest?.promise === promise) capabilityRequest = null; }
       };
       const discardPrepared = async (origin, card, item) => {
@@ -315,7 +326,7 @@ window.__ModuleLoader__.load({
           if (siblings.some(item => item.id !== card.id && item.sha256 === hash && item.status !== "failed")) {
             updateAttachment(origin, card.id, { status: "duplicate", sha256: hash, error: "相同内容已添加，请移除重复项" }); return;
           }
-          if (capabilities.supported === false) throw new Error(capabilities.reason || "当前运行时暂不支持附件，请切换到 TypeScript/Pi 服务");
+          if (capabilities.supported === false) throw new Error(capabilities.reason || "当前服务不接受本机附件，草稿已保留");
           const legacy = capabilities.legacy === true || capabilities.drafts === false;
           if (!legacy && Array.isArray(capabilities.formats) && !capabilities.formats.some(format => {
             const accepted = typeof format === "string" ? format : format.mediaType;
@@ -370,15 +381,14 @@ window.__ModuleLoader__.load({
           const previewText = parsedCommand?.objective || parsedCommand?.text || state.draft;
           const modelId = previewDelivery === "next_turn" ? state.runDetails.find(item => item.runId === state.targetRunId)?.modelId : state.conversation?.pendingConfig?.config?.modelId || state.conversation?.config?.modelId || state.modelId;
           let result;
-          if (capabilities.inputPreview === true || capabilities.preview === true) {
+          if (capabilities.inputPreview === true) {
             if (materials.length) throw new Error("旧版材料与新附件预检不能混合，请重新附加原文件后预览");
             const refs = await validateSelectedSkills(capabilities);
             const draftId = await ensureAttachmentDraft(originOfComposer(), requestId("attachment.preview"));
             result = await call("input.preview", { targetId, requestId: requestId("input.preview"), draftId, ...(state.selected?.conversationId ? { conversationId: state.selected.conversationId } : { thinkingLevel: state.thinkingLevel, ...(state.permissionMode ? { permissionMode: state.permissionMode } : {}) }), modelId, text: previewText, attachments: preparedAttachments, ...(refs.length === state.selectedSkillIds.length && refs.length ? { selectedSkillRefs: refs } : { selectedSkillIds: state.selectedSkillIds }), delivery: previewDelivery, ...(previewDelivery === "next_turn" && state.targetRunId ? { targetRunId: state.targetRunId } : {}) });
             if (!result?.planId || typeof result.signature !== "string") throw new Error("服务未返回有效的上下文预检结果，请重试");
           } else {
-            if (preparedAttachments.length) throw new Error("当前服务未提供新附件预检，不能忽略附件继续发送");
-            result = { legacy: true, canSend: true, items: materials.map(item => ({ name: item.path, mode: item.kind === "image" ? "image" : "inline" })), modelId, notice: "当前服务使用图片和 UTF-8 全文通路，尚无整体上下文预算预检；最终以服务校验为准。" };
+            throw new Error("当前服务未开放输入预检，草稿已保留");
           }
           if (disposed || previewVersion !== inputPreviewVersion || targetId !== state.targetId || key !== composerKey() || signature !== composerSignature()) throw Object.assign(new Error("草稿或目标已变化，请重新查看本次上下文"), { code: "PREVIEW_SUPERSEDED" });
           const plan = { ...result, inputSignature: signature }; set({ inputPreview: plan }); return plan;
@@ -416,6 +426,95 @@ window.__ModuleLoader__.load({
         if (goal?.conversationId !== selected.conversationId || !Number.isSafeInteger(goal.revision)) throw new Error("目标快照的身份或修订无效");
         return goal;
       };
+      // A fallback belongs to the main Conversation's first durable user input.
+      // Never write a local follow-up back as the Thread title.
+      const firstInputTitle = async (conversationId, at) => {
+        if (firstTitles.has(conversationId)) return firstTitles.get(conversationId);
+        let cursor; const visited = new Set();
+        do {
+          const page = await call("messages.list", { conversationId, limit: 16, ...(cursor ? { cursor } : {}) });
+          if (at !== epoch || disposed) return "";
+          // Go also projects background reports as role=user. Only a human input can name the Thread.
+          const input = page?.items?.find(item => (item.kind === "user" || item.kind == null && item.role === "user") &&
+            (item.source == null || item.source === "user"));
+          if (input) {
+            const value = input.text || (input.fragments || []).filter(item => item.type === "text").map(item => item.text).join("");
+            const title = Array.from(value.trim()).slice(0, 32).join("") || "附件对话";
+            firstTitles.set(conversationId, title); return title;
+          }
+          cursor = page?.nextCursor;
+          if (visited.has(cursor)) break;
+          visited.add(cursor);
+        } while (cursor);
+        return "";
+      };
+      // Each task/plan keeps its own pending command, separate from other tabs' drafts.
+      const taskSlot = (scope, conversationId, taskId) => STORAGE_KEY + ":task-command:" + JSON.stringify([scope, conversationId, taskId]);
+      function pendingTaskAt(key) {
+        const text = storage?.getItem(key);
+        if (!text) return null;
+        const record = JSON.parse(text);
+        if (!record?.payload?.requestId || !record.payload.taskScope || !record.operation) throw new Error("原后台操作记录无法读取，请先核对任务状态。");
+        return record;
+      }
+      function clearTaskRecord(record) {
+        if (pendingTaskAt(record.key)?.payload.requestId === record.payload.requestId) storage.removeItem(record.key);
+      }
+      const taskInFlight = new Set();
+      async function inspectTaskReceipt(record) {
+        const result = await call("task.receipt", { ...record.payload, operation: record.operation });
+        if (result?.receipt?.requestId !== record.payload.requestId) return null;
+        clearTaskRecord(record);
+        return result.receipt;
+      }
+      async function readPendingTasks(scope, selected, tasks, confirmed) {
+        if (!scope) return [];
+        const records = [null, ...tasks.map(task => task.taskId)].map(taskId => pendingTaskAt(taskSlot(scope, selected.conversationId, taskId))).filter(Boolean);
+        const remaining = await Promise.all(records.map(async record => {
+          if (taskInFlight.has(record.key)) return record;
+          try {
+            const receipt = await inspectTaskReceipt(record);
+            if (!receipt) return record;
+            confirmed.push(receipt.resourceId);
+            return null;
+          } catch { return record; }
+        }));
+        return remaining.filter(Boolean);
+      }
+      async function sendTaskRecord(record, retry = false) {
+        const { payload } = record;
+        if (payload.taskScope !== state.taskScope || payload.targetId !== state.targetId || payload.conversationId !== state.selected?.conversationId) throw new Error("请返回原服务、操作者和对话核对操作。");
+        if (taskInFlight.has(record.key)) throw new Error("原操作正在提交。");
+        taskInFlight.add(record.key);
+        const at = epoch;
+        try {
+          const receipt = await call(record.operation, payload);
+          if (receipt?.requestId !== payload.requestId) throw new Error("原操作回执无法核对");
+          clearTaskRecord(record);
+          return receipt;
+        } catch (error) {
+          if (error.code === "VERSION_CONFLICT" || !retry && ["INVALID_REQUEST", "PERMISSION_DENIED", "NOT_SUPPORTED", "THREAD_PAUSED", "BACKGROUND_CAPACITY_EXCEEDED"].includes(error.code)) {
+            clearTaskRecord(record);
+            throw error;
+          }
+          throw new Error("结果待确认。先查询原回执；重试只会发送原操作。 " + error.message);
+        } finally {
+          taskInFlight.delete(record.key);
+          if (!disposed && epoch === at) {
+            try { await syncSelection(); } catch (error) { if (epoch === at) set({ taskReadError: "任务状态刷新失败：" + error.message }); }
+          }
+        }
+      }
+      async function startTaskCommand(operation, taskId, fields) {
+        const selected = state.selected, scope = state.taskScope;
+        if (!selected || !scope || !storage) throw new Error("服务身份或本机存储不可用，未发送操作。");
+        const key = taskSlot(scope, selected.conversationId, taskId);
+        if (pendingTaskAt(key)) throw new Error("原操作结果待确认，请查询原回执或重试原操作。");
+        const record = { key, operation, taskId, payload: { ...fields, requestId: requestId(operation), taskScope: scope,
+          conversationId: selected.conversationId, targetId: state.targetId } };
+        storage.setItem(key, JSON.stringify(record));
+        return sendTaskRecord(record);
+      }
       const syncSelection = async () => {
         const at = epoch, selected = state.selected;
         const query = selected ? `?${new URLSearchParams({ threadId: selected.threadId, conversationId: selected.conversationId })}` : "";
@@ -429,10 +528,16 @@ window.__ModuleLoader__.load({
         if (view.connection !== "ready") {
           set({ ready: false, loaded: true, error: view.core?.error?.message || "Core 未连接，请检查本机服务后刷新" }); return;
         }
-        let backgroundTasks = [], taskReadError = "";
+        let backgroundTasks = [], taskReadError = "", taskScope = null, pendingTaskOperations = [];
+        const confirmedTaskReceipts = [];
         if (selected && state.taskFeatures?.backgroundTasksV1) {
-          try { backgroundTasks = await pageAll("task.list", { conversationId: selected.conversationId }); }
-          catch (error) { taskReadError = error.message; }
+          try {
+            const features = state.taskFeatures;
+            const tasks = await pageAll("task.list", { conversationId: selected.conversationId });
+            backgroundTasks = tasks.filter(task => (task.kind !== "schedule" || features.taskSchedulesV1) && (task.kind !== "monitor" || features.taskMonitorsV1));
+            taskScope = await call("task.scope");
+            pendingTaskOperations = await readPendingTasks(taskScope, selected, backgroundTasks, confirmedTaskReceipts);
+          } catch (error) { taskReadError = error.message; }
         }
         let goal = null, goalError = "";
         try { goal = await readGoal(selected); } catch (error) { goalError = error.message; }
@@ -483,7 +588,7 @@ window.__ModuleLoader__.load({
         if (disposed || at !== epoch) return;
         const committed = new Set(messages.map(m => m.generationKey).filter(Boolean));
         const finalRuns = new Set(messages.filter(message => message.isFinal === true).map(message => message.runId));
-        set({ ready: true, loaded: true, backgroundTasks, taskReadError, goal, goalError, messages, thread, conversation, runDetails, waits, executions, contextView, contextError, historyError, branches, branchError,
+        set({ ready: true, loaded: true, backgroundTasks, taskReadError, taskScope, pendingTaskOperations, taskReceiptNotice: confirmedTaskReceipts.length ? "已核对原操作：" + confirmedTaskReceipts.join("、") : "", goal, goalError, messages, thread, conversation, runDetails, waits, executions, contextView, contextError, historyError, branches, branchError,
           live: state.live.filter(m => !committed.has(m.generationKey) && !(terminalRunIds.has(m.runId) && historySucceeded && (historyCaughtUp || finalRuns.has(m.runId)))) });
       };
       const refresh = async () => {
@@ -493,15 +598,22 @@ window.__ModuleLoader__.load({
           try {
             const [catalog, listed, settings, info] = await Promise.allSettled([call("models.list"), pageAll("thread.list", { deleted: "include" }), call("settings.get"), call("server.info")]);
             if (disposed || at !== epoch) return;
-            set({ taskFeatures: info.status === "fulfilled" ? info.value?.runtimeFeatures || {} : {}, goalsSupported: info.status === "fulfilled" ? info.value?.runtimeFeatures?.goalsV1 === true : state.goalsSupported });
+            set({ taskFeatures: info.status === "fulfilled" ? info.value?.runtimeFeatures || {} : {}, goalsSupported: info.status === "fulfilled" ? info.value?.runtimeFeatures?.goalsV1 === true : false });
             const modelsResult = catalog.status === "fulfilled" ? catalog.value : state.models;
             const models = Array.isArray(modelsResult) ? modelsResult.filter(m => m && typeof m.id === "string") : Array.isArray(modelsResult?.items) ? modelsResult.items : [];
             const summaries = listed.status === "fulfilled" ? listed.value : state.threads;
             const defaults = settings.status === "fulfilled" ? settings.value?.configuration : null;
             const instanceId = settings.status === "fulfilled" ? settings.value?.instanceId : null;
+            const service = info.status === "fulfilled" ? info.value : null;
+            const inputServiceIdentity = Number.isInteger(service?.pid) && typeof service.startedAt === "string"
+              ? JSON.stringify([instanceId, service.pid, service.startedAt]) : instanceId || null;
+            if (inputServiceIdentity !== state.inputServiceIdentity || instanceId && instanceId !== state.coreInstanceId) {
+              capabilityGeneration++; capabilityRequest = null; firstTitles.clear();
+              set({ inputServiceIdentity, attachmentCapabilities: null, attachmentCapabilityError: "" });
+            }
             if (instanceId && instanceId !== state.coreInstanceId) {
               workspaceReadVersion++; workspaceBrowseAbort?.abort();
-              set({ coreInstanceId: instanceId, attachmentCapabilities: null, managedWorkspaceLocation: null, workspaceLoading: false,
+              set({ coreInstanceId: instanceId, managedWorkspaceLocation: null, workspaceLoading: false,
                 ...(state.coreInstanceId ? { workspaceForm: false, workspaceOpening: false, workspaceError: "Core 实例已变化，请重新打开工作区选择器" } : {}) });
             }
             const defaultId = defaults?.modelConfiguration?.models?.find(item => item.id === defaults.defaultModelConfigId)?.modelId;
@@ -512,7 +624,8 @@ window.__ModuleLoader__.load({
                 if (!conversation?.config || typeof conversation.config !== "object") throw new Error("会话配置结构无效");
                 if (disposed || at !== epoch) return { ...summary, conversation: { config: {} } };
                 metadata.set(summary.mainConversationId, conversation);
-                return { ...summary, conversation, loadError: null };
+                const fallbackTitle = summary.title ? "" : await firstInputTitle(summary.mainConversationId, at).catch(() => "");
+                return { ...summary, conversation, fallbackTitle, loadError: null };
               } catch (error) { return { ...summary, conversation: metadata.get(summary.mainConversationId) || { config: {} }, loadError: error.message }; }
             }));
             if (disposed || at !== epoch) return;
@@ -535,11 +648,17 @@ window.__ModuleLoader__.load({
       const selectThread = async (threadId, conversationId) => {
         rememberDraft(); epoch++; runLookups.clear(); liveCursors.clear(); terminalRunIds.clear(); runDiffCache.clear();
         const item = state.threads.find(t => t.threadId === threadId);
-        set({ busy: false, backgroundTasks: [], taskReadError: "", goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", selected: { threadId, conversationId }, root: item?.conversation?.config?.cwd || "",
+        set({ busy: false, backgroundTasks: [], taskScope: null, pendingTaskOperations: [], taskReceiptNotice: "", taskReadError: "", goal: null, goalCancelIntent: null, waitReceipt: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", selected: { threadId, conversationId }, root: item?.conversation?.config?.cwd || "",
           ...(composerDrafts.get(conversationId) || { attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkills: [] }), skillCatalog: [], inputPreview: null, previewError: "", previewLoading: false,
           draft: drafts.get(conversationId) || "", materials: materialDrafts.get(conversationId)?.materials || [], selectedSkillIds: materialDrafts.get(conversationId)?.selectedSkillIds || [], fileSelection: null, targetRunId: null, diffSelection: null, messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, historyError: "", error: "" });
         ctx.layout.selectPanel(SPACE_ID);
         try { await syncSelection(); } catch (error) { set({ error: error.message }); }
+      };
+      const forkEntry = async (conversationId, sourceEntryId) => {
+        const at = epoch, targetId = state.targetId;
+        const result = await call("conversation.fork", { conversationId, sourceEntryId, targetId, requestId: requestId("conversation.fork") });
+        if (at === epoch && !disposed) await selectThread(result.threadId, result.conversationId);
+        return result;
       };
       const newConversation = (root = state.root) => {
         if (state.busy) return;
@@ -547,7 +666,7 @@ window.__ModuleLoader__.load({
         const nextModelId = state.defaultModelId;
         const nextModel = state.models.find(model => model.id === nextModelId);
         const thinkingLevel = nextModelId === state.modelId && (state.thinkingLevel === null || !Array.isArray(nextModel?.supportedThinkingLevels) || nextModel.supportedThinkingLevels.includes(state.thinkingLevel)) ? state.thinkingLevel : null;
-        set({ ...(composerDrafts.get(`new:${root || ""}`) || { attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkills: [] }), skillCatalog: [], inputPreview: null, previewLoading: false, previewError: "", goal: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", selected: null, root, modelId: nextModelId, modelSource: "service_default", thinkingLevel, delivery: "new_run", draft: drafts.get("new") || "", materials: materialDrafts.get("new")?.materials || [], selectedSkillIds: materialDrafts.get("new")?.selectedSkillIds || [], fileSelection: null, targetRunId: null, diffSelection: null, messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, historyError: "", error: "" });
+        set({ ...(composerDrafts.get(`new:${root || ""}`) || { attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkills: [] }), skillCatalog: [], inputPreview: null, previewLoading: false, previewError: "", goal: null, goalCancelIntent: null, waitReceipt: null, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", selected: null, root, modelId: nextModelId, modelSource: "service_default", thinkingLevel, delivery: "new_run", draft: drafts.get("new") || "", materials: materialDrafts.get("new")?.materials || [], selectedSkillIds: materialDrafts.get("new")?.selectedSkillIds || [], fileSelection: null, targetRunId: null, diffSelection: null, messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, historyError: "", error: "" });
         services.viewState.set({ threadId: null, conversationId: null, mainConversationId: null, snapshot: null, run: null });
         ctx.layout.selectPanel(SPACE_ID);
       };
@@ -603,6 +722,76 @@ window.__ModuleLoader__.load({
         } throw error; }
         finally { if (!disposed && at === epoch) set({ workspaceOpening: false }); }
       };
+      const readThreadImpact = async threadId => {
+        const targetId = state.targetId, at = epoch;
+        const thread = await call("thread.get", { threadId, targetId });
+        if (thread?.threadId !== threadId) throw new Error("未能核实 Thread 身份，请刷新");
+        const conversations = new Set([thread.mainConversationId, ...(thread.runs || []).map(run => run.conversationId),
+          ...(thread.queuedInputIds || []).map(input => input.conversationId), state.selected?.conversationId].filter(Boolean));
+        if (services.observations?.graph) {
+          try {
+            const graph = await services.observations.graph(threadId);
+            for (const node of graph?.nodes || []) if (node.conversationId) conversations.add(node.conversationId);
+          } catch { /* The scope note in the dialog also covers undiscovered Conversations. */ }
+        }
+        const [waits, ...taskLists] = await Promise.allSettled([
+          pageAll("waits.list", { threadId, status: "waiting", targetId }),
+          ...(state.taskFeatures?.backgroundTasksV1 ? [...conversations].map(conversationId => pageAll("task.list", { conversationId, targetId })) : []),
+        ]);
+        if (at !== epoch || state.targetId !== targetId) throw new Error("入口或对话已切换，请重新查看 Thread");
+        return { thread, waits: waits.status === "fulfilled" ? waits.value : null,
+          tasks: taskLists.flatMap(list => list.status === "fulfilled" ? list.value : []).filter(task => !terminalTask(task)),
+          taskReadFailed: taskLists.some(list => list.status === "rejected") };
+      };
+      const sendThreadControl = async (record, retry) => {
+        const { threadId, targetId, requestId: id } = record.payload;
+        if (targetId !== state.targetId || record.instanceId && record.instanceId !== state.coreInstanceId)
+          throw new Error("原控制命令属于另一个 Core 实例，请返回原入口");
+        if (sendingThreadOperations.has(id)) throw new Error("原 Thread 命令正在提交，请等待读回");
+        const at = epoch;
+        sendingThreadOperations.add(id);
+        try {
+          persist(true, "Thread 命令");
+          if (retry) {
+            const observed = await call("thread.get", { threadId, targetId });
+            if (observed?.threadId !== threadId || at !== epoch) throw new Error("无法核实原 Thread，请稍后再确认");
+          }
+          const receipt = await call(`thread.${record.action}`, structuredClone(record.payload));
+          if (pendingThreadOperations.get(threadId) !== record || state.targetId !== targetId) return receipt;
+          pendingThreadOperations.delete(threadId); persist();
+          if (at === epoch) {
+            set({ threadControlNotice: { threadId, targetId, message: "Thread 命令已接收，实际结果以服务回读为准。" } });
+            await refresh();
+          }
+          return receipt;
+        } catch (error) {
+          if (pendingThreadOperations.get(threadId) !== record) throw error;
+          if (["INVALID_REQUEST", "INVALID_STATE", "NOT_FOUND", "NOT_SUPPORTED", "EXECUTION_UNKNOWN", "IDEMPOTENCY_CONFLICT"].includes(error.code)) {
+            pendingThreadOperations.delete(threadId); persist();
+          }
+          if (at === epoch) {
+            try {
+              const observed = await call("thread.get", { threadId, targetId });
+              if (at === epoch && state.selected?.threadId === threadId && observed?.threadId === threadId) set({ thread: observed });
+            } catch { /* Preserve the original error and recovery record. */ }
+            if (at === epoch) set({ threadControlNotice: { threadId, targetId, message: pendingThreadOperations.has(threadId)
+              ? "原 Thread 命令尚未确认。可以核对状态，再按原请求重试。" : error.message } });
+          }
+          throw error;
+        } finally { sendingThreadOperations.delete(id); }
+      };
+      const controlThreadTarget = async (threadId, action, choices = {}) => {
+        if (!threadId || !["pause", "resume", "stop"].includes(action)) throw new Error("无效的 Thread 控制目标");
+        if (pendingThreadOperations.has(threadId)) throw new Error("该 Thread 有未确认命令，请先核对原操作");
+        const payload = { threadId, targetId: state.targetId, requestId: requestId(`thread.${action}`) };
+        if (action === "resume") {
+          if (choices.continueRunIds?.length) payload.continueRunIds = [...choices.continueRunIds];
+          if (choices.queuedInputs?.length) payload.queuedInputs = structuredClone(choices.queuedInputs);
+        }
+        const record = { action, payload, instanceId: state.coreInstanceId };
+        pendingThreadOperations.set(threadId, record);
+        return sendThreadControl(record, false);
+      };
       const goalOperationsForSelection = () => [...pendingGoalOperations.values()].filter(record => record.payload.targetId === state.targetId && record.conversationId === state.selected?.conversationId);
       const performGoalOperation = async record => {
         const at = epoch, targetId = state.targetId, selected = state.selected;
@@ -613,6 +802,7 @@ window.__ModuleLoader__.load({
         try {
           await requireGoalSupport();
           const receipt = await call(record.action, structuredClone(record.payload));
+          if (state.targetId !== targetId || pendingGoalOperations.get(record.payload.requestId) !== record) return receipt;
           pendingGoalOperations.delete(record.payload.requestId); persist();
           if (disposed || at !== epoch) return receipt;
           set({ goalNotice: `目标命令已接收（${receipt.state || "accepted"}）；以服务确认后的目标状态为准。` });
@@ -630,8 +820,8 @@ window.__ModuleLoader__.load({
       };
       const controlGoal = async (operation, fields = {}, intent = fields) => {
         const goal = state.goal ? structuredClone(state.goal) : null, selected = state.selected, targetId = state.targetId, coreInstanceId = state.coreInstanceId;
-        if (!goal || !selected) throw new Error("当前对话没有目标；使用 /goal 目标 --budget 数量 创建");
         await requireGoalSupport();
+        if (!goal || !selected) throw new Error("当前对话没有目标；使用 /goal 目标 --budget 数量 创建");
         if (coreInstanceId && state.coreInstanceId && coreInstanceId !== state.coreInstanceId) throw new Error("Core 实例已变化，请重新确认目标操作");
         const action = `goal.${operation}`;
         const pending = goalOperationsForSelection().find(record => record.action === action);
@@ -647,11 +837,28 @@ window.__ModuleLoader__.load({
         if (!Number.isSafeInteger(total) || !Number.isSafeInteger(total + amount)) throw new Error("目标预算未知或增加后超出安全整数范围");
         return controlGoal("update", { limits: { ...goal.limits, totalTokens: total + amount } }, { increase: amount });
       };
+      const requestGoalCancel = (draft = null) => {
+        const goal = state.goal;
+        if (!state.goalsSupported || !goal || GOAL_TERMINAL.has(goal.status)) throw new Error("当前目标无法取消，请刷新目标状态");
+        set({ goalCancelIntent: { targetId: state.targetId, conversationId: state.selected?.conversationId, goalId: goal.goalId,
+          revision: goal.revision, objective: goal.objective, draft } });
+      };
+      const confirmGoalCancel = async () => {
+        const intent = state.goalCancelIntent;
+        if (!intent || state.goalBusy) return;
+        set({ goalCancelIntent: null });
+        if (intent.targetId !== state.targetId || intent.conversationId !== state.selected?.conversationId || intent.goalId !== state.goal?.goalId || intent.revision !== state.goal?.revision)
+          throw new Error("目标或修订已变化，请重新核对后取消");
+        const result = await controlGoal("cancel");
+        if (result && intent.targetId === state.targetId && intent.conversationId === state.selected?.conversationId && intent.draft === state.draft) set({ draft: "" });
+        return result;
+      };
       const sendGoalCommand = async command => {
         const original = state.draft, at = epoch;
         if (command.operation === "steer" && !command.text?.trim()) throw new Error("请提供目标补充内容");
         if (state.materials.length || state.attachments.length || state.selectedSkillIds.length || state.fileSelection) throw new Error("目标控制和补充只发送文字。请先发送或保留所选附件、Skill 和文件输入");
         let result;
+        if (command.operation === "cancel") { await requireGoalSupport(); requestGoalCancel(original); return null; }
         if (command.operation === "status") { await requireGoalSupport(); await syncSelection(); set({ goalNotice: state.goal ? "目标状态已刷新" : "当前对话没有目标；使用 /goal 目标 --budget 数量 创建" }); result = state.goal; }
         else if (command.operation === "budget") result = await increaseGoalBudget(command.increase);
         else if (command.operation === "update") result = await controlGoal("update", { objective: command.objective });
@@ -682,13 +889,14 @@ window.__ModuleLoader__.load({
         set({ busy: true, error: "" });
         try {
           if (goalCommand?.operation === "create") await requireGoalSupport();
+          if (delivery === "next_turn" && selectedSkillIds.length) throw new Error("补充当前任务不能更换显式 Skill；草稿已保留，请改为排队新任务");
           if (materials.length || preparedAttachments.length || selectedSkillIds.length) {
             const capabilities = await loadAttachmentCapabilities();
-            if (capabilities.supported === false) throw new Error(capabilities.reason || "当前运行时暂不支持附件与 Skill，请切换到 TypeScript/Pi 服务");
+            if ((materials.length || preparedAttachments.length) && !capabilities.supported) throw new Error(capabilities.reason || "当前服务不接受附件，草稿已保留");
+            if (selectedSkillIds.length && !capabilities.skillSelection) throw new Error(capabilities.reason || "当前服务未开放 Skill 选择，草稿已保留");
             if (!pendingInputs.has(selected?.conversationId)) await validateSelectedSkills(capabilities);
             requiresPreview ||= capabilities.inputPreview === true && selectedSkillIds.length > 0;
           }
-          if (delivery === "next_turn" && selectedSkillIds.length) throw new Error("补充当前任务不能更换显式 Skill；草稿已保留，请改为排队新任务");
           if (delivery === "next_turn" && fileSelection) throw new Error("补充当前任务沿用原文件输入；草稿已保留，请改为排队新任务以选择文件");
           let plan = state.inputPreview;
           if (requiresPreview && !pendingInputs.has(selected?.conversationId)) {
@@ -721,7 +929,8 @@ window.__ModuleLoader__.load({
               }))).filter(Boolean)
             : [];
           if (delivery === "next_turn" && candidates.length === 0) throw new Error("当前对话没有可补充的运行中任务，请改为排队新任务");
-          const chosenTarget = state.targetRunId && candidates.some(run => run.runId === state.targetRunId) ? state.targetRunId : candidates.length === 1 ? candidates[0].runId : null;
+          if (delivery === "next_turn" && state.targetRunId && !candidates.some(run => run.runId === state.targetRunId)) throw new Error("原补充目标已结束，请重新选择；草稿已保留");
+          const chosenTarget = delivery === "next_turn" ? state.targetRunId || (candidates.length === 1 ? candidates[0].runId : null) : null;
           if (delivery === "next_turn" && !chosenTarget) throw new Error("当前对话有多个运行中任务，请先选择补充目标");
           const frozenSkillRefs = selectedSkillRefs();
           const signature = JSON.stringify([text, materials, selectedSkillIds, fileSelection, delivery, chosenTarget || null, ...(goalCommand?.operation === "create" ? [goalCommand.limits] : []), ...(preparedAttachments.length ? [preparedAttachments] : []), ...(frozenSkillRefs.length ? [frozenSkillRefs] : [])]);
@@ -738,7 +947,7 @@ window.__ModuleLoader__.load({
           pendingInputs.delete(key); drafts.delete(key); drafts.delete("new"); materialDrafts.delete(key); materialDrafts.delete("new");
           composerDrafts.delete(originKey); composerDrafts.delete(key);
           for (const item of state.attachments) if (item.thumbnailUrl) globalThis.URL?.revokeObjectURL?.(item.thumbnailUrl);
-          set({ draft: "", materials: [], attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkillIds: [], selectedSkills: [], inputPreview: null, fileSelection: null, targetRunId: null, titles: { ...state.titles, [key]: state.titles[key] || text.slice(0, 32) || "附件对话" } });
+          set({ draft: "", materials: [], attachments: [], attachmentRemovals: [], attachmentDraftId: null, selectedSkillIds: [], selectedSkills: [], inputPreview: null, fileSelection: null, targetRunId: null });
           await refresh();
           return receipt;
         } catch (error) {
@@ -801,27 +1010,34 @@ window.__ModuleLoader__.load({
       const controller = {
         getSnapshot: () => state, subscribe: fn => { listeners.add(fn); return () => listeners.delete(fn); },
         async createTaskSchedule(fields) {
-          const at = epoch, selected = state.selected, targetId = state.targetId;
-          if (!selected || !state.taskFeatures?.taskCreation?.schedules) throw new Error("当前会话不能新建周期检查");
-          const receipt = await call("schedule.create", { ...fields, conversationId: selected.conversationId, targetId });
-          if (at !== epoch || state.targetId !== targetId) throw new Error("会话已切换");
-          await syncSelection();
-          return receipt;
+          if (!state.taskFeatures?.taskSchedulesV1 || !state.taskFeatures?.taskCreation?.schedules) throw new Error("当前会话不能新建周期检查");
+          return startTaskCommand("schedule.create", null, fields);
+        },
+        async recoverTaskOperation(record, retry = false) {
+          if (state.taskScope !== record.payload.taskScope || state.selected?.conversationId !== record.payload.conversationId || !state.pendingTaskOperations.some(item => item.payload.requestId === record.payload.requestId)) throw new Error("请返回原对话核对操作。");
+          const original = pendingTaskAt(record.key);
+          if (!original || original.payload.requestId !== record.payload.requestId) { await syncSelection(); return null; }
+          const receipt = await inspectTaskReceipt(original);
+          if (receipt || !retry) { await syncSelection(); return receipt; }
+          return sendTaskRecord(original, true);
         },
         async backgroundAction(task, action, fields = {}) {
           const at = epoch, selected = state.selected, targetId = state.targetId;
-          if (!selected || task.conversationId !== selected.conversationId || !state.backgroundTasks.some(row => row.taskId === task.taskId)) throw new Error("任务不属于当前对话");
-          const schedule = task.kind === "schedule", id = schedule ? { scheduleId: task.taskId } : { taskId: task.taskId };
-          const data = await call((schedule ? "schedule." : "task.") + action, { ...fields, ...id, targetId });
+          const row = state.backgroundTasks.find(item => item.taskId === task.taskId);
+          if (!selected || !row || row.conversationId !== selected.conversationId) throw new Error("任务不属于当前对话");
+          const isSchedule = row.kind === "schedule", id = isSchedule ? { scheduleId: row.taskId } : { taskId: row.taskId };
+          if (action !== "get" && !row.allowedActions?.includes(action)) throw new Error("当前任务不允许此操作。");
+          const operation = (isSchedule ? "schedule." : "task.") + action;
+          if (["cancel", "pause", "detach", "resume"].includes(action)) return startTaskCommand(operation, row.taskId, { ...id, expectedRevision: row.revision });
+          const data = await call(operation, { ...fields, ...id, targetId });
           if (at !== epoch || state.targetId !== targetId) throw new Error("会话已切换");
-          if (["cancel", "pause", "detach", "resume"].includes(action)) await syncSelection();
           return data;
         },
-        taskRequestId: action => requestId(action),
         getThread: threadId => call("thread.get", { threadId }),
         refresh, selectThread, newConversation, registerWorkspace, browseManagedWorkspace, openManagedWorkspace, send, receiveLive,
         loadAttachmentCapabilities, previewInput, receiveEvent,
-        controlGoal, increaseGoalBudget,
+        controlGoal, increaseGoalBudget, requestGoalCancel, confirmGoalCancel,
+        dismissGoalCancel: () => set({ goalCancelIntent: null }),
         updateGoalObjective: objective => { if (!objective?.trim()) throw new Error("请提供新的目标说明"); return controlGoal("update", { objective: objective.trim() }); },
         retryGoalOperation: id => { const record = pendingGoalOperations.get(id); if (!record) throw new Error("原目标命令不存在"); return performGoalOperation(record); },
         pendingGoalOperations: goalOperationsForSelection,
@@ -911,7 +1127,7 @@ window.__ModuleLoader__.load({
           const origin = originOfComposer();
           try {
             const capabilities = await loadAttachmentCapabilities();
-            if (capabilities.supported === false) throw new Error(capabilities.reason || "当前运行时暂不支持 Skill，请切换到 TypeScript/Pi 服务");
+            if (!capabilities.skillSelection) throw new Error(capabilities.reason || "当前服务未开放 Skill 选择");
             const workspace = origin.root ? await call("workspace.find", { targetId: origin.targetId, root: origin.root }) : null;
             const catalog = await call("skills.catalog", { targetId: origin.targetId, ...(origin.conversationId ? { conversationId: origin.conversationId } : {}), ...(workspace?.workspaceId ? { workspaceId: workspace.workspaceId } : {}) });
             if (!Array.isArray(catalog?.items)) throw new Error("当前服务尚未提供只读 Skill 目录，请更新服务；会话不会执行磁盘扫描");
@@ -947,7 +1163,7 @@ window.__ModuleLoader__.load({
         },
         selectSkill(skill, selected) {
           const id = skill.skillId;
-          if (selected && state.attachmentCapabilities?.supported === false) throw new Error(state.attachmentCapabilities.reason || "当前运行时暂不支持 Skill，请切换到 TypeScript/Pi 服务");
+          if (selected && !state.attachmentCapabilities?.skillSelection) throw new Error(state.attachmentCapabilities?.reason || "当前服务未开放 Skill 选择，草稿已保留");
           if (!id || selected && skill.status !== "available" && skill.status !== "enabled") throw new Error("此 Skill 当前不可用");
           set({ selectedSkillIds: selected ? [...new Set([...state.selectedSkillIds, id])] : state.selectedSkillIds.filter(value => value !== id), selectedSkills: selected ? [...state.selectedSkills.filter(item => item.skillId !== id), skill] : state.selectedSkills.filter(item => item.skillId !== id) });
         },
@@ -1053,9 +1269,12 @@ window.__ModuleLoader__.load({
             const graph = await services.observations.graph(selected.threadId);
             if (disposed || at !== epoch || state.selected?.conversationId !== selected.conversationId) return [];
             const forkEdges = new Map((graph?.edges || []).filter(edge => edge.kind === "fork").map(edge => [edge.toId, edge.fromId]));
-            const branches = (graph?.nodes || []).filter(node => node.kind === "conversation" && node.conversationId &&
-              node.conversationId !== selected.conversationId && forkEdges.has(node.conversationId))
-              .map(node => ({ conversationId: node.conversationId, forkedFromConversationId: forkEdges.get(node.conversationId) || null, startedAt: node.startedAt || null }));
+            const mainId = state.thread?.mainConversationId || state.threads.find(item => item.threadId === selected.threadId)?.mainConversationId;
+            const nodes = (graph?.nodes || []).filter(node => node.kind === "conversation" && node.conversationId &&
+              (node.conversationId === mainId || node.conversationId === selected.conversationId || forkEdges.has(node.conversationId)));
+            const branches = nodes.map(node => ({ conversationId: node.conversationId, main: node.conversationId === mainId,
+              forkedFromConversationId: forkEdges.get(node.conversationId) || null, startedAt: node.startedAt || null }));
+            if (mainId && !branches.some(item => item.main)) branches.unshift({ conversationId: mainId, main: true, forkedFromConversationId: null });
             set({ branches, branchError: "", branchesLoaded: true, branchLoading: false });
             return branches;
           } catch (error) {
@@ -1177,7 +1396,11 @@ window.__ModuleLoader__.load({
           try {
             const receipt = await call(action, operation.payload);
             pendingWaitActions.delete(wait.waitId);
-            if (at === epoch) await syncSelection();
+            if (at === epoch) {
+              set({ waitReceipt: { waitId: wait.waitId, conversationId: wait.conversationId, targetId,
+                title: ({ user: "问题答案", permission: "审批决定", file_input: "补件" })[wait.kind] } });
+              await syncSelection();
+            }
             return receipt;
           } catch (error) { if (["INVALID_REQUEST", "INVALID_STATE", "NOT_FOUND", "WAIT_ALREADY_RESOLVED"].includes(error.code)) pendingWaitActions.delete(wait.waitId); throw error; }
         },
@@ -1307,20 +1530,19 @@ window.__ModuleLoader__.load({
         },
         async stop() {
           if (!state.selected) return;
-          try {
-            await call("thread.stop", { threadId: state.selected.threadId, requestId: requestId("thread.stop") });
-            await refresh();
-            setTimeout(() => void refresh(), 300);
-            setTimeout(() => void refresh(), 1000);
-          }
+          try { return await controlThreadTarget(state.selected.threadId, "stop"); }
           catch (error) { set({ error: error.message }); }
         },
         async renameThread(thread, title) {
           const text = title.trim(); if (!text) throw new Error("会话标题不能为空");
-          const current = Number.isSafeInteger(thread.controlRevision) ? thread : await call("thread.get", { threadId: thread.threadId });
-          await call("thread.metadata", { threadId: thread.threadId, requestId: requestId("thread.metadata"), expectedControlRevision: current.controlRevision, title: text });
-          const confirmed = await call("thread.get", { threadId: thread.threadId });
-          set({ threads: decorateThreads(state.threads.map(item => item.threadId === thread.threadId ? { ...item, ...confirmed } : item)) });
+          const at = epoch, targetId = state.targetId, threadId = thread.threadId;
+          const current = Number.isSafeInteger(thread.controlRevision) ? thread : await call("thread.get", { threadId, targetId });
+          if (at !== epoch || disposed) return;
+          await call("thread.metadata", { threadId, targetId, requestId: requestId("thread.metadata"), expectedControlRevision: current.controlRevision, title: text });
+          if (at !== epoch || disposed) return;
+          const confirmed = await call("thread.get", { threadId, targetId });
+          if (at === epoch && !disposed && confirmed.threadId === threadId)
+            set({ threads: decorateThreads(state.threads.map(item => item.threadId === threadId ? { ...item, ...confirmed } : item)) });
         },
         async stageMessageFiles(files, kind) {
           if (!["file", "reference", "image"].includes(kind) || !files.length || files.length + (state.materials || []).length > 10) throw new Error("一次输入最多10个材料，请选择文件");
@@ -1420,27 +1642,20 @@ window.__ModuleLoader__.load({
           await call("conversation.updateConfig", { conversationId: state.selected.conversationId, requestId: requestId("conversation.updateConfig"), expectedConfigRevision: conversation.pendingConfig?.configRevision || conversation.configRevision, patch: { thinkingLevel: value === null ? "provider_default" : value } });
           await syncSelection();
         },
-        async controlThreadTarget(threadId, action) {
-          if (!threadId || !["pause", "resume", "stop"].includes(action)) throw new Error("无效的线程控制目标");
-          const at = epoch, targetId = state.targetId;
-          await call(`thread.${action}`, { threadId, targetId, requestId: requestId(`thread.${action}`) });
-          const actual = await call("thread.get", { threadId, targetId });
-          if (at === epoch) await refresh(); return actual;
-        },
-        async controlThread(action) {
-          if (!state.selected || !["pause", "resume", "stop"].includes(action)) return;
-          await call(`thread.${action}`, { threadId: state.selected.threadId, requestId: requestId(`thread.${action}`) });
-          await refresh();
-          if (action === "stop") {
-            setTimeout(() => void refresh(), 300);
-            setTimeout(() => void refresh(), 1000);
-          }
+        threadActions, readThreadImpact, controlThreadTarget,
+        controlThread(action, choices) { return controlThreadTarget(state.selected?.threadId, action, choices); },
+        pendingThreadControl(threadId) { return pendingThreadOperations.get(threadId); },
+        retryThreadControl(threadId) {
+          const record = pendingThreadOperations.get(threadId);
+          if (!record) throw new Error("原控制命令不存在");
+          return sendThreadControl(record, true);
         },
         clearTargetCache(targetId) { try { storage?.removeItem(`${STORAGE_KEY}.${targetId || "uds"}`); } catch {} },
         targetChanged(targetId, { forget = false } = {}) {
           rememberDraft(); persist();
+          capabilityGeneration++; capabilityRequest = null;
           workspaceReadVersion++; workspaceBrowseAbort?.abort();
-          epoch++; metadata.clear(); runLookups.clear(); liveCursors.clear(); terminalRunIds.clear(); runDiffCache.clear(); pendingInputs.clear(); pendingWaitActions.clear(); pendingRollbacks.clear(); if (materialUpload) materialUpload.cancelled = true; materialUpload = null; createAttempt = null;
+          epoch++; metadata.clear(); firstTitles.clear(); runLookups.clear(); liveCursors.clear(); terminalRunIds.clear(); runDiffCache.clear(); pendingInputs.clear(); pendingWaitActions.clear(); pendingRollbacks.clear(); if (materialUpload) materialUpload.cancelled = true; materialUpload = null; createAttempt = null;
           source?.close(); source = null;
           let cached = {};
           try { if (forget) storage?.removeItem(`${STORAGE_KEY}.${targetId || "uds"}`); else cached = JSON.parse(storage?.getItem(`${STORAGE_KEY}.${targetId || "uds"}`) || "{}"); } catch {}
@@ -1448,18 +1663,18 @@ window.__ModuleLoader__.load({
           composerDrafts.clear(); for (const [key, value] of Object.entries(cached.composerDrafts || {})) composerDrafts.set(key, restoreComposer(value));
           drafts.clear(); for (const [key, value] of Object.entries(cached.drafts || {})) if (typeof value === "string") drafts.set(key, value);
           pendingInputs.clear(); for (const [key, value] of restorePendingInputs(cached.pendingInputs)) pendingInputs.set(key, value);
+          pendingThreadOperations.clear();
+          for (const [key, record] of restoreThreadOperations(cached.pendingThreadOperations)) pendingThreadOperations.set(key, record);
           pendingGoalOperations.clear(); for (const [key, value] of restoreGoalOperations(cached.pendingGoalOperations)) pendingGoalOperations.set(key, value);
           createAttempt = cached.createAttempt && typeof cached.createAttempt.id === "string" && typeof cached.createAttempt.signature === "string" ? cached.createAttempt : null;
-          set({ taskFeatures: {}, backgroundTasks: [], taskReadError: "", goal: null, goalsSupported: false, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0, attachments: restoreAttachments(cached.attachments), attachmentRemovals: cached.attachmentRemovals || [], attachmentDraftId: cached.attachmentDraftId || null, selectedSkills: cached.selectedSkills || [], skillCatalog: [], skillCatalogError: "", attachmentCapabilities: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "", attachmentNotice: "", busy: false, inspector: false, targetId, workspaceForm: false, coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: cached.workspaceRequest || null, selected: cached.selected || null, directories: Array.isArray(cached.directories) ? cached.directories : [], removedRoots: cached.removedRoots || [], titles: cached.titles || {}, pinnedThreadIds: cached.pinnedThreadIds || [], archivedThreadIds: cached.archivedThreadIds || [], models: [], threads: [], messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, root: cached.root || "", modelId: cached.modelId || "", modelSource: cached.modelSource || (cached.modelId ? "conversation_override" : "service_default"), thinkingLevel: typeof cached.thinkingLevel === "string" ? cached.thinkingLevel : null, defaultModelId: "", permissionMode: cached.permissionMode || null, delivery: "new_run", targetRunId: null, diffSelection: cached.diffSelection && typeof cached.diffSelection.runId === "string" ? cached.diffSelection : null, draft: typeof cached.draft === "string" ? cached.draft : "", materials: Array.isArray(cached.materials) ? cached.materials : [], selectedSkillIds: Array.isArray(cached.selectedSkillIds) ? cached.selectedSkillIds : [], fileSelection: null, ready: false, error: "", historyError: "" });
+          set({ taskFeatures: {}, taskScope: null, pendingTaskOperations: [], backgroundTasks: [], taskReadError: "", goal: null, goalCancelIntent: null, waitReceipt: null, goalsSupported: false, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0, attachments: restoreAttachments(cached.attachments), attachmentRemovals: cached.attachmentRemovals || [], attachmentDraftId: cached.attachmentDraftId || null, selectedSkills: cached.selectedSkills || [], skillCatalog: [], skillCatalogError: "", attachmentCapabilities: null, inputServiceIdentity: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "", attachmentNotice: "", busy: false, inspector: false, targetId, workspaceForm: false, coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: cached.workspaceRequest || null, selected: cached.selected || null, directories: Array.isArray(cached.directories) ? cached.directories : [], removedRoots: cached.removedRoots || [], titles: cached.titles || {}, pinnedThreadIds: cached.pinnedThreadIds || [], archivedThreadIds: cached.archivedThreadIds || [], models: [], threads: [], messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, root: cached.root || "", modelId: cached.modelId || "", modelSource: cached.modelSource || (cached.modelId ? "conversation_override" : "service_default"), thinkingLevel: typeof cached.thinkingLevel === "string" ? cached.thinkingLevel : null, defaultModelId: "", permissionMode: cached.permissionMode || null, delivery: "new_run", targetRunId: null, diffSelection: cached.diffSelection && typeof cached.diffSelection.runId === "string" ? cached.diffSelection : null, draft: typeof cached.draft === "string" ? cached.draft : "", materials: Array.isArray(cached.materials) ? cached.materials : [], selectedSkillIds: Array.isArray(cached.selectedSkillIds) ? cached.selectedSkillIds : [], fileSelection: null, ready: false, error: "", historyError: "" });
           services.resetForTarget?.();
           services.viewState.set({ connection: "offline", threadId: null, conversationId: null, snapshot: null, run: null, threads: [], info: null, eventSeq: null });
           if (started) connectEvents(); void refresh();
         },
         async fork(message) {
           if (!state.selected || !Number.isInteger(message.entryId)) return;
-          const result = await call("conversation.fork", { conversationId: state.selected.conversationId,
-            sourceEntryId: message.entryId, requestId: requestId("conversation.fork") });
-          await selectThread(state.selected.threadId, result.conversationId);
+          return forkEntry(state.selected.conversationId, message.entryId);
         },
         start() { if (!started && !disposed) { started = true; void refresh(); timer = setInterval(() => void refresh(), 2000); connectEvents(); } return () => controller.dispose(); },
         dispose() { if (disposed) return; disposed = true; epoch++; workspaceReadVersion++; workspaceBrowseAbort?.abort(); if (materialUpload) materialUpload.cancelled = true; clearInterval(timer); source?.close(); source = null; listeners.clear(); },
@@ -1468,9 +1683,7 @@ window.__ModuleLoader__.load({
       transport.call = async (action, payload) => {
         if (action === "core.reconnect") { await refresh(); return { status: state.ready ? "done" : "error", reason: state.error }; }
         if (action === "run.fork") {
-          const result = await call("conversation.fork", { conversationId: payload.conversationId,
-            sourceEntryId: payload.sourceEntryId, requestId: requestId("conversation.fork") });
-          await selectThread(result.threadId, result.conversationId);
+          const result = await forkEntry(payload.conversationId, payload.sourceEntryId);
           return { status: "done", result };
         }
         const actionEpoch = epoch;
@@ -1480,7 +1693,7 @@ window.__ModuleLoader__.load({
         return result;
       };
       let views;
-      const getViews = () => views ||= createSpaceView({ kernel, controller, services, ctx, Panel, SPACE_ID, primitives, directoryBrowser, ConversationTrace });
+      const getViews = () => views ||= createSpaceView({ kernel, controller, services, ctx, Panel, SPACE_ID, primitives, directoryBrowser, ConversationTrace, workspaceTools });
       const Space = props => h(getViews().Space, props);
       const DirectorySection = props => h(getViews().DirectorySection, props);
       const registrations = [

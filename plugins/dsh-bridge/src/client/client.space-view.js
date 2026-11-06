@@ -81,145 +81,145 @@ window.__ModuleLoader__.load({
     }
     const COMPOSER_CSS = `.sa-attachment-dialog,.sa-attachment-dialog *{box-sizing:border-box}
 [role="dialog"]:has(.sa-attachment-dialog) button{min-width:44px;min-height:44px}
-.sa-composer{min-width:0;container-type:inline-size}.sa-composer[data-dragging=true]{outline:2px solid #4176e6;outline-offset:3px;background:#f8faff}
-.sa-composer-bar{padding:4px 8px 8px;gap:4px}.sa-composer-attach,.sa-composer-skill,.sa-composer .sa-send,.sa-composer .sa-permission-chip,.sa-composer .sa-chip{min-height:44px}.sa-composer-attach,.sa-composer .sa-send{width:44px;height:44px;flex:none}.sa-composer-skill{min-width:44px;display:inline-flex;align-items:center;gap:4px;flex:none;padding:0 8px;border:0;border-radius:8px;background:transparent;color:#61666b;font-size:12px}.sa-composer-skill:hover{background:#f1f3f5}.sa-composer button:focus-visible,.sa-attachment-dialog button:focus-visible,.sa-attachment-dialog input:focus-visible,.sa-attachment-dialog select:focus-visible{outline:2px solid #4176e6;outline-offset:2px}
-.sa-draft-materials{display:flex;flex-wrap:wrap;gap:8px;padding:12px 12px 0;min-width:0;max-height:260px;overflow-y:auto;overflow-x:hidden}.sa-attachment-card{display:flex;position:relative;flex:1 1 200px;max-width:100%;min-width:0;flex-wrap:wrap;border:1px solid #e1e5ee;border-radius:10px;background:#fafbfc}.sa-attachment-card[data-state=failed],.sa-attachment-card[data-state=duplicate]{border-color:#e9aaaa;background:#fffafa}.sa-attachment-card-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:8px;background:transparent;border:0;text-align:left;color:inherit;cursor:pointer}.sa-attachment-card-open:disabled{opacity:1;cursor:default}.sa-attachment-thumb,.sa-attachment-file-icon{width:44px;height:44px;object-fit:contain;flex:none;border-radius:6px;background:#eef1f6}.sa-attachment-file-icon{display:grid;place-items:center;font-size:24px;color:#67768b}.sa-attachment-card-copy{display:flex;flex-direction:column;gap:3px;min-width:0}.sa-attachment-card-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}.sa-attachment-card-copy small{font-size:11px;color:#727b88}.sa-attachment-remove{align-self:flex-start;flex:none;min-width:44px;min-height:44px;border:0;background:transparent;color:#727b88;font-size:20px;border-radius:8px}.sa-attachment-card-error{width:100%;padding:0 10px 8px;color:#b33a3a;font-size:12px;overflow-wrap:anywhere}.sa-attachment-action{min-height:44px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#3466bc;font-size:12px}.sa-attachment-card-error .sa-attachment-action{padding-block:0}.sa-attachment-error{margin:0;padding:8px 10px;border-radius:8px;background:#fef2f2;color:#b33a3a;overflow-wrap:anywhere;font-size:12px}.sa-attachment-summary{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:4px 10px;color:#81858c;font-size:11.5px}.sa-attachment-summary button{min-height:44px;border:0;background:transparent;color:#3466bc;font:inherit;padding:0 4px}.sa-attachment-summary span{min-width:0;overflow-wrap:anywhere}.sa-skill-tag{display:inline-flex;align-items:center;min-width:0;max-width:100%;border:1px solid #dce5f4;border-radius:8px;background:#f4f7fc;font-size:12px;color:#42608a}.sa-skill-tag>span{padding-left:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sa-skill-tag>button{min-width:44px;min-height:44px;background:transparent;border:0;color:inherit;font-size:18px}
-.sa-dialog-body.sa-attachment-dialog{width:100%;min-width:0;max-width:100%;max-height:min(65vh,600px);padding:8px 16px 16px;overflow-x:hidden;overflow-y:auto;overflow-wrap:anywhere;font-size:13px}.sa-attachment-dialog p{margin:0;line-height:1.7}.sa-attachment-dialog label{min-width:0;display:flex;flex-direction:column;gap:5px}.sa-attachment-dialog select,.sa-attachment-dialog input{min-width:0;max-width:100%;font:inherit}.sa-attachment-dialog .sa-skill-option{display:flex;flex-direction:row;align-items:flex-start;gap:10px;min-height:44px;padding:10px;border:1px solid #e1e5ee;border-radius:8px}.sa-skill-option>input{margin-top:4px;flex:none}.sa-skill-option>span{display:flex;flex-direction:column;gap:4px;min-width:0}.sa-skill-option small{line-height:1.6}.sa-project-file{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;border-bottom:1px solid #edf0f4;padding:6px 0}.sa-project-file>span{min-width:0;overflow-wrap:anywhere}.sa-project-file small{display:block}.sa-attachment-preview-image{display:block;max-width:100%;height:auto;object-fit:contain}.sa-attachment-preview-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,monospace}.sa-context-item{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #e1e5ee;border-radius:8px;min-width:0}.sa-range-controls{display:flex;gap:8px;flex-wrap:wrap}.sa-range-controls label{flex:1 1 80px}.sa-range-controls button{min-height:44px}.sa-attachment-dialog .sa-dialog-input{min-height:44px}.sa-composer-target{padding:6px 14px 0;font-size:11px;color:#81858c;overflow-wrap:anywhere}.sa-selected-text-action{min-height:44px;margin:0 12px;text-align:left;border:0;background:transparent;color:#3466bc;font-size:12px}.sa-composer-target-select{display:flex;gap:8px;align-items:center;min-width:0}.sa-composer-target-select select{min-width:0;max-width:100%;min-height:44px;font:inherit}.sa-composer-warning{margin:0;padding:8px 12px;font-size:12px;color:#946321;overflow-wrap:anywhere}
-.sa-history-materials:empty{display:none}.sa-history-materials{display:flex;flex-direction:column;gap:8px;max-width:100%;margin-top:8px}.sa-history-material{min-width:0;border:1px solid #dce2ed;border-radius:9px;background:#f7f9fc;color:#202633;font-size:12px}.sa-history-material>summary{display:flex;min-height:44px;flex-wrap:wrap;gap:4px 12px;align-items:center;padding:8px 10px;cursor:pointer;overflow-wrap:anywhere}.sa-history-material>summary small,.sa-history-material .sa-muted{color:#526173}.sa-history-material-detail{padding:0 10px 10px;min-width:0;overflow-wrap:anywhere}.sa-history-material-detail p{margin:6px 0;white-space:normal}.sa-history-material-detail figure{margin:8px 0}.sa-history-material-detail .sa-attachment-preview-image{max-height:480px}
+.sa-composer{min-width:0;container-type:inline-size}.sa-composer[data-dragging=true]{outline:2px solid var(--dsw-alias-link,#2855a0);outline-offset:3px;background:var(--dsw-alias-bg-module-platform,#f4f5f6)}
+.sa-composer-bar{padding:4px 8px 8px;gap:4px}.sa-composer-attach,.sa-composer-skill,.sa-composer .sa-send,.sa-composer .sa-permission-chip,.sa-composer .sa-chip{min-height:44px}.sa-composer-attach,.sa-composer .sa-send{width:44px;height:44px;flex:none}.sa-composer-skill{min-width:44px;display:inline-flex;align-items:center;gap:4px;flex:none;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary,#51565c);font-size:12px}.sa-composer-skill:hover{background:var(--dsw-alias-interactive-bg-hover,#edf0f4)}.sa-composer button:focus-visible,.sa-attachment-dialog button:focus-visible,.sa-attachment-dialog input:focus-visible,.sa-attachment-dialog select:focus-visible{outline:2px solid var(--dsw-alias-link,#2855a0);outline-offset:2px}
+.sa-draft-materials{display:flex;flex-wrap:wrap;gap:8px;padding:12px 12px 0;min-width:0;max-height:260px;overflow-y:auto;overflow-x:hidden}.sa-attachment-card{display:flex;position:relative;flex:1 1 200px;max-width:100%;min-width:0;flex-wrap:wrap;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:10px;background:var(--dsw-alias-bg-module-platform,#f4f5f6)}.sa-attachment-card[data-state=failed],.sa-attachment-card[data-state=duplicate]{border-color:var(--dsw-alias-border-l2,#dadddf);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 8%,var(--dsw-alias-bg-base,#fff))}.sa-attachment-card-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:8px;background:transparent;border:0;text-align:left;color:inherit;cursor:pointer}.sa-attachment-card-open:disabled{opacity:1;cursor:default}.sa-attachment-thumb,.sa-attachment-file-icon{width:44px;height:44px;object-fit:contain;flex:none;border-radius:6px;background:var(--dsw-alias-bg-module-platform,#f4f5f6)}.sa-attachment-file-icon{display:grid;place-items:center;font-size:24px;color:var(--dsw-alias-label-secondary,#51565c)}.sa-attachment-card-copy{display:flex;flex-direction:column;gap:3px;min-width:0}.sa-attachment-card-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}.sa-attachment-card-copy small{font-size:11px;color:var(--dsw-alias-label-secondary,#51565c)}.sa-attachment-remove{align-self:flex-start;flex:none;min-width:44px;min-height:44px;border:0;background:transparent;color:var(--dsw-alias-label-secondary,#51565c);font-size:20px;border-radius:8px}.sa-attachment-card-error{width:100%;padding:0 10px 8px;color:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c));font-size:12px;overflow-wrap:anywhere}.sa-attachment-action{min-height:44px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-link,#2855a0);font-size:12px}.sa-attachment-card-error .sa-attachment-action{padding-block:0}.sa-attachment-error{margin:0;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 8%,var(--dsw-alias-bg-base,#fff));color:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c));overflow-wrap:anywhere;font-size:12px}.sa-attachment-summary{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:4px 10px;color:var(--dsw-alias-label-secondary,#51565c);font-size:11.5px}.sa-attachment-summary button{min-height:44px;border:0;background:transparent;color:var(--dsw-alias-link,#2855a0);font:inherit;padding:0 4px}.sa-attachment-summary span{min-width:0;overflow-wrap:anywhere}.sa-skill-tag{display:inline-flex;align-items:center;min-width:0;max-width:100%;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:8px;background:var(--dsw-alias-bg-module-platform,#f4f5f6);font-size:12px;color:var(--dsw-alias-label-secondary,#51565c)}.sa-skill-tag>span{padding-left:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sa-skill-tag>button{min-width:44px;min-height:44px;background:transparent;border:0;color:inherit;font-size:18px}
+.sa-dialog-body.sa-attachment-dialog{width:100%;min-width:0;max-width:100%;max-height:min(65vh,600px);padding:8px 16px 16px;overflow-x:hidden;overflow-y:auto;overflow-wrap:anywhere;font-size:13px}.sa-attachment-dialog p{margin:0;line-height:1.7}.sa-attachment-dialog label{min-width:0;display:flex;flex-direction:column;gap:5px}.sa-attachment-dialog select,.sa-attachment-dialog input{min-width:0;max-width:100%;font:inherit}.sa-attachment-dialog .sa-skill-option{display:flex;flex-direction:row;align-items:flex-start;gap:10px;min-height:44px;padding:10px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:8px}.sa-skill-option>input{margin-top:4px;flex:none}.sa-skill-option>span{display:flex;flex-direction:column;gap:4px;min-width:0}.sa-skill-option small{line-height:1.6}.sa-project-file{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;border-bottom:1px solid var(--dsw-alias-border-l2,#dadddf);padding:6px 0}.sa-project-file>span{min-width:0;overflow-wrap:anywhere}.sa-project-file small{display:block}.sa-attachment-preview-image{display:block;max-width:100%;height:auto;object-fit:contain}.sa-attachment-preview-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,monospace}.sa-context-item{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:8px;min-width:0}.sa-range-controls{display:flex;gap:8px;flex-wrap:wrap}.sa-range-controls label{flex:1 1 80px}.sa-range-controls button{min-height:44px}.sa-attachment-dialog .sa-dialog-input{min-height:44px}.sa-composer-target{padding:6px 14px 0;font-size:11px;color:var(--dsw-alias-label-secondary,#51565c);overflow-wrap:anywhere}.sa-selected-text-action{min-height:44px;margin:0 12px;text-align:left;border:0;background:transparent;color:var(--dsw-alias-link,#2855a0);font-size:12px}.sa-composer-target-select{display:flex;gap:8px;align-items:center;min-width:0}.sa-composer-target-select select{min-width:0;max-width:100%;min-height:44px;font:inherit}.sa-composer-warning{margin:0;padding:8px 12px;font-size:12px;color:var(--dsw-alias-label-secondary,#51565c);overflow-wrap:anywhere}
+.sa-history-materials:empty{display:none}.sa-history-materials{display:flex;flex-direction:column;gap:8px;max-width:100%;margin-top:8px}.sa-history-material{min-width:0;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:9px;background:var(--dsw-alias-bg-module-platform,#f4f5f6);color:var(--dsw-alias-label-primary,#16181c);font-size:12px}.sa-history-material>summary{display:flex;min-height:44px;flex-wrap:wrap;gap:4px 12px;align-items:center;padding:8px 10px;cursor:pointer;overflow-wrap:anywhere}.sa-history-material>summary small,.sa-history-material .sa-muted{color:var(--dsw-alias-label-secondary,#51565c)}.sa-history-material-detail{padding:0 10px 10px;min-width:0;overflow-wrap:anywhere}.sa-history-material-detail p{margin:6px 0;white-space:normal}.sa-history-material-detail figure{margin:8px 0}.sa-history-material-detail .sa-attachment-preview-image{max-height:480px}
 @container(max-width:550px){.sa-composer-bar>.sa-model-slot{order:3;flex:1 1 calc(100% - 100px);max-width:calc(100% - 100px)}.sa-composer-bar>.sa-send{order:4;margin-left:0}.sa-composer-bar>.sa-send-stop{order:5}.sa-composer-bar>.sa-model-slot .sa-model-menu{width:100%;height:auto;min-height:44px;padding-inline:8px}.sa-composer-bar>.sa-model-slot .sa-chip{min-width:0;white-space:normal;text-align:left}.sa-draft-materials{padding:8px 8px 0}.sa-attachment-card{flex-basis:100%}.sa-attachment-summary{padding-inline:8px}}
 @container(max-width:360px){.sa-composer-bar>.sa-model-slot{flex-basis:100%;max-width:100%;order:3}.sa-composer-bar>.sa-send{order:2;margin-left:auto}.sa-composer-bar>.sa-send-stop{order:2}.sa-composer-bar>.sa-permission-chip{padding-inline:6px}.sa-composer-attach,.sa-composer .sa-send{width:44px}.sa-composer-skill{padding-inline:5px}}
 `;
-    const CSS = `.sa-workspaces,.sa-space{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#0f1115}
+    const CSS = `.sa-workspaces,.sa-space{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:var(--dsw-alias-label-primary,#16181c)}
 .sa-workspaces *,.sa-space *{box-sizing:border-box}
 .sa-workspaces button,.sa-space button,.sa-space textarea{font-family:inherit;cursor:pointer}
 div:has(> [data-slot="sidebar.footer.action"] > .sa-workspaces){flex-direction:column!important;align-items:stretch!important;gap:0!important}
 [data-slot="sidebar.footer.action"]:has(> .sa-workspaces)>*{flex-shrink:0!important}
 .sa-workspaces{flex:none;width:100%;min-width:0;padding:2px 0 8px;max-height:42vh;overflow:auto}
-.sa-section-head{height:36px;min-height:36px;display:flex;align-items:center;gap:4px;padding-left:4px;margin:2px -4px 4px 0;color:var(--dsw-alias-label-tertiary,#81858c)}
+.sa-section-head{height:36px;min-height:36px;display:flex;align-items:center;gap:4px;padding-left:4px;margin:2px -4px 4px 0;color:var(--dsw-alias-label-tertiary,var(--dsw-alias-label-secondary,#51565c))}
 .sa-section-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:20px}
 .sa-section-toggle{display:flex;align-items:center;gap:4px;flex:1;min-width:0;border:0;padding:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .sa-section-toggle svg{width:10px;height:10px;flex:none}
-.sa-icon-button{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;padding:4px;border:0;border-radius:6px;background:transparent;color:#81858c;cursor:pointer}
-.sa-icon-button:hover,.sa-row:hover,.sa-row[data-selected=true],.sa-chip:hover:not(:disabled){background:#f1f3f5;color:#0f1115}
-.sa-icon-button:focus-visible,.sa-row:focus-visible,.sa-chip:focus-visible{outline:2px solid #4176e6;outline-offset:-2px}
+.sa-icon-button{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;padding:4px;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary,#51565c);cursor:pointer}
+.sa-icon-button:hover,.sa-row:hover,.sa-row[data-selected=true],.sa-chip:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-label-primary,#16181c)}
+.sa-icon-button:focus-visible,.sa-row:focus-visible,.sa-chip:focus-visible{outline:2px solid var(--dsw-alias-link,#2855a0);outline-offset:-2px}
 .sa-icon-button:disabled,.sa-chip:disabled{cursor:default;opacity:.5}
 .sa-icon-button svg,.sa-row svg{width:16px;height:16px;flex:none}
-.sa-row{display:flex;align-items:center;gap:6px;width:100%;height:34px;padding:0 8px;border-radius:8px;cursor:pointer;user-select:none;color:#0f1115;outline:none}
+.sa-row{display:flex;align-items:center;gap:6px;width:100%;height:34px;padding:0 8px;border-radius:8px;cursor:pointer;user-select:none;color:var(--dsw-alias-label-primary,#16181c);outline:none}
 .sa-row-title{flex:1;min-width:0;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;font-size:13px;line-height:20px}
 .sa-row-actions{display:flex;align-items:center;gap:4px;opacity:0}
 .sa-row:hover .sa-row-actions,.sa-row:focus-within .sa-row-actions{opacity:1}
 .sa-row-actions .sa-icon-button{width:22px;height:24px;padding:2px}
 .sa-session-row{height:32px;padding-left:32px;gap:0}
 .sa-session-row .sa-row-title{margin:0 6px 0 4px}
-.sa-folder-glyph{color:#81858c;width:16px;height:20px;display:flex;align-items:center}
-.sa-folder-glyph[data-selected=true]{color:#4176e6}
-.sa-search{margin:2px 8px 6px;width:calc(100% - 16px);height:28px;border:1px solid #e1e5ee;border-radius:6px;padding:0 8px;background:transparent;color:inherit;font:inherit;outline:none}
-.sa-muted{color:#81858c;font-size:12px;line-height:18px}
+.sa-folder-glyph{color:var(--dsw-alias-label-secondary,#51565c);width:16px;height:20px;display:flex;align-items:center}
+.sa-folder-glyph[data-selected=true]{color:var(--dsw-alias-link,#2855a0)}
+.sa-search{margin:2px 8px 6px;width:calc(100% - 16px);height:28px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:6px;padding:0 8px;background:transparent;color:inherit;font:inherit;outline:none}
+.sa-muted{color:var(--dsw-alias-label-secondary,#51565c);font-size:12px;line-height:18px}
 .sa-directory-empty{padding:8px 12px}
-.sa-space{height:100%;min-height:0;display:flex;flex-direction:column;background:#ffffff;position:relative;container-type:inline-size;overflow:hidden}
+.sa-space{height:100%;min-height:0;display:flex;flex-direction:column;background:var(--dsw-alias-bg-base,#fff);position:relative;container-type:inline-size;overflow:hidden}
 .sa-space[data-diff-open=true]:not([data-diff-expanded=true]){padding-right:var(--sa-diff-width,480px)}
 .sa-space[data-diff-expanded=true]>.sa-space-header,.sa-space[data-diff-expanded=true]>.sa-scroll,.sa-space[data-diff-expanded=true]>.sa-composer-seat{visibility:hidden;pointer-events:none}
-.sa-space-header{flex:0 0 52px;height:52px;min-height:52px;padding:0 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e1e5ee;background:#ffffff}
+.sa-space-header{flex:0 0 52px;height:52px;min-height:52px;padding:0 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--dsw-alias-border-l2,#dadddf);background:var(--dsw-alias-bg-base,#fff)}
 .sa-space-header[data-blank=true]{border-bottom:none}
-.sa-header-title{flex:1;min-width:0;font-size:13px;font-weight:600;color:#0f1115;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sa-crumb{color:#81858c;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px}
-.sa-crumb-current{color:#0f1115;font-weight:600}
+.sa-header-title{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary,#16181c);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sa-crumb{color:var(--dsw-alias-label-secondary,#51565c);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px}
+.sa-crumb-current{color:var(--dsw-alias-label-primary,#16181c);font-weight:600}
 .sa-header-actions{flex:none;margin-left:auto;display:flex;align-items:center;gap:8px}
-.sa-header-btn{flex:none;white-space:nowrap;height:28px;padding:0 10px;border:1px solid #e1e5ee;border-radius:7px;background:#ffffff;color:#61666b;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-.sa-header-btn:hover{background:#f9fafb;color:#0f1115}
+.sa-header-btn{flex:none;white-space:nowrap;height:28px;padding:0 10px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:7px;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-secondary,#51565c);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.sa-header-btn:hover{background:var(--dsw-alias-bg-module-platform,#f4f5f6);color:var(--dsw-alias-label-primary,#16181c)}
 .sa-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-gutter:stable;display:flex;flex-direction:column;container-type:inline-size}
 .sa-scroll[data-hero=true]{justify-content:center;padding-bottom:32px}
 .sa-hero{display:flex;justify-content:center;align-items:center;gap:12px;margin:0 24px 22px;font-size:26px;line-height:32px;font-weight:500}
 .sa-hero-logo{width:34px;height:auto;flex:none}
-.sa-badge{border:.5px solid #e1e5ee;background:#edf3fe;color:#4176e6;border-radius:999px;padding:1px 7px 0;font-size:12px;line-height:18px;font-weight:500;align-self:center;white-space:nowrap}
+.sa-badge{border:.5px solid var(--dsw-alias-border-l2,#dadddf);background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-link,#2855a0);border-radius:999px;padding:1px 7px 0;font-size:12px;line-height:18px;font-weight:500;align-self:center;white-space:nowrap}
 .sa-message-list{width:720px;max-width:100%;margin:0 auto;padding:24px 24px 8px;flex:1 1 auto;display:flex;flex-direction:column;gap:24px}
 .sa-message-user-wrap{display:flex;justify-content:flex-end;width:100%;margin:0}
 .sa-message{font-size:13px;line-height:1.75;margin:0;overflow-wrap:anywhere}
-.sa-message[data-role=user]{background:#0f1115!important;color:#ffffff!important;border-radius:14px 14px 4px 14px!important;padding:10px 14px!important;max-width:440px!important;line-height:1.65!important;font-size:13px!important;overflow-wrap:anywhere}
+.sa-message[data-role=user]{background:var(--dsw-alias-button-primary-fill,#21242a)!important;color:var(--dsw-alias-label-primary-foreground,#fff)!important;border-radius:14px 14px 4px 14px!important;padding:10px 14px!important;max-width:440px!important;line-height:1.65!important;font-size:13px!important;overflow-wrap:anywhere}
 @keyframes ds-spin{to{transform:rotate(360deg)}}
 .ds-spin{animation:ds-spin 1.1s linear infinite;transform-origin:8px 8px}
-.sa-turn-block{width:100%;box-sizing:border-box;background:#ffffff}
+.sa-turn-block{width:100%;box-sizing:border-box;background:var(--dsw-alias-bg-base,#fff)}
 .sa-turn-head{display:flex;align-items:center;gap:8px;padding:2px 0 10px;cursor:pointer;user-select:none;list-style:none}
 .sa-turn-head::-webkit-details-marker{display:none}
-.sa-turn-pill{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 9px 0 7px;border:1px solid #e1e5ee;border-radius:7px;background:#f9fafb;color:#61666b;font-size:12px}
+.sa-turn-pill{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 9px 0 7px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:7px;background:var(--dsw-alias-bg-module-platform,#f4f5f6);color:var(--dsw-alias-label-secondary,#51565c);font-size:12px}
 .sa-turn-pill svg{transition:transform .15s ease}
 .sa-turn-block[open] .sa-turn-pill svg,.sa-turn-pill[data-open=true] svg{transform:rotate(180deg)}
-.sa-turn-meta{font-size:11.5px;color:#979da6}
-.sa-turn-running-meta{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:#61666b}
-.sa-turn-steps{display:flex;flex-direction:column;gap:6px;padding:0 0 14px;margin:0 0 12px;border-bottom:1px solid #e1e5ee;list-style:none}
+.sa-turn-meta{font-size:11.5px;color:var(--dsw-alias-label-secondary,#51565c)}
+.sa-turn-running-meta{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--dsw-alias-label-secondary,#51565c)}
+.sa-turn-steps{display:flex;flex-direction:column;gap:6px;padding:0 0 14px;margin:0 0 12px;border-bottom:1px solid var(--dsw-alias-border-l2,#dadddf);list-style:none}
 .sa-turn-step{display:flex;gap:9px;align-items:flex-start;font-size:12.5px}
 .sa-turn-step-icon{flex:0 0 18px;width:18px;height:18px;border-radius:5px;margin-top:1px;display:grid;place-items:center}
-.sa-turn-step-icon[data-kind=thinking]{background:#edf3fe;color:#4176e6}
-.sa-turn-step-icon[data-kind=tool]{background:#f1f3f5;color:#61666b}
-.sa-turn-step-icon[data-tool-error=true]{background:#fef2f2;color:#ef4444}
-.sa-turn-step-title{font-size:12.5px;color:#0f1115}
-.sa-turn-step-detail{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#61666b;background:#f9fafb;border:1px solid #e1e5ee;border-radius:5px;padding:1px 5px;max-width:480px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sa-turn-step-meta{margin-left:auto;font-size:11px;color:#979da6;font-variant-numeric:tabular-nums}
-.sa-turn-body{font-size:13.5px;line-height:1.75;color:#0f1115;margin-top:2px;overflow-wrap:anywhere}
+.sa-turn-step-icon[data-kind=thinking]{background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-link,#2855a0)}
+.sa-turn-step-icon[data-kind=tool]{background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-label-secondary,#51565c)}
+.sa-turn-step-icon[data-tool-error=true]{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 8%,var(--dsw-alias-bg-base,#fff));color:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c))}
+.sa-turn-step-title{font-size:12.5px;color:var(--dsw-alias-label-primary,#16181c)}
+.sa-turn-step-detail{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--dsw-alias-label-secondary,#51565c);background:var(--dsw-alias-bg-module-platform,#f4f5f6);border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:5px;padding:1px 5px;max-width:480px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sa-turn-step-meta{margin-left:auto;font-size:11px;color:var(--dsw-alias-label-secondary,#51565c);font-variant-numeric:tabular-nums}
+.sa-turn-body{font-size:13.5px;line-height:1.75;color:var(--dsw-alias-label-primary,#16181c);margin-top:2px;overflow-wrap:anywhere}
 .sa-actions-bar{display:flex;align-items:center;gap:2px;padding-top:8px}
-.sa-actions-bar .sa-icon-button{width:28px;height:28px;padding:5px;border-radius:6px;color:#81858c}
-.sa-actions-bar .sa-icon-button:hover{background:#f1f3f5;color:#0f1115}
-.sa-actions-bar .sa-chip{height:28px;padding:0 8px;font-size:12px;color:#61666b;border:0;background:none}
-.sa-actions-bar .sa-chip:hover{background:#f1f3f5;color:#0f1115}
-.sa-actions-usage{margin-left:auto;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:0;border-radius:6px;background:none;color:#81858c;font-size:11.5px;font-variant-numeric:tabular-nums;cursor:pointer}
-.sa-actions-time{font-size:11.5px;color:#979da6;font-variant-numeric:tabular-nums;margin-left:8px}
-.sa-changes-card{border:1px solid #e1e5ee;border-radius:12px;background:#ffffff;overflow:hidden;margin-top:12px}
+.sa-actions-bar .sa-icon-button{width:28px;height:28px;padding:5px;border-radius:6px;color:var(--dsw-alias-label-secondary,#51565c)}
+.sa-actions-bar .sa-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-label-primary,#16181c)}
+.sa-actions-bar .sa-chip{height:28px;padding:0 8px;font-size:12px;color:var(--dsw-alias-label-secondary,#51565c);border:0;background:none}
+.sa-actions-bar .sa-chip:hover{background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-label-primary,#16181c)}
+.sa-actions-usage{margin-left:auto;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:0;border-radius:6px;background:none;color:var(--dsw-alias-label-secondary,#51565c);font-size:11.5px;font-variant-numeric:tabular-nums;cursor:pointer}
+.sa-actions-time{font-size:11.5px;color:var(--dsw-alias-label-secondary,#51565c);font-variant-numeric:tabular-nums;margin-left:8px}
+.sa-changes-card{border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:12px;background:var(--dsw-alias-bg-base,#fff);overflow:hidden;margin-top:12px}
 .sa-changes-head{display:flex;align-items:center;gap:11px;padding:13px 14px}
-.sa-changes-icon{flex:0 0 32px;width:32px;height:32px;border-radius:9px;background:#f1f3f5;display:grid;place-items:center;color:#61666b}
+.sa-changes-icon{flex:0 0 32px;width:32px;height:32px;border-radius:9px;background:var(--dsw-alias-interactive-bg-hover,#edf0f4);display:grid;place-items:center;color:var(--dsw-alias-label-secondary,#51565c)}
 .sa-changes-info{flex:1 1 auto;min-width:0}
-.sa-changes-title{font-size:13px;font-weight:600;color:#0f1115}
+.sa-changes-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary,#16181c)}
 .sa-changes-count{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:11.5px;font-variant-numeric:tabular-nums}
-.sa-changes-add{color:#22c55e;font-weight:600}
-.sa-changes-del{color:#ef4444;font-weight:600}
+.sa-changes-add{color:color-mix(in srgb,var(--dsw-alias-state-success-primary,#267243) 60%,var(--dsw-alias-label-primary,#16181c));font-weight:600}
+.sa-changes-del{color:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c));font-weight:600}
 .sa-changes-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
-.sa-changes-btn{display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid #e1e5ee;border-radius:7px;background:#ffffff;color:#0f1115;font-size:12px;cursor:pointer}
-.sa-changes-btn:hover{background:#f9fafb}
-.sa-changes-files{border-top:1px solid #e1e5ee}
-.sa-changes-file{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #e1e5ee}
+.sa-changes-btn{display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:7px;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#16181c);font-size:12px;cursor:pointer}
+.sa-changes-btn:hover{background:var(--dsw-alias-bg-module-platform,#f4f5f6)}
+.sa-changes-files{border-top:1px solid var(--dsw-alias-border-l2,#dadddf)}
+.sa-changes-file{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--dsw-alias-border-l2,#dadddf)}
 .sa-changes-file:last-child{border-bottom:none}
-.sa-changes-path{flex:1 1 auto;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#0f1115;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sa-changes-path{flex:1 1 auto;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--dsw-alias-label-primary,#16181c);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sa-composer-seat{width:720px;max-width:100%;margin:0 auto;padding:0 24px 18px;flex:0 0 auto}
 .sa-scroll[data-hero=true] .sa-composer-seat{padding-bottom:0}
 .sa-workspace-picker{display:flex;align-items:center;gap:2px;margin:4px 0 8px;padding-left:8px}
-.sa-chip{max-width:100%;height:28px;min-width:0;display:inline-flex;align-items:center;gap:4px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#61666b;font-size:13px;line-height:20px;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.sa-chip{max-width:100%;height:28px;min-width:0;display:inline-flex;align-items:center;gap:4px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:var(--dsw-alias-label-secondary,#51565c);font-size:13px;line-height:20px;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
 .sa-chip svg{width:16px;height:16px;flex:none}
-.sa-workspace-picker .sa-chip{font-weight:500;color:#0f1115}
-.sa-composer{border:1px solid #e1e5ee;border-radius:16px;background:#ffffff;box-shadow:0 1px 2px rgba(15,17,21,.05),0 8px 24px rgba(15,17,21,.06);display:flex;flex-direction:column;overflow:hidden}
-.sa-composer-notice{padding:6px 14px;font-size:12px;border-bottom:1px solid #f1f3f5}
+.sa-workspace-picker .sa-chip{font-weight:500;color:var(--dsw-alias-label-primary,#16181c)}
+.sa-composer{border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:16px;background:var(--dsw-alias-bg-base,#fff);box-shadow:0 1px 2px rgba(15,17,21,.05),0 8px 24px rgba(15,17,21,.06);display:flex;flex-direction:column;overflow:hidden}
+.sa-composer-notice{padding:6px 14px;font-size:12px;border-bottom:1px solid var(--dsw-alias-border-l2,#dadddf)}
 .sa-input{display:block;width:100%;resize:none;min-height:48px;max-height:240px;overflow-y:auto;background:transparent;border:0;outline:none;padding:14px 16px 6px;color:inherit;font-size:13.5px;line-height:1.6}
-.sa-input::placeholder{color:#979da6}
+.sa-input::placeholder{color:var(--dsw-alias-label-secondary,#51565c)}
 .sa-composer-bar{display:flex;align-items:center;gap:8px;padding:6px 12px 12px 16px}
 .sa-composer-bar>:has(>.sa-model-menu){min-width:0;max-width:100%}
-.sa-composer-attach{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:8px;background:#f1f3f5;color:#61666b;cursor:pointer;font-size:18px;font-weight:400;line-height:1}
-.sa-composer-attach:hover:not(:disabled){background:#e5e7eb}
+.sa-composer-attach{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:8px;background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-label-secondary,#51565c);cursor:pointer;font-size:18px;font-weight:400;line-height:1}
+.sa-composer-attach:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,#edf0f4)}
 .sa-model-button{margin-left:auto;min-width:0;max-width:100%}
-.sa-model-menu{display:inline-flex;align-items:center;min-width:0;max-width:100%;height:30px;padding:0 11px;border-radius:8px;background:#edf3fe;color:#283142;font-size:12.5px}
+.sa-model-menu{display:inline-flex;align-items:center;min-width:0;max-width:100%;height:30px;padding:0 11px;border-radius:8px;background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-label-primary,#16181c);font-size:12.5px}
 .sa-model-menu .sa-chip{height:auto;padding:0;color:inherit;font-size:inherit}
-.sa-model-separator{color:#adb2b8;padding:0 4px}
-.sa-send{width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:9999px;background:#4176e6;color:#ffffff;cursor:pointer;flex:none}
-.sa-send:hover:not(:disabled){background:#3562c4}
+.sa-model-separator{color:var(--dsw-alias-label-secondary,#51565c);padding:0 4px}
+.sa-send{width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:9999px;background:var(--dsw-alias-button-primary-fill,#21242a);color:var(--dsw-alias-label-primary-foreground,#fff);cursor:pointer;flex:none}
+.sa-send:hover:not(:disabled){background:var(--dsw-alias-button-primary-fill,#21242a)}
 .sa-send:disabled{opacity:.4;cursor:default}
-.sa-send-stop{background:#4176e6}
+.sa-send-stop{background:var(--dsw-alias-button-primary-fill,#21242a)}
 .sa-reply-group{position:relative;margin:0 0 16px;display:flex;flex-direction:column;gap:12px}
-.sa-goal-card label{display:block;margin:12px 0 6px}.sa-goal-card input,.sa-goal-card textarea{display:block;box-sizing:border-box;width:100%;max-width:440px;margin:6px 0;border:1px solid #cfd5df;border-radius:6px;padding:8px;font:inherit}.sa-goal-card textarea{min-height:72px;resize:vertical}
-.sa-run-card{border:.5px solid #e1e5ee;border-radius:8px;padding:10px 12px;margin-bottom:8px;overflow-wrap:anywhere}
+.sa-goal-card label{display:block;margin:12px 0 6px}.sa-goal-card input,.sa-goal-card textarea{display:block;box-sizing:border-box;width:100%;max-width:440px;margin:6px 0;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:6px;padding:8px;font:inherit}.sa-goal-card textarea{min-height:72px;resize:vertical}
+.sa-run-card{border:.5px solid var(--dsw-alias-border-l2,#dadddf);border-radius:8px;padding:10px 12px;margin-bottom:8px;overflow-wrap:anywhere}
 .sa-message-table{overflow:auto;max-width:100%}
 .sa-message table{border-collapse:collapse;white-space:normal;width:100%}
-.sa-message th,.sa-message td{padding:6px 10px;border:1px solid #e1e5ee;text-align:left}
+.sa-message th,.sa-message td{padding:6px 10px;border:1px solid var(--dsw-alias-border-l2,#dadddf);text-align:left}
 .sa-message h1,.sa-message h2,.sa-message h3{line-height:1.4;margin:14px 0 8px}
-.sa-message pre{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:#f9fafb;padding:8px 10px;border-radius:6px;border:1px solid #e1e5ee}
-.sa-thinking{color:#81858c;border-left:2px solid #e1e5ee;padding-left:14px}
-.sa-latest{position:sticky;bottom:12px;align-self:center;z-index:2;margin-top:-44px;border:1px solid #e1e5ee;border-radius:999px;padding:6px 12px;background:#ffffff;color:#0f1115;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer}
-.sa-streaming[data-role=assistant]{border-left:2px solid #4176e6;padding-left:12px}
-.sa-error{display:flex;gap:8px;align-items:center;margin:4px 24px;padding:8px 12px;border-radius:8px;color:#ef4444;background:#fef2f2;font-size:13px}
+.sa-message pre{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--dsw-alias-bg-module-platform,#f4f5f6);padding:8px 10px;border-radius:6px;border:1px solid var(--dsw-alias-border-l2,#dadddf)}
+.sa-thinking{color:var(--dsw-alias-label-secondary,#51565c);border-left:2px solid var(--dsw-alias-border-l2,#dadddf);padding-left:14px}
+.sa-latest{position:sticky;bottom:12px;align-self:center;z-index:2;margin-top:-44px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:999px;padding:6px 12px;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#16181c);box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer}
+.sa-streaming[data-role=assistant]{border-left:2px solid var(--dsw-alias-link,#2855a0);padding-left:12px}
+.sa-error{display:flex;gap:8px;align-items:center;margin:4px 24px;padding:8px 12px;border-radius:8px;color:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c));background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 8%,var(--dsw-alias-bg-base,#fff));font-size:13px}
 .sa-dialog-body{display:flex;flex-direction:column;gap:12px;min-width:min(420px,60vw);max-height:70vh;overflow:auto}
-.sa-dialog-input{height:36px;border:1px solid #e1e5ee;border-radius:8px;padding:0 10px;font:inherit;background:transparent;color:#0f1115;width:100%}
+.sa-dialog-input{height:36px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:8px;padding:0 10px;font:inherit;background:transparent;color:var(--dsw-alias-label-primary,#16181c);width:100%}
 .sa-dialog-footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
 .sa-directory-toolbar{display:flex;gap:4px;align-items:center}
 .sa-directory-path{flex:1;min-width:0}
-.sa-directory-browser{height:260px;overflow:auto;border-block:.5px solid #e1e5ee;padding-block:4px}
+.sa-directory-browser{height:260px;overflow:auto;border-block:.5px solid var(--dsw-alias-border-l2,#dadddf);padding-block:4px}
 .sa-directory-browser .sa-row{border:0;background:transparent;font:inherit;text-align:left}
-.sa-directory-browser .sa-row:hover,.sa-directory-browser .sa-row[data-selected=true]{background:#f1f3f5}
+.sa-directory-browser .sa-row:hover,.sa-directory-browser .sa-row[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover,#edf0f4)}
 .sa-dialog-body.sa-workspace-dialog-body{box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding:8px 20px 16px;gap:10px;max-height:min(64vh,560px);overflow-x:hidden}
 .sa-workspace-dialog-body p{margin:0;min-width:0;overflow-wrap:anywhere}
 .sa-workspace-dialog-body label{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -229,54 +229,70 @@ div:has(> [data-slot="sidebar.footer.action"] > .sa-workspaces){flex-direction:c
 .sa-workspace-dialog-footer{box-sizing:border-box;max-width:100%}
 .sa-folder-create{display:flex;gap:8px;align-items:center}
 .sa-observation-dialog{width:min(860px,75vw);max-width:100%;height:min(620px,72vh);overflow:auto}
-.sa-diff-panel{--sa-review-border:#e3e7ed;--sa-review-muted:#586472;position:absolute;z-index:20;inset:0 0 0 auto;width:var(--sa-diff-width,480px);min-width:0;display:flex;flex-direction:column;background:#ffffff;border-left:1px solid var(--sa-review-border);outline:none}
+.sa-diff-panel{--sa-review-border:var(--dsw-alias-border-l2,#dadddf);--sa-review-muted:var(--dsw-alias-label-secondary,#51565c);position:absolute;z-index:20;inset:0 0 0 auto;width:var(--sa-diff-width,480px);min-width:0;display:flex;flex-direction:column;background:var(--dsw-alias-bg-base,#fff);border-left:1px solid var(--sa-review-border);outline:none}
 .sa-diff-resize{position:absolute;left:-5px;top:0;bottom:0;width:10px;z-index:3;cursor:col-resize;touch-action:none;outline:none}
 .sa-diff-resize:after{content:"";position:absolute;left:4px;top:0;bottom:0;width:2px;background:transparent}
-.sa-diff-resize:hover:after,.sa-diff-resize:focus-visible:after,.sa-diff-resize[data-dragging=true]:after{background:#4176e6}
-.sa-diff-head{display:flex;align-items:center;gap:8px;min-height:64px;padding:10px 16px;border-bottom:1px solid var(--sa-review-border);background:#ffffff}
-.sa-diff-heading{flex:1;min-width:0}.sa-diff-title{margin:0;font-size:14px;font-weight:600;color:#0f1115;line-height:22px}
+.sa-diff-resize:hover:after,.sa-diff-resize:focus-visible:after,.sa-diff-resize[data-dragging=true]:after{background:var(--dsw-alias-button-primary-fill,#21242a)}
+.sa-diff-head{display:flex;align-items:center;gap:8px;min-height:64px;padding:10px 16px;border-bottom:1px solid var(--sa-review-border);background:var(--dsw-alias-bg-base,#fff)}
+.sa-diff-heading{flex:1;min-width:0}.sa-diff-title{margin:0;font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary,#16181c);line-height:22px}
 .sa-diff-caption{font-size:11.5px;line-height:18px;color:var(--sa-review-muted)}
-.sa-diff-panel button:focus-visible,.sa-diff-panel select:focus-visible,.sa-diff-panel summary:focus-visible{outline:2px solid #4176e6;outline-offset:2px}
-.sa-diff-panel .sa-icon-button{width:32px;height:32px;color:#586472}
-.sa-diff-tool{flex:none;min-height:32px;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--sa-review-border);border-radius:6px;background:#ffffff;color:#344151;font:inherit;font-size:12px;white-space:nowrap}
-.sa-diff-tool:hover:not(:disabled),.sa-diff-tool[aria-pressed=true]{background:#eef3fc;border-color:#c9d6ed;color:#2454a3}.sa-diff-tool:disabled{opacity:.45;cursor:default}
-.sa-diff-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--sa-review-border);background:#f8fafc}
-.sa-diff-round{min-width:0;max-width:100%;min-height:32px;flex:1;border:1px solid var(--sa-review-border);border-radius:6px;background:#ffffff;padding:0 8px;color:#344151;font:inherit;font-size:12px}
+.sa-diff-panel button:focus-visible,.sa-diff-panel select:focus-visible,.sa-diff-panel summary:focus-visible{outline:2px solid var(--dsw-alias-link,#2855a0);outline-offset:2px}
+.sa-diff-panel .sa-icon-button{width:32px;height:32px;color:var(--dsw-alias-label-secondary,#51565c)}
+.sa-diff-tool{flex:none;min-height:32px;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--sa-review-border);border-radius:6px;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#16181c);font:inherit;font-size:12px;white-space:nowrap}
+.sa-diff-tool:hover:not(:disabled),.sa-diff-tool[aria-pressed=true]{background:var(--dsw-alias-interactive-bg-hover,#edf0f4);border-color:var(--dsw-alias-border-l2,#dadddf);color:var(--dsw-alias-link,#2855a0)}.sa-diff-tool:disabled{opacity:.45;cursor:default}
+.sa-diff-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--sa-review-border);background:var(--dsw-alias-bg-module-platform,#f4f5f6)}
+.sa-diff-round{min-width:0;max-width:100%;min-height:32px;flex:1;border:1px solid var(--sa-review-border);border-radius:6px;background:var(--dsw-alias-bg-base,#fff);padding:0 8px;color:var(--dsw-alias-label-primary,#16181c);font:inherit;font-size:12px}
 .sa-diff-counts{display:inline-flex;gap:8px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
-.sa-diff-files{padding:8px 12px;max-height:156px;overflow:auto;border-bottom:1px solid var(--sa-review-border);background:#ffffff}
-.sa-diff-file{display:flex;align-items:center;gap:12px;width:100%;min-height:42px;border:1px solid transparent;border-radius:6px;background:transparent;color:#344151;text-align:left;padding:5px 8px;cursor:pointer}
-.sa-diff-file:hover{background:#f7f9fc}.sa-diff-file[data-selected=true]{background:#eef3fc;border-color:#d5e0f2}
+.sa-diff-files{padding:8px 12px;max-height:156px;overflow:auto;border-bottom:1px solid var(--sa-review-border);background:var(--dsw-alias-bg-base,#fff)}
+.sa-diff-file{display:flex;align-items:center;gap:12px;width:100%;min-height:42px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--dsw-alias-label-primary,#16181c);text-align:left;padding:5px 8px;cursor:pointer}
+.sa-diff-file:hover{background:var(--dsw-alias-bg-module-platform,#f4f5f6)}.sa-diff-file[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover,#edf0f4);border-color:var(--dsw-alias-border-l2,#dadddf)}
 .sa-diff-file-name{flex:1;min-width:0;display:flex;flex-direction:column}.sa-diff-file-name strong{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sa-diff-file-name small{font-size:11px;color:var(--sa-review-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sa-diff-code-head{display:flex;align-items:center;gap:5px;padding:8px 16px;min-height:48px;border-bottom:1px solid var(--sa-review-border);background:#ffffff}
-.sa-diff-code-path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#344151}
-.sa-diff-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;background:#ffffff}
-.sa-diff-notice{padding:12px 16px;margin:0;color:var(--sa-review-muted);font-size:12px;line-height:1.7}.sa-diff-notice[role=alert]{color:#a12828;background:#fff7f7}
-.sa-diff-lines{min-height:100%;font:13px/22px ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2;background:#ffffff}
+.sa-diff-code-head{display:flex;align-items:center;gap:5px;padding:8px 16px;min-height:48px;border-bottom:1px solid var(--sa-review-border);background:var(--dsw-alias-bg-base,#fff)}
+.sa-diff-code-path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dsw-alias-label-primary,#16181c)}
+.sa-diff-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;background:var(--dsw-alias-bg-base,#fff)}
+.sa-diff-notice{padding:12px 16px;margin:0;color:var(--sa-review-muted);font-size:12px;line-height:1.7}.sa-diff-notice[role=alert]{color:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c));background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 8%,var(--dsw-alias-bg-base,#fff))}
+.sa-diff-lines{min-height:100%;font:13px/22px ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2;background:var(--dsw-alias-bg-base,#fff)}
 .sa-diff-line{display:grid;grid-template-columns:34px 34px 18px minmax(0,1fr);min-width:0;white-space:pre}
 .sa-diff-line>span{padding:0 4px}.sa-diff-code{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0;padding-right:16px!important}
 .sa-diff-lines[data-wrap=false]{min-width:max-content}.sa-diff-lines[data-wrap=false] .sa-diff-line{grid-template-columns:34px 34px 18px minmax(max-content,1fr)}.sa-diff-lines[data-wrap=false] .sa-diff-code{white-space:pre;overflow-wrap:normal}
-.sa-diff-line[data-kind=add]{background:#edf8ef;border-left:2px solid #258044}.sa-diff-line[data-kind=remove]{background:#fff0f0;border-left:2px solid #b63838}.sa-diff-line[data-kind=same]{border-left:2px solid transparent}
-.sa-diff-line-number{text-align:right;color:#647181;user-select:none;font-size:11px}.sa-diff-line-marker{user-select:none;color:#246c3b}.sa-diff-line[data-kind=remove] .sa-diff-line-marker{color:#a12828}
-.sa-diff-hunk{padding:6px 16px;background:#f1f5fa;border-block:1px solid #e5eaf0;color:#53677e;font-size:11.5px;line-height:20px}
-.sa-diff-gap{width:100%;display:block;min-height:32px;padding:5px 16px;border:0;border-block:1px solid #edf0f4;background:#f8fafc;color:#466382;text-align:left;font-size:12px}
-.sa-syntax-keyword{color:#185a9d;font-weight:500}.sa-syntax-string{color:#80501c}.sa-syntax-comment{color:#607069;font-style:italic}.sa-syntax-number{color:#8b3266}
-.sa-diff-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 16px;border-top:1px solid var(--sa-review-border);background:#f8fafc;font-size:11.5px;color:var(--sa-review-muted)}
+.sa-diff-line[data-kind=add]{background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#267243) 9%,var(--dsw-alias-bg-base,#fff));border-left:2px solid color-mix(in srgb,var(--dsw-alias-state-success-primary,#267243) 60%,var(--dsw-alias-label-primary,#16181c))}.sa-diff-line[data-kind=remove]{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 8%,var(--dsw-alias-bg-base,#fff));border-left:2px solid color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c))}.sa-diff-line[data-kind=same]{border-left:2px solid transparent}
+.sa-diff-line-number{text-align:right;color:var(--dsw-alias-label-secondary,#51565c);user-select:none;font-size:11px}.sa-diff-line-marker{user-select:none;color:color-mix(in srgb,var(--dsw-alias-state-success-primary,#267243) 60%,var(--dsw-alias-label-primary,#16181c))}.sa-diff-line[data-kind=remove] .sa-diff-line-marker{color:color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c))}
+.sa-diff-hunk{padding:6px 16px;background:var(--dsw-alias-bg-module-platform,#f4f5f6);border-block:1px solid var(--dsw-alias-border-l2,#dadddf);color:var(--dsw-alias-label-secondary,#51565c);font-size:11.5px;line-height:20px}
+.sa-diff-gap{width:100%;display:block;min-height:32px;padding:5px 16px;border:0;border-block:1px solid var(--dsw-alias-border-l2,#dadddf);background:var(--dsw-alias-bg-module-platform,#f4f5f6);color:var(--dsw-alias-label-secondary,#51565c);text-align:left;font-size:12px}
+.sa-syntax-keyword{color:var(--dsw-alias-link,#2855a0);font-weight:500}.sa-syntax-string{color:var(--dsw-alias-label-secondary,#51565c)}.sa-syntax-comment{color:var(--dsw-alias-label-secondary,#51565c);font-style:italic}.sa-syntax-number{color:var(--dsw-alias-label-secondary,#51565c)}
+.sa-diff-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 16px;border-top:1px solid var(--sa-review-border);background:var(--dsw-alias-bg-module-platform,#f4f5f6);font-size:11.5px;color:var(--sa-review-muted)}
 .sa-diff-foot details{min-width:0}.sa-diff-foot summary{cursor:pointer}.sa-diff-foot p{max-width:440px;margin:6px 0 0;line-height:1.7}
-.sa-diff-result{padding:12px 16px;background:#f4f8ff;font-size:12px;line-height:1.7;border-bottom:1px solid var(--sa-review-border)}
+.sa-diff-result{padding:12px 16px;background:var(--dsw-alias-bg-module-platform,#f4f5f6);font-size:12px;line-height:1.7;border-bottom:1px solid var(--sa-review-border)}
 .sa-dialog-body.sa-diff-confirm{box-sizing:border-box;min-width:0;width:100%;max-width:100%;overflow-x:hidden}.sa-diff-confirm p{margin:0;line-height:1.7;overflow-wrap:anywhere}.sa-diff-confirm label{display:flex;align-items:flex-start;gap:8px;line-height:1.7}.sa-diff-confirm input{flex:none;margin:4px 0 0}
-.sa-diff-confirm-files{display:flex;flex-direction:column;gap:10px;max-height:220px;overflow:auto}.sa-diff-confirm-file{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;min-width:0;font-size:12px}.sa-diff-confirm-file code{flex:1;min-width:0;overflow-wrap:anywhere}.sa-diff-confirm-file span{flex:none;color:#586472}
+.sa-diff-confirm-files{display:flex;flex-direction:column;gap:10px;max-height:220px;overflow:auto}.sa-diff-confirm-file{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;min-width:0;font-size:12px}.sa-diff-confirm-file code{flex:1;min-width:0;overflow-wrap:anywhere}.sa-diff-confirm-file span{flex:none;color:var(--dsw-alias-label-secondary,#51565c)}
 @container(max-width:520px){.sa-diff-head,.sa-diff-toolbar,.sa-diff-code-head{padding-inline:12px}.sa-diff-files{max-height:120px}.sa-diff-line{grid-template-columns:28px 28px 16px minmax(0,1fr)}.sa-diff-lines[data-wrap=false] .sa-diff-line{grid-template-columns:28px 28px 16px minmax(max-content,1fr)}}
 .sa-branch-list{margin:0 0 8px}
 .sa-branch-row{display:flex;align-items:center;gap:8px;padding:6px 0}
 .sa-branch-row code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:760px){.sa-model-menu{width:100%}.sa-model-menu .sa-chip{max-width:calc(50% - 8px);flex:1}}
-@media(max-width:680px){.sa-hero{font-size:22px;gap:8px}.sa-composer-seat{padding-left:16px;padding-right:16px}.sa-message-list{padding-left:20px;padding-right:20px}.sa-crumb{max-width:130px}}.sa-conversation-stats-bar{display:flex;align-items:center;justify-content:center;gap:16px;padding:3px 14px;margin:8px auto 0;flex-wrap:wrap;row-gap:4px;font-size:11.5px;color:#81858c;background:#ffffff;width:fit-content;max-width:100%}.sa-conversation-stats-bar .sa-stats-item{display:inline-flex;align-items:center;white-space:nowrap}.sa-permission-chip{display:inline-flex;align-items:center;font-size:12px;color:#61666b;background:#f1f3f5;border:0;border-radius:6px;padding:4px 8px;cursor:pointer}.sa-permission-chip:hover:not(:disabled){background:#e5e7eb;color:#0f1115}.sa-permission-chip svg{width:14px;height:14px;flex:none}.sa-composer-bar{flex-wrap:wrap}.sa-model-menu{min-width:0;max-width:100%}@container(max-width:550px){.sa-space-header{padding-inline:12px}.sa-composer-bar>:has(>.sa-model-menu){order:3;flex:1 1 calc(100% - 40px);max-width:calc(100% - 40px)}.sa-composer-bar>.sa-send{order:4}.sa-model-menu{width:100%}.sa-model-menu .sa-chip{min-width:0}.sa-composer-bar>.sa-send,.sa-composer-bar>button.sa-send{margin-left:auto}.sa-conversation-stats-bar{gap:8px;font-size:11px}}
-${COMPOSER_CSS}`;
-    function createSpaceView({ kernel, controller, services, ctx, Panel, SPACE_ID, primitives, directoryBrowser, ConversationTrace }) {
+@media(max-width:680px){.sa-hero{font-size:22px;gap:8px}.sa-composer-seat{padding-left:16px;padding-right:16px}.sa-message-list{padding-left:20px;padding-right:20px}.sa-crumb{max-width:130px}}.sa-conversation-stats-bar{display:flex;align-items:center;justify-content:center;gap:16px;padding:3px 14px;margin:8px auto 0;flex-wrap:wrap;row-gap:4px;font-size:11.5px;color:var(--dsw-alias-label-secondary,#51565c);background:var(--dsw-alias-bg-base,#fff);width:fit-content;max-width:100%}.sa-conversation-stats-bar .sa-stats-item{display:inline-flex;align-items:center;white-space:nowrap}.sa-permission-chip{display:inline-flex;align-items:center;font-size:12px;color:var(--dsw-alias-label-secondary,#51565c);background:var(--dsw-alias-interactive-bg-hover,#edf0f4);border:0;border-radius:6px;padding:4px 8px;cursor:pointer}.sa-permission-chip:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,#edf0f4);color:var(--dsw-alias-label-primary,#16181c)}.sa-permission-chip svg{width:14px;height:14px;flex:none}.sa-composer-bar{flex-wrap:wrap}.sa-model-menu{min-width:0;max-width:100%}@container(max-width:550px){.sa-space-header{padding-inline:12px}.sa-composer-bar>:has(>.sa-model-menu){order:3;flex:1 1 calc(100% - 40px);max-width:calc(100% - 40px)}.sa-composer-bar>.sa-send{order:4}.sa-model-menu{width:100%}.sa-model-menu .sa-chip{min-width:0}.sa-composer-bar>.sa-send,.sa-composer-bar>button.sa-send{margin-left:auto}.sa-conversation-stats-bar{gap:8px;font-size:11px}}
+${COMPOSER_CSS}
+.sa-wait-links,.sa-control-notice{width:720px;max-width:100%;margin:0 auto;padding:4px 24px;overflow-wrap:anywhere}
+.sa-wait-links{flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:4px;max-height:18vh;overflow-y:auto}
+.sa-wait-links .sa-chip{max-width:100%;height:auto;min-height:32px;white-space:normal;overflow-wrap:anywhere;text-align:start}
+.sa-wait-card{min-width:0;scroll-margin-block:12px;display:flex;flex-direction:column;align-items:start;gap:8px}
+.sa-wait-card p,.sa-wait-card pre{margin:0;max-width:100%;overflow-wrap:anywhere}
+.sa-wait-card form,.sa-wait-card label{width:100%;min-width:0}
+.sa-wait-card label,.sa-thread-controls label{display:grid;gap:4px;font-weight:500}
+.sa-wait-card select,.sa-wait-card textarea,.sa-thread-controls select,.sa-dialog-body textarea{width:100%;min-width:0;max-width:100%;font:inherit}
+.sa-wait-card button,.sa-wait-card select,.sa-wait-card textarea,.sa-thread-controls select,.sa-trace-toolbar input,.sa-trace-toolbar select,.sa-trace-toolbar button{min-height:32px;border:1px solid var(--dsw-alias-border-l2,#dadddf);border-radius:6px;padding:4px 8px;color:var(--dsw-alias-label-primary,#16181c);background:var(--dsw-alias-bg-layer-1,#fff)}
+.sa-thread-controls{overflow-wrap:anywhere}.sa-thread-controls label:has(input[type=checkbox]){display:flex;align-items:center;gap:8px}
+.sa-control-notice{flex:0 0 auto}.sa-control-notice,.sa-space :is(input,textarea)::placeholder,.sa-workspaces input::placeholder{color:var(--dsw-alias-label-secondary,#51565c);opacity:1}
+:is(.sa-space,.sa-workspaces,.sa-dialog-body) :focus-visible,.sa-wait-card:focus{outline:2px solid var(--dsw-alias-link,#2855a0);outline-offset:2px}
+.sa-space :is(button,input,textarea,select){accent-color:var(--dsw-alias-link,#2855a0)}
+.sa-space ::selection{background:var(--dsw-alias-bg-document-selection,#aac1eb)}
+@container(max-width:550px){.sa-message-list{padding-inline:16px;min-width:0}.sa-composer-seat{padding-inline:12px;max-height:48vh;overflow:auto}.sa-wait-links,.sa-control-notice{padding-inline:12px}.sa-wait-card select{min-height:44px}.sa-wait-card button{min-height:40px}}
+`;
+    function createSpaceView({ kernel, controller, services, ctx, Panel, SPACE_ID, primitives, directoryBrowser, ConversationTrace, Delegations, workspaceTools = {} }) {
       const { React, h } = kernel;
       const { Button, Menu, Modal, Tooltip } = primitives;
       const PROCESS_KINDS = new Set(["thinking", "tool_call", "tool_result", "core", "compaction", "system"]);
-      function groupChatRuns(messages, live = []) {
+      function groupChatRuns(messages, live = [], waits = []) {
         const groups = [], byKey = new Map();
         const all = [...messages, ...live];
         for (const item of all) {
@@ -291,6 +307,16 @@ ${COMPOSER_CSS}`;
           }
           group.items.push(item);
           if (item.isFinal === true) group.hasFinal = true;
+        }
+        for (const wait of waits) {
+          const key = `run:${wait.runId}`;
+          let group = byKey.get(key);
+          if (!group) {
+            group = { key, runId: wait.runId, items: [], users: [], process: [], bodies: [], hasFinal: false };
+            byKey.set(key, group);
+            groups.push(group);
+          }
+          (group.waits ||= []).push(wait);
         }
         for (const group of groups) {
           const hasProcess = group.items.some(item => PROCESS_KINDS.has(item.kind));
@@ -347,12 +373,11 @@ ${COMPOSER_CSS}`;
           { id: "thinking", label: `推理等级 · ${thinkingValue === "provider_default" ? "提供方默认" : thinkingValue}` },
         ];
         if (page === "model") {
-          const items = [{ id: "__back__", label: "返回" }, { id: "__service_default__", label: "恢复当前默认值" }];
+          const items = [{ id: "__service_default__", label: "恢复当前默认值" }];
           for (const item of model?.items || []) items.push({ id: item.id, label: item.name || item.id, disabled: item.selectable === false });
           return items;
         }
         return [
-          { id: "__back__", label: "返回" },
           { id: "provider_default", label: "提供方默认" },
           ...(model?.supportedThinkingLevels || []).map(level => ({ id: level, label: level === "off" ? "关闭" : level })),
           ...(running ? [{ id: "__pending_note__", label: "修改在当前任务终态后生效", disabled: true }] : []),
@@ -464,7 +489,7 @@ ${COMPOSER_CSS}`;
               h("svg", { viewBox: "0 0 16 16", width: 11, height: 11, fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
                 isError ? h("path", { d: "M4 4l8 8M12 4l-8 8" }) : h("path", { d: "M3 5.5l2.2 2.2L8 4.9M9 11.1l2.2 2.2 1.8-1.8" }))),
             h("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" } },
-              h("span", { className: "sa-turn-step-title", style: { color: isError ? "#ef4444" : "#0f1115", fontWeight: isError ? 600 : 400 } },
+              h("span", { className: "sa-turn-step-title", style: { color: isError ? "color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c))" : "var(--dsw-alias-label-primary,#16181c)", fontWeight: isError ? 600 : 400 } },
                 isError ? "工具执行失败" : "工具结果"),
               content ? h("details", { className: "sa-tool-result" },
                 h("summary", null, h("code", { className: "sa-turn-step-detail" }, content.split("\n")[0].replace(/版本[:：]\s*[a-f0-9]{16,}[;；]?\s*/gi, "").slice(0, 160))),
@@ -480,11 +505,11 @@ ${COMPOSER_CSS}`;
           hasProcess && h("details", { open: Boolean(open), onToggle: e => onToggle(e.currentTarget.open) },
             h("summary", { className: "sa-turn-head" },
               h("span", { className: "sa-turn-pill", "data-open": Boolean(open) },
-                h("svg", { viewBox: "0 0 16 16", width: 12, height: 12, fill: "none", stroke: "#81858c", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
+                h("svg", { viewBox: "0 0 16 16", width: 12, height: 12, fill: "none", stroke: "var(--dsw-alias-label-secondary,#51565c)", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
                   h("path", { d: "M4 6.4L8 10.4l4-4" })),
                 processLabel),
               running ? h("span", { className: "sa-turn-running-meta" },
-                h("svg", { className: "ds-spin", viewBox: "0 0 16 16", width: 12, height: 12, fill: "none", stroke: "#81858c", strokeWidth: 1.8, strokeLinecap: "round", "aria-hidden": true },
+                h("svg", { className: "ds-spin", viewBox: "0 0 16 16", width: 12, height: 12, fill: "none", stroke: "var(--dsw-alias-label-secondary,#51565c)", strokeWidth: 1.8, strokeLinecap: "round", "aria-hidden": true },
                   h("path", { d: "M8 1.8a6.2 6.2 0 106.2 6.2" })),
                 processMeta) : h("span", { className: "sa-turn-meta" }, processMeta)),
             h("ul", { className: "sa-turn-steps" },
@@ -510,7 +535,7 @@ ${COMPOSER_CSS}`;
         return h("div", { className: "sa-changes-card", "aria-label": "任务文件改动" },
           h("div", { className: "sa-changes-head" },
             h("span", { className: "sa-changes-icon" },
-              h("svg", { viewBox: "0 0 16 16", width: 16, height: 16, fill: "none", stroke: "#61666b", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
+              h("svg", { viewBox: "0 0 16 16", width: 16, height: 16, fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
                 h("path", { d: "M8 3.4v9.2M3.4 8h9.2" }))),
             h("div", { className: "sa-changes-info" },
               h("div", { className: "sa-changes-title" }, `已编辑 ${files.length} 个文件`),
@@ -519,7 +544,7 @@ ${COMPOSER_CSS}`;
                 h("span", { className: "sa-changes-del" }, deletions == null ? "−?" : `−${deletions}`))),
             h("div", { className: "sa-changes-actions" },
               h("button", { type: "button", className: "sa-changes-btn", "aria-label": "查看文件改动", disabled: s.busy || deleted(s), onClick: () => onOpenDiff(runId) },
-                h("svg", { viewBox: "0 0 16 16", width: 13, height: 13, fill: "none", stroke: "#81858c", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
+                h("svg", { viewBox: "0 0 16 16", width: 13, height: 13, fill: "none", stroke: "var(--dsw-alias-label-secondary,#51565c)", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
                   h("path", { d: "M6.2 2.8L3.4 5.6a1.6 1.6 0 000 2.3l4.7 4.7a1.6 1.6 0 002.3 0l2.8-2.8a1.6 1.6 0 000-2.3L8.5 2.8a1.6 1.6 0 00-2.3 0z" })),
                 "查看变更"))),
           files.length > 0 && h("div", { className: "sa-changes-files" },
@@ -531,6 +556,7 @@ ${COMPOSER_CSS}`;
       }
       function DiffPanel({ s, layout, expanded, onResize, onExpand }) {
         const selection = s.diffSelection, runId = selection.runId;
+        const [returnFiles, setReturnFiles] = React.useState(false);
         const [state, setState] = React.useState({ loading: true, data: null, error: "", rollback: null, busy: false });
         const [confirming, setConfirming] = React.useState(false), [confirmed, setConfirmed] = React.useState(false);
         const [scope, setScope] = React.useState({ items: [], error: "", loading: true });
@@ -565,7 +591,7 @@ ${COMPOSER_CSS}`;
         const additions = files.length && files.every(file => Number.isSafeInteger(file.additions)) ? files.reduce((sum, file) => sum + file.additions, 0) : null;
         const deletions = files.length && files.every(file => Number.isSafeInteger(file.deletions)) ? files.reduce((sum, file) => sum + file.deletions, 0) : null;
         const statusLabel = { available: "可查看", partial: "部分结果", binary: "二进制", expired: "内容过期", error: "读取失败" };
-        const counts = (add, remove) => h("span", { className: "sa-diff-counts" }, h("span", { style: { color: "#246c3b" } }, add == null ? "+?" : `+${add}`), h("span", { style: { color: "#a12828" } }, remove == null ? "−?" : `−${remove}`));
+        const counts = (add, remove) => h("span", { className: "sa-diff-counts" }, h("span", { style: { color: "color-mix(in srgb,var(--dsw-alias-state-success-primary,#267243) 60%,var(--dsw-alias-label-primary,#16181c))" } }, add == null ? "+?" : `+${add}`), h("span", { style: { color: "color-mix(in srgb,var(--dsw-alias-state-error-primary,#ab3033) 60%,var(--dsw-alias-label-primary,#16181c))" } }, remove == null ? "−?" : `−${remove}`));
         const rows = selected?.rows || [];
         const rowView = (row, index) => h("div", { role: "row", className: "sa-diff-line", "data-kind": row.kind, key: index },
           h("span", { role: "cell", className: "sa-diff-line-number" }, row.oldLine ?? ""),
@@ -589,7 +615,7 @@ ${COMPOSER_CSS}`;
           } catch (error) { setState(current => ({ ...current, error: error.message, busy: false })); }
         };
         return h("section", { ref: panel, className: "sa-diff-panel", tabIndex: -1, "aria-label": "任务文件改动", "aria-busy": state.loading,
-          onKeyDown: event => { if (event.key !== "Escape" || event.defaultPrevented || confirming || menu) return; event.preventDefault(); event.stopPropagation(); if (expanded) onExpand(); else controller.closeDiff(); } },
+          onKeyDown: event => { if (event.key !== "Escape" || event.defaultPrevented || confirming || menu || returnFiles) return; event.preventDefault(); event.stopPropagation(); if (expanded) onExpand(); else controller.closeDiff(); } },
           !layout.full && h("div", { className: "sa-diff-resize", role: "separator", tabIndex: 0, "aria-label": "调整变更面板宽度", "aria-orientation": "vertical", "aria-valuemin": layout.min, "aria-valuemax": layout.max, "aria-valuenow": layout.width, "aria-valuetext": `${layout.width} 像素`, "data-dragging": dragging,
             onPointerDown: event => { if (event.button !== 0) return; event.preventDefault(); event.currentTarget.focus(); event.currentTarget.setPointerCapture(event.pointerId); drag.current = { pointerId: event.pointerId, x: event.clientX, width: layout.width }; setDragging(true); },
             onPointerMove: event => { if (drag.current?.pointerId === event.pointerId) onResize(Math.max(layout.min, Math.min(layout.max, drag.current.width + drag.current.x - event.clientX))); },
@@ -601,6 +627,7 @@ ${COMPOSER_CSS}`;
             h(Menu, { open: menu, onClose: () => setMenu(false), portal: true, align: "end", items: [{ id: "rollback", label: "撤销本轮全部改动", disabled: state.busy || deleted(s) || !files.length || files.every(file => ["error", "expired"].includes(file.status)) }],
               onSelect: id => { setMenu(false); if (id === "rollback") { setConfirmed(false); setConfirming(true); } },
               anchor: h("button", { type: "button", className: "sa-icon-button", "aria-label": "变更更多操作", "aria-haspopup": "menu", "aria-expanded": menu, onClick: () => setMenu(!menu) }, icon("IconEllipsisOutlineRegular")) }),
+            workspaceTools.Artifacts && files.length > 0 && h("button", { type: "button", className: "sa-chip", onClick: () => setReturnFiles(true) }, "回传本机"),
             h("button", { type: "button", className: "sa-icon-button", "aria-label": "关闭文件改动", onClick: () => controller.closeDiff() }, icon("IconCloseOutlineRegular"))),
           h("div", { className: "sa-diff-toolbar" },
             h("select", { className: "sa-diff-round", "aria-label": "变更轮次", value: runId, disabled: state.busy || scope.loading, onChange: event => { const next = event.target.value; void run(() => controller.openDiff(next)); } },
@@ -638,6 +665,7 @@ ${COMPOSER_CSS}`;
                 (section.type === "hunk" || open) && rows.slice(section.start, section.end).map((row, at) => rowView(row, section.start + at)));
               }))),
           h("footer", { className: "sa-diff-foot" }, h("details", null, h("summary", null, "快照说明"), h("p", null, "显示本轮修改前后的历史快照，不是文件当前内容。查看、切换和展开不会写入文件。")), h("span", null, "只读审阅")),
+          returnFiles && workspaceTools.Artifacts && h(Modal, { open: true, title: "审阅本轮产物并回传本机", closeLabel: "返回差异", onClose: () => setReturnFiles(false) }, h(workspaceTools.Artifacts, { key: runId, runId, targetId: s.targetId })),
           confirming && h(Modal, { open: true, title: "撤销本轮全部改动", onClose: () => { if (!state.busy) setConfirming(false); }, closeLabel: "取消",
             footer: h("div", { className: "sa-dialog-footer" },
               h("button", { type: "button", className: "sa-chip", disabled: state.busy, onClick: () => setConfirming(false) }, "取消"),
@@ -650,16 +678,16 @@ ${COMPOSER_CSS}`;
       }
       function BranchList({ s, onOpen, onLoad }) {
         const branches = s.branches || [];
-        if (s.branchesLoaded && !branches.length && !s.branchError) return null;
+
         return h("details", { className: "sa-run-card sa-branch-list", "aria-label": "对话分支",
           onToggle: event => { if (event.currentTarget.open && !s.branchesLoaded && !s.branchLoading) onLoad(); } },
           h("summary", null, s.branchesLoaded ? `对话分支 · ${branches.length}` : s.branchLoading ? "读取对话分支…" : "对话分支 · 查找空分支"),
           s.branchError && h("p", { role: "alert", className: "sa-error" }, `分支读取失败：${s.branchError}`, h("button", { type: "button", className: "sa-chip", onClick: onLoad }, "重试")),
           s.branchesLoaded && !branches.length && !s.branchError && h("p", null, "当前 Thread 没有其他分支"),
           ...branches.map(branch => h("div", { className: "sa-branch-row", key: branch.conversationId },
-            h("code", null, s.titles[branch.conversationId] || `分支 ${branch.conversationId.slice(-8)}`),
+            h("code", null, branch.main ? "主对话" : `分支 ${branch.conversationId.slice(-8)}`),
             branch.forkedFromConversationId && h("span", { className: "sa-muted" }, `来源 ${branch.forkedFromConversationId.slice(-8)}`),
-            h("button", { type: "button", className: "sa-chip", "aria-label": `打开分支 ${branch.conversationId}`, onClick: () => onOpen(branch.conversationId) }, "打开"))),
+            branch.conversationId === s.selected?.conversationId ? h("span", { "aria-current": "page" }, "当前对话") : h("button", { type: "button", className: "sa-chip", "aria-label": branch.main ? "返回主对话" : `打开分支 ${branch.conversationId}`, onClick: () => onOpen(branch.conversationId) }, branch.main ? "返回主对话" : "打开"))),
           h("p", { className: "sa-muted" }, "消息分支只复制对话历史，不自动回滚文件。文件回滚需在对应 Run 的改动侧栏确认。"));
       }
       function MessageActions({ s, message, task, text, onEvent, onOpenDiff }) {
@@ -690,25 +718,25 @@ ${COMPOSER_CSS}`;
         const tokenStr = formatTokens(tokens);
         return h("div", { className: "sa-actions-bar" },
           h("button", { type: "button", className: "sa-icon-button", "aria-label": "复制回复正文", title: copied ? "已复制正文" : "复制回复正文", onClick: copy },
-            h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "#81858c", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
+            h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "var(--dsw-alias-label-secondary,#51565c)", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
               h("rect", { x: 5.4, y: 5.4, width: 7.4, height: 7.4, rx: 1.6 }),
               h("path", { d: "M10.6 5.4V4.2A1.2 1.2 0 009.4 3H4.2A1.2 1.2 0 003 4.2v5.2A1.2 1.2 0 004.2 10.6h1.2" }))),
           copied && h("span", { className: "sa-muted", role: "status" }, "已复制正文"),
           h("button", { type: "button", className: "sa-icon-button", "aria-label": "从此分支", disabled: s.busy || deleted(s) || !Number.isInteger(message?.entryId) || message?.live === true, title: "从此分支", onClick: () => void run(() => controller.fork(message)) },
-            h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "#81858c", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
+            h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "var(--dsw-alias-label-secondary,#51565c)", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
               h("circle", { cx: 4.6, cy: 3.6, r: 1.9 }), h("circle", { cx: 4.6, cy: 12.4, r: 1.9 }), h("circle", { cx: 11.4, cy: 8, r: 1.9 }),
               h("path", { d: "M4.6 5.5v5M6.4 8h3.1" }))),
-          message?.runId && h("button", { type: "button", className: "sa-icon-button", "aria-label": "事件", title: "查看 Trace 事件", onClick: () => onEvent(message) },
-            h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "#81858c", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
+          message?.runId && h("button", { type: "button", className: "sa-icon-button", "aria-label": "查看此消息的 Trace 事件", title: "查看此消息所在任务的轨迹", "data-trace-message": message.messageId, onClick: event => onEvent(message, event.currentTarget) },
+            h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "var(--dsw-alias-label-secondary,#51565c)", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
               h("path", { d: "M2.6 4.4h10.8M2.6 8h7.4M2.6 11.6h10.8" }))),
           h("span", { style: { flex: "1 1 auto" } }),
-          tokenStr ? h("span", { className: "sa-actions-usage", "aria-label": "用量", style: { display: "inline-flex", alignItems: "center", color: "#81858c", fontSize: 13 } },
+          tokenStr ? h("span", { className: "sa-actions-usage", "aria-label": "用量", style: { display: "inline-flex", alignItems: "center", color: "var(--dsw-alias-label-secondary,#51565c)", fontSize: 13 } },
             h("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round", style: { marginRight: 4 }, "aria-hidden": true },
               h("ellipse", { cx: 8, cy: 3.9, rx: 5.4, ry: 2.3 }),
               h("path", { d: "M2.6 3.9v8.2c0 1.27 2.42 2.3 5.4 2.3s5.4-1.03 5.4-2.3V3.9" }),
               h("path", { d: "M2.6 8c0 1.27 2.42 2.3 5.4 2.3s5.4-1.03 5.4-2.3" })),
             `用量 ${tokenStr}`) : null,
-          timeStr && h("span", { className: "sa-actions-time", style: { marginLeft: 12, color: "#81858c", fontSize: 13 } }, timeStr)
+          timeStr && h("span", { className: "sa-actions-time", style: { marginLeft: 12, color: "var(--dsw-alias-label-secondary,#51565c)", fontSize: 13 } }, timeStr)
         );
       }
       function HistoryMaterials({ message, s }) {
@@ -775,11 +803,13 @@ ${COMPOSER_CSS}`;
           group.bodies.map(message => h("article", { className: `sa-message ${message.live ? "sa-streaming" : ""}`, "data-role": message.role || "assistant", "data-final": message.isFinal === true, key: message.messageId },
             renderMarkdown(messageText(message)),
             !message.live && h(MessageActions, { s, message, task, text: messageText(message), onEvent, onOpenDiff }))),
+          ...(group.waits || []).map(wait => h(Boundary || React.Fragment, { key: `wait:${s.targetId}:${wait.waitId}` },
+            h(WaitCard, { wait, root: s.root }))),
           !active && task?.status === "completed" && detailed && h(ChangesCard, { s, runId: group.runId, task: detailed, onOpenDiff }));
       }
 
       const basename = root => root.split("/").filter(Boolean).pop() || root;
-      const title = (s, thread) => thread.title || s.titles[thread.mainConversationId] || "未命名会话";
+      const title = (s, thread) => thread.title || thread.fallbackTitle || "未命名会话";
       const icon = name => h(primitives[name], { "aria-hidden": true });
       const run = fn => Promise.resolve().then(fn).catch(controller.reportError);
       const iconButton = (name, label, onClick, extra = {}) => h(Tooltip, { label, delayMs: 500, portal: true },
@@ -1057,15 +1087,21 @@ ${COMPOSER_CSS}`;
           } catch (error) { setLocalError(error.message); }
         };
         return h(React.Fragment, null,
-          h(Menu, { open, onClose: close, items, selectedId: page === "root" ? null : modelId, portal: true, side: "top", align: "end",
+          h(Menu, { open, onClose: close, items, selectedId: page === "thinking" ? thinkingValue : modelId, portal: true, side: "top", align: "end",
             onSelect: id => void select(id),
             anchor: h("span", { className: "sa-model-menu", role: "group", "aria-label": "Super Agent 模型与推理等级" },
-              h("button", { type: "button", className: "sa-chip", "aria-label": "Super Agent 模型", "aria-haspopup": "menu", "aria-expanded": open,
-                disabled, onClick: () => { if (open) close(); else { setPage("root"); setOpen(true); } } }, model?.name || modelId || "选择模型", icon("IconChevronDownOutlineRegular")),
+              h("button", { type: "button", className: "sa-chip", "aria-label": "Super Agent 模型", "aria-haspopup": "menu", "aria-expanded": open && page === "model",
+                disabled, onClick: () => { if (open && page === "model") close(); else { setPage("model"); setOpen(true); } } }, model?.name || modelId || "选择模型", icon("IconChevronDownOutlineRegular")),
               h("span", { className: "sa-model-separator", "aria-hidden": true }, "·"),
-              h("button", { type: "button", className: "sa-chip", "aria-label": "Super Agent 思考等级", "aria-haspopup": "menu", "aria-expanded": open,
-                disabled: disabled || !modelId, onClick: () => { if (open) close(); else { setPage("root"); setOpen(true); } } }, thinkingValue === "provider_default" ? "提供方默认" : thinkingValue, icon("IconChevronDownOutlineRegular"))) }),
+              h("button", { type: "button", className: "sa-chip", "aria-label": "Super Agent 思考等级", "aria-haspopup": "menu", "aria-expanded": open && page === "thinking",
+                disabled: disabled || !modelId || !model?.supportedThinkingLevels?.length, onClick: () => { if (open && page === "thinking") close(); else { setPage("thinking"); setOpen(true); } } }, thinkingValue === "provider_default" ? "提供方默认" : thinkingValue, icon("IconChevronDownOutlineRegular"))) }),
           localError && h("span", { className: "sa-muted", role: "alert" }, localError));
+      }
+      const modeLabels = { approve_none: "完全权限", workspace_auto: "工作区自动", approve_all: "逐项审批", service_default: "继承默认" };
+      function configSummary(config, models) {
+        const model = models.find(item => item.id === config?.modelId)?.name || config?.modelId || "模型未知";
+        const mode = config?.permissionSource === "service_default" ? "service_default" : config?.permissionMode;
+        return `${model} · ${config?.thinkingLevel || "提供方默认"} · ${modeLabels[mode] || "未提供权限信息"}`;
       }
       function PermissionMenu({ s, disabled }) {
         const [open, setOpen] = React.useState(false);
@@ -1077,12 +1113,6 @@ ${COMPOSER_CSS}`;
           { id: "approve_all", label: "逐项审批" },
           { id: "service_default", label: "继承服务默认" },
         ];
-        const modeLabels = {
-          approve_none: "完全权限",
-          workspace_auto: "工作区自动",
-          approve_all: "逐项审批",
-          service_default: "继承默认",
-        };
         return h(Menu, {
           open,
           onClose: () => setOpen(false),
@@ -1106,7 +1136,7 @@ ${COMPOSER_CSS}`;
           },
             h("svg", { viewBox: "0 0 16 16", width: 13, height: 13, fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round", style: { marginRight: 4, verticalAlign: "middle" }, "aria-hidden": true },
               h("path", { d: "M8 1.8l5 2v4.5c0 3.7-2.7 6.1-5 6.7-2.3-.6-5-3-5-6.7V3.8l5-2z" })),
-            modeLabels[currentMode] || "完全权限",
+            modeLabels[currentMode] || "权限未知",
             h("span", { style: { marginLeft: 4, display: "inline-flex" } }, icon("IconChevronDownOutlineRegular"))
           ),
         });
@@ -1169,9 +1199,26 @@ ${COMPOSER_CSS}`;
           h("span", { className: "sa-stats-item" }, `${partial ? "已知用量 " : ""}${formatTokens(tokens)} · 缓存命中 ${cache}`),
           h("span", { className: "sa-stats-item" }, `上下文 ${percent}`));
       }
+      function PendingTaskCommand({ record }) {
+        const [busy, setBusy] = React.useState(false), [notice, setNotice] = React.useState("");
+        const kind = { "schedule.create": "创建计划", "schedule.pause": "暂停计划", "schedule.resume": "恢复计划", "schedule.cancel": "停止计划", "task.cancel": "停止后台任务", "task.detach": "转入后台" }[record.operation];
+        const recover = async retry => {
+          setBusy(true);
+          try {
+            const receipt = await controller.recoverTaskOperation(record, retry);
+            setNotice(receipt ? "已核对原回执。" : "结果待确认，服务尚未返回原回执。");
+          } catch (error) { setNotice(error.message); } finally { setBusy(false); }
+        };
+        const payload = record.payload;
+        return h("section", { className: "sa-run-card", "aria-label": "待确认后台操作" }, h("strong", null, kind + " · 结果待确认"),
+          payload.target && h("p", null, payload.target + " · " + payload.prompt + " · 截止 " + new Date(payload.expiresAt).toLocaleString()),
+          h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void recover(false) }, "查询原回执"),
+          h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void recover(true) }, "重试原操作"),
+          notice && h("p", { role: "status" }, notice));
+      }
       function ScheduleForm({ s }) {
         const [notice, setNotice] = React.useState(""), [busy, setBusy] = React.useState(false);
-        const pending = React.useRef(null);
+        const blocked = (s.pendingTaskOperations || []).some(record => !record.taskId);
         async function submit(event) {
           event.preventDefault();
           const form = event.currentTarget, values = new FormData(form);
@@ -1179,12 +1226,12 @@ ${COMPOSER_CSS}`;
           const hours = Number(values.get("hours"));
           data.intervalSec = Number(values.get("minutes")) * 60;
           data.tools = values.getAll("tools");
-          const fingerprint = JSON.stringify([data, hours]);
-          if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, args: { ...data, expiresAt: Date.now() + hours * 3600000, requestId: controller.taskRequestId("schedule") } };
+          data.fireImmediately = values.get("first") !== "later";
+          data.expiresAt = Date.now() + hours * 3600000;
           setBusy(true); setNotice("");
           try {
-            const receipt = await controller.createTaskSchedule(pending.current.args);
-            pending.current = null; form.reset(); setNotice("已受理：" + receipt.resourceId);
+            const receipt = await controller.createTaskSchedule(data);
+            form.reset(); setNotice("已受理：" + receipt.resourceId);
           } catch (error) { setNotice(error.message); } finally { setBusy(false); }
         }
         const field = (name, label, props = {}) => h("label", { key: name, style: { display: "grid", gap: 4 } }, label,
@@ -1197,16 +1244,32 @@ ${COMPOSER_CSS}`;
             h("fieldset", null, h("legend", null, "允许检查使用的工作区工具"),
               ...[["read", "读取文件"], ["ls", "列出目录"], ["find", "查找文件"], ["grep", "检索文件内容"]].map(([value, text]) =>
                 h("label", { key: value, style: { marginRight: 10 } }, h("input", { type: "checkbox", name: "tools", value, disabled: busy }), text))),
-            h("small", null, "立即检查一次。每次最多调用模型 4 次，每日最多检查 24 次。"),
-            h("button", { className: "sa-chip", type: "submit", disabled: busy || !s.ready }, "创建计划"), notice && h("p", { role: "status" }, notice)));
+            h("label", null, "首次检查", h("select", { name: "first", defaultValue: "now", disabled: busy },
+              h("option", { value: "now" }, "创建后立即开始"), h("option", { value: "later" }, "等待一个间隔后开始"))),
+            h("small", null, "每次最多调用模型 4 次，每日最多检查 24 次。"),
+            h("button", { className: "sa-chip", type: "submit", disabled: busy || !s.ready || blocked || !s.taskScope }, "创建计划"), notice && h("p", { role: "status" }, notice)));
       }
       function BackgroundCard({ task, s }) {
-        const key = "sa.task-log:" + JSON.stringify([s.coreInstanceId, s.targetId, task.threadId, task.taskId]);
+        const key = "sa.task-log:" + JSON.stringify([s.taskScope, task.conversationId, task.taskId]);
         const [log, setLog] = React.useState(() => {
-          try { return JSON.parse(sessionStorage.getItem(key) || "{}"); } catch { return {}; }
-        }), [detail, setDetail] = React.useState(null);
+          try {
+            const saved = sessionStorage.getItem(key);
+            if (saved) return JSON.parse(saved);
+            const legacyKey = "sa.task-log:" + JSON.stringify([s.coreInstanceId ?? null, s.targetId ?? null, task.threadId, task.taskId]);
+            const legacy = JSON.parse(sessionStorage.getItem(legacyKey) || "{}"), restored = {};
+            for (const stream of ["stdout", "stderr"]) if (typeof legacy[stream]?.nextCursor === "string") restored[stream] = { nextCursor: legacy[stream].nextCursor };
+            return restored;
+          } catch { return {}; }
+        }), [readDetail, setDetail] = React.useState(null), [detailRequest, requestDetail] = React.useState(0);
         const [notice, setNotice] = React.useState(""), [busy, setBusy] = React.useState(false);
-        const pending = React.useRef(null);
+        const detail = readDetail?.revision >= task.revision ? readDetail : null;
+        React.useEffect(() => {
+          if (!detailRequest) return;
+          let current = true;
+          void controller.backgroundAction(task, "get").then(result => { if (current) setDetail(result); },
+            error => { if (current) { setDetail(null); setNotice(error.message); } });
+          return () => { current = false; };
+        }, [detailRequest, task.taskId, task.revision, s.taskScope]);
         const labels = { awaiting_approval: "等待审批", queued: "已排队", starting: "正在启动", running: "运行中", stopping: "正在停止", failed: "失败", cancelled: "已取消", timed_out: "超时", succeeded: "成功", unknown: "结果未知", active: "已启用", paused: "已暂停", done: "已完成", expired: "已到期" };
         async function read(action, stream) {
           setBusy(true); setNotice("");
@@ -1218,14 +1281,12 @@ ${COMPOSER_CSS}`;
               // Persist positions only. Reload does not retain user output in browser storage.
               try { sessionStorage.setItem(key, JSON.stringify(Object.fromEntries(Object.entries(next).map(([name, row]) => [name, { nextCursor: row.nextCursor }])))); } catch {}
             } else if (action === "get") {
-              setDetail(await controller.backgroundAction(task, action));
+              requestDetail(value => value + 1);
             } else {
-              const retry = pending.current?.action === action ? pending.current : { action, requestId: controller.taskRequestId(action), expectedRevision: task.revision };
-              pending.current = retry;
-              const receipt = await controller.backgroundAction(task, action, { requestId: retry.requestId, expectedRevision: retry.expectedRevision });
-              pending.current = null; setNotice("已受理：" + receipt.requestId + "。状态以服务回传为准。");
+              const receipt = await controller.backgroundAction(task, action);
+              setNotice("已受理：" + receipt.requestId + "。状态以服务回传为准。");
             }
-          } catch (error) { if (error.code === "VERSION_CONFLICT") pending.current = null; setNotice(error.message); }
+          } catch (error) { setNotice(error.message); }
           finally { setBusy(false); }
         }
         const acts = task.allowedActions || [], button = (label, click, disabled = false) => h("button", { key: label, type: "button", className: "sa-chip", disabled: busy || disabled || !s.ready, onClick: click }, label);
@@ -1237,6 +1298,7 @@ ${COMPOSER_CSS}`;
           task.waitReason && h("p", null, "等待：" + ({ workspace_busy: "工作区正被占用", background_capacity_exceeded: "后台名额已满", capacity: "后台名额已满" }[task.waitReason] || task.waitReason) + (task.blockedByTaskId ? " · 占用任务 " + task.blockedByTaskId : "")),
           task.stopReason && h("p", null, "原因：" + task.stopReason), task.truncated && h("p", null, "日志已截断"),
           task.kind === "schedule" && button("计划详情", () => void read("get")),
+          !!detailRequest && !detail && h("p", { role: "status" }, "正在核对当前计划详情"),
           detail && h("div", null, h("p", null, "下次检查：" + (detail.status === "active" ? new Date(detail.nextAt).toLocaleString() : "—") + " · 错过 " + detail.missedCount + " 次"),
             h("p", null, detail.target + " · 每 " + detail.intervalSeconds + " 秒 · 到期 " + new Date(detail.expiresAt).toLocaleString()),
             h("p", null, "停止条件：" + detail.stopCondition + " · 每次最多 " + detail.maxModelCalls + " 次模型调用 · 每日最多 " + detail.dailyLimit + " 次检查"),
@@ -1254,7 +1316,7 @@ ${COMPOSER_CSS}`;
       function GoalCard({ s }) {
         const [increase, setIncrease] = React.useState(""), [objective, setObjective] = React.useState("");
         const goal = s.goal;
-        if (!goal) return null;
+        if (!goal || !s.goalsSupported) return null;
         const labels = { running: "持续推进", waiting: "等待中", pausing: "正在暂停", paused: "已暂停", blocked: "已阻塞", exhausted: "预算或限制已耗尽", draining: "正在结束", completed: "已完成", cancelled: "已取消", failed: "失败" };
         const terminal = ["completed", "cancelled", "failed"].includes(goal.status), stopping = ["pausing", "draining"].includes(goal.status);
         const busy = s.goalBusy || s.busy, number = value => Number.isSafeInteger(value) ? value.toLocaleString("zh-CN") : "尚未确认";
@@ -1274,19 +1336,99 @@ ${COMPOSER_CSS}`;
           h("div", { style: { display: "flex", flexWrap: "wrap", gap: 8 } },
             !terminal && !stopping && ["running", "waiting"].includes(goal.status) && h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.controlGoal("pause")) }, "暂停目标"),
             !terminal && ["paused", "blocked", "exhausted"].includes(goal.status) && h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.controlGoal("resume")) }, "恢复目标"),
-            !terminal && !stopping && h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.controlGoal("cancel")) }, "取消目标"),
             h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void controller.refresh() }, "刷新目标")),
           !terminal && h("details", null, h("summary", null, "调整目标与预算"),
             h("p", { className: "sa-muted" }, "提高累计预算后，使用“恢复目标”继续。修改目标需先暂停；原有用量不会清零。"),
             h("label", null, "增加 token 预算", h("input", { type: "text", inputMode: "numeric", value: increase, disabled: busy, onChange: event => setIncrease(event.target.value) })),
             h("button", { type: "button", className: "sa-chip", disabled: busy || !increase, onClick: () => void run(async () => { await controller.increaseGoalBudget(increase); setIncrease(""); }) }, "提高预算"),
             h("label", null, "新的目标说明", h("textarea", { value: objective, disabled: busy || !["paused", "blocked", "exhausted"].includes(goal.status), onChange: event => setObjective(event.target.value) })),
-            h("button", { type: "button", className: "sa-chip", disabled: busy || !objective.trim() || !["paused", "blocked", "exhausted"].includes(goal.status), onClick: () => void run(async () => { await controller.updateGoalObjective(objective); setObjective(""); }) }, "保存目标说明")),
+            h("button", { type: "button", className: "sa-chip", disabled: busy || !objective.trim() || !["paused", "blocked", "exhausted"].includes(goal.status), onClick: () => void run(async () => { await controller.updateGoalObjective(objective); setObjective(""); }) }, "保存目标说明"),
+            !stopping && h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.requestGoalCancel()) }, "取消目标…")),
           ...(controller.pendingGoalOperations?.() || []).map(record => h("p", { key: record.payload.requestId }, `原操作待确认：${record.action} · ${record.payload.goalId}`, h("button", { type: "button", className: "sa-chip", disabled: busy, onClick: () => void run(() => controller.retryGoalOperation(record.payload.requestId)) }, "重试原目标操作"))));
       }
-      function Composer({ s }) {
+      function CreateGoal({ s }) {
+        const [open, setOpen] = React.useState(false), [objective, setObjective] = React.useState(""), [budget, setBudget] = React.useState("");
+        const validBudget = /^\d+$/.test(budget) && Number.isSafeInteger(Number(budget)) && Number(budget) > 0;
+        return h(React.Fragment, null,
+          h("button", { className: "sa-chip", type: "button", disabled: s.busy || !s.ready || deleted(s),
+            onClick: () => { setObjective(s.draft); setBudget(""); setOpen(true); } }, "创建持续目标"),
+          h(Modal, { open, title: "创建持续目标", closeLabel: "取消", onClose: () => setOpen(false) },
+            h("form", { className: "sa-dialog-body", onSubmit: event => {
+              event.preventDefault();
+              if (!objective.trim() || !validBudget || s.busy) return;
+              // The ordinary composer owns attachments, input preflight and idempotent Goal creation.
+              const literal = objective.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+              controller.setDraft(`/goal --budget ${budget} -- "${literal}"`);
+              setOpen(false); void controller.send();
+            } },
+              h("label", null, "目标说明", h("textarea", { autoFocus: true, value: objective, onChange: e => setObjective(e.target.value) })),
+              h("label", null, "累计 token 预算", h("input", { inputMode: "numeric", value: budget, placeholder: "例如 20000", onChange: e => setBudget(e.target.value) })),
+              h("p", { className: "sa-muted" }, "预算用于整个目标。达到上限后会暂停推进。"),
+              h("button", { type: "submit", className: "sa-chip", disabled: !objective.trim() || !validBudget || s.busy }, "创建目标"))));
+      }
+      function ThreadControlDialog({ s, initialAction, close }) {
+        const id = s.selected.threadId, [impact, setImpact] = React.useState(null);
+        const [action, setAction] = React.useState(initialAction), [busy, setBusy] = React.useState(false), [error, setError] = React.useState("");
+        const [continues, setContinues] = React.useState([]), [queued, setQueued] = React.useState({});
+        const [revision, setRevision] = React.useState(0);
+        React.useEffect(() => {
+          let active = true;
+          setImpact(null); setError("");
+          void controller.readThreadImpact(id).then(result => { if (active) setImpact(result); }, failure => { if (active) setError(failure.message); });
+          return () => { active = false; };
+        }, [id, revision]);
+        const pending = controller.pendingThreadControl(id);
+        const allowed = impact ? controller.threadActions(impact.thread, impact.tasks) : [];
+        const labels = { pause: "暂停 Thread", resume: "恢复 Thread", stop: "停止此 Thread 的活动任务" };
+        const submit = async retry => {
+          if (busy || !impact) return;
+          setBusy(true); setError("");
+          try {
+            if (retry) await controller.retryThreadControl(id);
+            else await controller.controlThreadTarget(id, action, { continueRunIds: continues,
+              queuedInputs: Object.entries(queued).filter(([, choice]) => choice).map(([inputId, choice]) => ({ inputId, action: choice })) });
+            close();
+          } catch (failure) { setError(failure.message); }
+          finally { setBusy(false); }
+        };
+        const thread = impact?.thread, runs = thread?.runs || [];
+        const activeRuns = [...new Set([...(thread?.activeRuns || []), ...(thread?.queuedRuns || [])].map(row => typeof row === "string" ? row : row.runId))];
+        return h(Modal, { open: true, title: pending ? "核对原 Thread 命令" : labels[action] || "Thread 控制", closeLabel: "关闭", onClose: close },
+          h("div", { className: "sa-dialog-body sa-thread-controls" },
+            h("strong", null, `Thread ${id}`),
+            h("p", null, "控制范围包括本 Thread 的主对话及所有分支。"),
+            thread && h("p", { role: "status" }, `当前状态：${({ idle: "空闲", running: "运行中", waiting: "等待中", completed: "已完成", paused_by_user: "已暂停", archived: "已归档", failed: "失败" })[thread.status] || thread.status || "未知"}`),
+            !impact && !error && h("p", { role: "status" }, "正在读取 Thread、等待与计划…"),
+            error && h("p", { role: "alert", className: "sa-error" }, error),
+            impact && pending ? h(React.Fragment, null,
+              h("p", null, `已回读 Thread。原“${labels[pending.action]}”的回执尚未确认。重新确认将使用原请求 ${pending.payload.requestId}。`),
+              h(Button, { disabled: busy, onClick: () => void submit(true) }, "重新确认原命令")) :
+            impact && (!action || !allowed.includes(action)) ? h(React.Fragment, null,
+              ...allowed.map(value => h(Button, { key: value, onClick: () => setAction(value) }, labels[value])),
+              !allowed.length && h("p", { className: "sa-muted" }, "当前没有可暂停、恢复或停止的工作。")) :
+            impact && h(React.Fragment, null,
+              action === "stop" && h(React.Fragment, null,
+                h("p", null, "停止会请求取消活动 Run、取消对应等待和相关后台任务，冻结排队输入。其他分支或刚创建的工作也受影响。"),
+                h("p", null, `已知活动或排队 Run：${activeRuns.length ? activeRuns.map(runId => `${runId}（${runs.find(row => row.runId === runId)?.conversationId || "所属对话待核实"}）`).join("、") : "当前读取中没有记录"}`),
+                h("p", null, `待处理等待：${impact.waits ? impact.waits.map(wait => `${wait.prompt || wait.waitId}（${wait.conversationId}）`).join("、") || "当前读取中没有记录" : "未能读取"}`),
+                h("p", null, `已知后台任务与计划：${impact.tasks.map(task => `${task.title || task.taskId}（${task.conversationId}）`).join("、") || "当前读取中没有记录"}${impact.taskReadFailed ? "；部分对话未能读取" : ""}`)),
+              action === "pause" && h("p", null, "暂停整个 Thread 的调度。正在执行或等待的工作以服务回读为准。"),
+              action === "resume" && h(React.Fragment, null,
+                h("p", null, "恢复 Thread 的调度。明确选中的已取消 Run 将创建后续 Run；未选输入继续排队。"),
+                ...runs.filter(row => row.status === "cancelled").map(row => h("label", { key: row.runId },
+                  h("input", { type: "checkbox", checked: continues.includes(row.runId), onChange: e => setContinues(e.target.checked ? [...continues, row.runId] : continues.filter(runId => runId !== row.runId)) }),
+                  `继续 ${row.runId} · ${row.conversationId}`)),
+                ...(thread.queuedInputIds || []).map(input => h("label", { key: input.inputId }, `输入 ${input.inputId} · ${input.conversationId}`,
+                  h("select", { value: queued[input.inputId] || "", onChange: e => setQueued({ ...queued, [input.inputId]: e.target.value }) },
+                    h("option", { value: "" }, "保留排队"), h("option", { value: "run" }, "运行此输入"), h("option", { value: "drop" }, "放弃此输入"))))),
+              h(Button, { disabled: busy, onClick: () => void submit(false) }, `确认${labels[action]}`)),
+            error && h(Button, { onClick: () => setRevision(n => n + 1) }, "重新读取 Thread"),
+            h(Button, { onClick: close }, "关闭")));
+      }
+      function Composer({ s, openThreadControl }) {
+        const [modelSetup, setModelSetup] = React.useState(false);
         const input = React.useRef(null), files = React.useRef(null), attachButton = React.useRef(null), skillButton = React.useRef(null), contextButton = React.useRef(null), [attachmentMenu, setAttachmentMenu] = React.useState(false), [projectPicker, setProjectPicker] = React.useState(false), [skillPicker, setSkillPicker] = React.useState(false), [contextPreview, setContextPreview] = React.useState(false), [dragging, setDragging] = React.useState(false), [selection, setSelection] = React.useState(null);
-        React.useEffect(() => { const pending = controller.loadAttachmentCapabilities?.(); pending?.catch(() => {}); }, [s.targetId, s.coreInstanceId]);
+        React.useEffect(() => { const pending = controller.loadAttachmentCapabilities?.(); pending?.catch(() => {}); }, [s.targetId, s.coreInstanceId, s.inputServiceIdentity]);
         React.useEffect(() => { if (input.current) { input.current.style.height = "auto"; input.current.style.height = `${Math.min(240, Math.max(s.selected ? 48 : 52, input.current.scrollHeight))}px`; } }, [s.draft, s.selected]);
         const config = s.conversation?.config || services.viewState.get?.().snapshot?.config || s.threads.find(t => t.threadId === s.selected?.threadId)?.conversation?.config;
         const chosen = s.conversation?.pendingConfig?.config || config;
@@ -1296,66 +1438,88 @@ ${COMPOSER_CSS}`;
         const thinkingLevel = s.selected ? chosen?.thinkingLevel ?? null : s.thinkingLevel ?? null;
         const thinkingValue = thinkingLevel || "provider_default";
         const activeRuns = (s.runDetails || s.thread?.runs || []).filter(task => task.conversationId === s.selected?.conversationId && ["starting", "running", "waiting"].includes(task.status));
-        const retained = (s.attachments || []).length + (s.materials || []).length, blocked = (s.attachments || []).some(item => item.status !== "ready") || (s.attachmentRemovals || []).length > 0, unsupported = s.attachmentCapabilities?.supported === false;
+        const retained = (s.attachments || []).length + (s.materials || []).length, blocked = (s.attachments || []).some(item => item.status !== "ready") || (s.attachmentRemovals || []).length > 0, canAttach = s.attachmentCapabilities?.supported === true, canProject = canAttach && s.attachmentCapabilities?.projectFiles === true && !!s.root, canSkill = s.attachmentCapabilities?.skillSelection === true, canPreview = s.attachmentCapabilities?.inputPreview === true;
         const disabled = s.busy || s.goalBusy || deleted(s), closeTo = ref => () => { setProjectPicker(false); setSkillPicker(false); setContextPreview(false); ref.current?.focus(); };
-        const addFiles = selected => { if (!disabled && selected?.length) void run(() => controller.addMessageFiles(selected)); };
+        const addFiles = selected => { if (canAttach && !disabled && selected?.length) void run(() => controller.addMessageFiles(selected)); };
         const chooseFiles = () => { setAttachmentMenu(false); files.current?.click(); };
         const readSelection = event => { const start = event.target.selectionStart, end = event.target.selectionEnd; setSelection(end > start ? { start, end } : null); };
         return h("div", { className: "sa-composer-seat" },
-          s.goalsSupported && !s.goal && h("p", { className: "sa-muted" }, "持续目标：/goal 目标说明 --budget token数量"),
+          modelSetup && h(Modal, { open: true, title: "配置可用模型", closeLabel: "返回输入", onClose: () => { setModelSetup(false); void controller.refresh(); } }, h(workspaceTools.ModelSettings, { modelSetup: true })),
+          s.goalsSupported && (!s.goal || ["completed", "cancelled", "failed"].includes(s.goal.status)) && h(CreateGoal, { key: `${s.targetId}:${s.selected?.conversationId || "new"}`, s }),
           s.goalError && h("p", { className: "sa-composer-warning", role: "alert" }, s.goalError),
           s.goalNotice && h("p", { className: "sa-muted", role: "status" }, s.goalNotice),
-          s.goal && !["completed", "cancelled", "failed"].includes(s.goal.status) && h("div", { className: "sa-workspace-picker" }, h(Choice, { label: "目标期间的输入用途", value: s.goalInputMode || "message", items: [{ id: "message", label: "发送新任务并暂停目标" }, { id: "steer", label: "补充当前目标" }], onSelect: value => controller.setGoalInputMode(value) }, s.goalInputMode === "steer" ? "补充当前目标" : "发送新任务并暂停目标")),
+          s.goalsSupported && s.goal && !["completed", "cancelled", "failed"].includes(s.goal.status) && h("div", { className: "sa-workspace-picker" }, h(Choice, { label: "目标期间的输入用途", value: s.goalInputMode || "message", items: [{ id: "message", label: "发送新任务并暂停目标" }, { id: "steer", label: "补充当前目标" }], onSelect: value => controller.setGoalInputMode(value) }, s.goalInputMode === "steer" ? "补充当前目标" : "发送新任务并暂停目标")),
           deleted(s) && h("p", { className: "sa-muted", role: "status" }, "会话已删除，无法恢复。请新建会话。"),
           !s.selected && h("div", { className: "sa-workspace-picker" }, h(Choice, { label: "Super Agent 工作目录", value: s.root,
             items: [{ id: "none", label: "不绑定工作区 · 直接聊天" }, ...s.directories.map(d => ({ id: d.root, label: basename(d.root), icon: icon("IconFolderCloseRegular") })), { id: "add", label: "添加工作区", icon: icon("IconProjectAddOutlineRegular") }],
             onSelect: id => id === "add" ? controller.setWorkspaceForm(true) : controller.newConversation(id === "none" ? "" : id) }, icon("IconFolderCloseRegular"), s.root ? basename(s.root) : "直接聊天 · 可选工作区")),
-          projectPicker && h(ProjectFilePicker, { key: `${s.targetId}:${s.selected?.conversationId || "new"}`, s, close: closeTo(attachButton) }),
-          skillPicker && h(SkillPicker, { key: `skills:${s.targetId}:${s.selected?.conversationId || "new"}`, s, close: closeTo(skillButton) }),
-          contextPreview && h(ContextPreview, { key: `context:${s.targetId}:${s.selected?.conversationId || "new"}`, s, close: closeTo(contextButton) }),
-          s.conversation?.pendingConfig && h("div", { className: "sa-composer-notice sa-muted", role: "status" }, `当前 ${s.models.find(m => m.id === config?.modelId)?.name || config?.modelId || "模型未知"} · ${config?.thinkingLevel || "提供方默认"}；新选择将在当前任务结束后生效，已接收任务保持原配置。`, h("button", { type: "button", className: "sa-chip", disabled: s.busy || deleted(s), onClick: () => void run(() => controller.discardPendingConfig()) }, "撤销待生效选择")),
-          s.thread?.status === "paused_by_user" && h("div", { className: "sa-workspace-picker" }, h("span", { className: "sa-muted" }, "会话已暂停"), h("button", { type: "button", className: "sa-chip", disabled: s.busy || deleted(s), onClick: () => void run(() => controller.controlThread("resume")) }, "恢复")),
+          canProject && projectPicker && h(ProjectFilePicker, { key: `${s.targetId}:${s.selected?.conversationId || "new"}`, s, close: closeTo(attachButton) }),
+          canSkill && skillPicker && h(SkillPicker, { key: `skills:${s.targetId}:${s.selected?.conversationId || "new"}`, s, close: closeTo(skillButton) }),
+          canPreview && contextPreview && h(ContextPreview, { key: `context:${s.targetId}:${s.selected?.conversationId || "new"}`, s, close: closeTo(contextButton) }),
+          s.conversation?.pendingConfig && h("div", { className: "sa-composer-notice sa-muted", role: "status" },
+            `当前 ${configSummary(config, s.models)}；待生效：${configSummary(chosen, s.models)}。`,
+            s.conversation.pendingConfig.invalidReason ? `无法生效：${s.conversation.pendingConfig.invalidReason}` : "新选择将在当前任务结束后生效，已接收任务保持原配置。",
+            h("button", { type: "button", className: "sa-chip", disabled: s.busy || deleted(s), onClick: () => void run(() => controller.discardPendingConfig()) }, "撤销待生效选择")),
+          s.thread?.status === "paused_by_user" && h("div", { className: "sa-workspace-picker" }, h("span", { className: "sa-muted" }, "会话已暂停"), h("button", { type: "button", className: "sa-chip", disabled: s.busy || deleted(s), onClick: () => openThreadControl("resume") }, "恢复 Thread…")),
           running && (!s.goal || ["completed", "cancelled", "failed"].includes(s.goal.status)) && h("div", { className: "sa-workspace-picker" }, h(Choice, { label: "输入用途", value: s.delivery,
             items: [{ id: "new_run", label: "排队新任务" }, { id: "next_turn", label: "补充当前任务" }], onSelect: value => controller.setDelivery(value) }, s.delivery === "next_turn" ? "补充当前任务" : "排队新任务")),
           running && (!s.goal || ["completed", "cancelled", "failed"].includes(s.goal.status)) && s.delivery === "next_turn" && h("div", { className: "sa-composer-target-select" }, h("label", { htmlFor: "sa-composer-target-run" }, "补充目标"), h("select", { id: "sa-composer-target-run", value: s.targetRunId || (activeRuns.length === 1 ? activeRuns[0].runId : ""), onChange: event => controller.setTargetRun(event.target.value || null), disabled }, h("option", { value: "", disabled: true }, "选择运行中的任务"), ...activeRuns.map((task, index) => h("option", { key: task.runId, value: task.runId }, `任务 ${index + 1} · ${runStatusLabel(task, s.thread)}`)))),
           h("form", { className: "sa-composer", "data-dragging": dragging, onSubmit: e => { e.preventDefault(); void controller.send(); },
-            onDragOver: event => { if (!unsupported && !disabled && [...(event.dataTransfer?.types || [])].includes("Files")) { event.preventDefault(); setDragging(true); } },
+            onDragOver: event => { if (canAttach && !disabled && [...(event.dataTransfer?.types || [])].includes("Files")) { event.preventDefault(); setDragging(true); } },
             onDragLeave: event => { if (!event.currentTarget?.contains?.(event.relatedTarget)) setDragging(false); },
-            onDrop: event => { setDragging(false); if (!unsupported && !disabled && event.dataTransfer?.files?.length) { event.preventDefault(); event.stopPropagation(); addFiles(Array.from(event.dataTransfer.files)); } } },
-            h("input", { ref: files, type: "file", multiple: true, hidden: true, "aria-label": "添加图片或文件", disabled: disabled || unsupported, onChange: event => { addFiles(Array.from(event.target.files || [])); event.target.value = ""; } }),
+            onDrop: event => { setDragging(false); if (canAttach && !disabled && event.dataTransfer?.files?.length) { event.preventDefault(); event.stopPropagation(); addFiles(Array.from(event.dataTransfer.files)); } } },
+            h("input", { ref: files, type: "file", multiple: true, hidden: true, "aria-label": "添加图片或文件", disabled: disabled || !canAttach, onChange: event => { addFiles(Array.from(event.target.files || [])); event.target.value = ""; } }),
             h(DraftAttachments, { s }),
-            unsupported && h("p", { className: "sa-composer-warning", role: "status" }, s.attachmentCapabilities.reason || "当前运行时暂不支持附件与 Skill，请连接 TypeScript/Pi 服务"),
-            s.attachmentCapabilityError && h("p", { className: "sa-composer-warning", role: "alert" }, `附件能力读取失败：${s.attachmentCapabilityError}`),
+            s.attachmentCapabilities?.supported === false && h("p", { className: "sa-composer-warning", role: "status" }, s.attachmentCapabilities.reason || "当前服务不支持本机附件"),
+            s.attachmentCapabilityError && h("p", { className: "sa-composer-warning", role: "alert" }, `输入能力读取失败：${s.attachmentCapabilityError}`, " ", h("button", { className: "sa-chip", type: "button", onClick: () => void run(() => controller.loadAttachmentCapabilities({ force: true })) }, "重新检测")),
             retained > 0 && h("div", { className: "sa-composer-target" }, `附件接收服务：${s.coreTargetLabel || "当前 Core"} · 发送前不会交给模型`),
             s.delivery === "next_turn" && (s.selectedSkillIds || []).length > 0 && h("p", { className: "sa-composer-warning", role: "alert" }, "当前任务沿用原 Skill；请取消本次选择或改为排队新任务。"),
             h("textarea", { ref: input, className: "sa-input", rows: 1, "aria-label": "Super Agent 消息", placeholder: "发消息或创建任务", value: s.draft, disabled: s.busy || s.goalBusy || deleted(s),
               onChange: e => controller.setDraft(e.target.value), onSelect: readSelection,
-              onPaste: event => { const images = Array.from(event.clipboardData?.items || []).filter(item => item.kind === "file" && item.type.startsWith("image/")).map(item => item.getAsFile()).filter(Boolean); if (!disabled && !unsupported && images.length) { event.preventDefault(); addFiles(images); } },
+              onPaste: event => { const images = Array.from(event.clipboardData?.items || []).filter(item => item.kind === "file" && item.type.startsWith("image/")).map(item => item.getAsFile()).filter(Boolean); if (!disabled && canAttach && images.length) { event.preventDefault(); addFiles(images); } },
               onKeyDown: e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent?.isComposing && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); void controller.send(); } } }),
             selection && h("button", { type: "button", className: "sa-selected-text-action", disabled, onClick: () => { const range = selection; setSelection(null); void run(() => controller.convertSelectionToAttachment(range.start, range.end)); } }, "将选中资料转为附件（保留其余任务要求）"),
             s.attachmentNotice && h("p", { className: "sa-composer-warning", role: "status" }, s.attachmentNotice),
             (s.attachmentRemovals || []).length > 0 && h("button", { type: "button", className: "sa-attachment-action", onClick: () => void run(() => controller.resolveAttachmentRemovals()) }, "查询附件移除结果"),
-            (retained > 0 || (s.selectedSkillIds || []).length > 0) && h("div", { className: "sa-attachment-summary" }, h("span", null, `${retained} 个附件 · ${(s.selectedSkillIds || []).length} 个 Skill`), h("button", { ref: contextButton, type: "button", disabled: s.busy, onClick: () => setContextPreview(true) }, "查看本次上下文"), s.previewLoading && h("span", { role: "status" }, "重新计算中")),
+            (retained > 0 || (s.selectedSkillIds || []).length > 0) && h("div", { className: "sa-attachment-summary" }, h("span", null, `${retained} 个附件 · ${(s.selectedSkillIds || []).length} 个 Skill`), canPreview && h("button", { ref: contextButton, type: "button", disabled: s.busy, onClick: () => setContextPreview(true) }, "查看本次上下文"), s.previewLoading && h("span", { role: "status" }, "重新计算中")),
             h("div", { className: "sa-composer-bar" },
-              h(Menu, { open: attachmentMenu, onClose: () => { setAttachmentMenu(false); attachButton.current?.focus(); }, portal: true, side: "top", align: "start", items: [{ id: "upload", label: "添加图片或文件" }, ...(s.root ? [{ id: "project", label: "引用项目文件" }] : [])], onSelect: id => { if (id === "upload") chooseFiles(); else { setAttachmentMenu(false); setProjectPicker(true); } }, anchor: h("button", { ref: attachButton, type: "button", className: "sa-composer-attach", "aria-label": "添加附件", "aria-haspopup": "menu", "aria-expanded": attachmentMenu, title: "添加图片或文件", disabled: disabled || unsupported, onClick: () => setAttachmentMenu(!attachmentMenu) },
-                h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "#61666b", strokeWidth: 1.7, strokeLinecap: "round", "aria-hidden": true },
+              (canAttach || canProject) && h(Menu, { open: attachmentMenu, onClose: () => { setAttachmentMenu(false); attachButton.current?.focus(); }, portal: true, side: "top", align: "start", items: [...(canAttach ? [{ id: "upload", label: "添加图片或文件" }] : []), ...(canProject ? [{ id: "project", label: "引用项目文件" }] : [])], onSelect: id => { if (id === "upload") chooseFiles(); else { setAttachmentMenu(false); setProjectPicker(true); } }, anchor: h("button", { ref: attachButton, type: "button", className: "sa-composer-attach", "aria-label": "添加附件", "aria-haspopup": "menu", "aria-expanded": attachmentMenu, title: "添加图片或文件", disabled, onClick: () => setAttachmentMenu(!attachmentMenu) },
+                h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", "aria-hidden": true },
                   h("path", { d: "M8 3.5v9M3.5 8h9" }))) }),
-              h("button", { ref: skillButton, type: "button", className: "sa-composer-skill", "aria-label": "选择本次任务使用的 Skill", "aria-haspopup": "dialog", disabled: disabled || unsupported, onClick: () => setSkillPicker(true) }, "Skill", (s.selectedSkillIds || []).length > 0 && h("span", null, (s.selectedSkillIds || []).length)),
+              canSkill && h("button", { ref: skillButton, type: "button", className: "sa-composer-skill", "aria-label": "选择本次任务使用的 Skill", "aria-haspopup": "dialog", disabled, onClick: () => setSkillPicker(true) }, "Skill", (s.selectedSkillIds || []).length > 0 && h("span", null, (s.selectedSkillIds || []).length)),
               h(PermissionMenu, { s, disabled: s.busy || deleted(s) }),
               h("span", { style: { flex: "1 1 auto" } }),
-              h("span", { className: "sa-model-slot" }, h(ComposerMenu, { s, modelId, model, thinkingValue, running, disabled: s.busy || deleted(s) || !s.models.some(item => item.selectable !== false) })),
+              h("span", { className: "sa-model-slot" }, !s.models.some(item => item.selectable !== false) && workspaceTools.ModelSettings ? h("button", { type: "button", className: "sa-chip", onClick: () => { workspaceTools.selectModels(); setModelSetup(true); } }, "设置可用模型") : h(ComposerMenu, { s, modelId, model, thinkingValue, running, disabled: s.busy || deleted(s) || !s.models.some(item => item.selectable !== false) })),
               h(Tooltip, { label: "发送", shortcutKeys: ["Enter"], portal: true },
                     h("button", { className: "sa-send", type: "submit", "aria-label": "发送", disabled: deleted(s) || s.busy || s.goalBusy || !s.ready || blocked || (!s.draft.trim() && !retained) || (!s.selected && !s.modelId) || (s.delivery === "next_turn" && (s.selectedSkillIds || []).length > 0) },
-                      h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "#ffffff", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
+                      h("svg", { viewBox: "0 0 16 16", width: 15, height: 15, fill: "none", stroke: "var(--dsw-alias-label-primary-foreground,#fff)", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
                         h("path", { d: "M8 12.5v-9M4.2 7.2L8 3.5l3.8 3.7" })))),
-              running && h(Tooltip, { label: "停止", portal: true }, h("button", { className: "sa-send sa-send-stop", type: "button", "aria-label": "停止", disabled: deleted(s), onClick: () => void controller.stop() }, h("span", { style: { background: "#ffffff", width: 11, height: 11, borderRadius: 2 } }))))),
+              running && h(Tooltip, { label: "停止此 Thread 的活动任务", portal: true }, h("button", { className: "sa-send sa-send-stop", type: "button", "aria-label": "停止此 Thread 的活动任务", disabled: deleted(s), onClick: () => openThreadControl("stop") }, h("span", { style: { background: "var(--dsw-alias-label-primary-foreground,#fff)", width: 11, height: 11, borderRadius: 2 } }))))),
           h(ConversationStatsBar, { s }));
+      }
+      const waitTitle = wait => ({ file_input: "必需文件补件", permission: "动作审批", user: "问题回答" })[wait.kind] || "人工等待";
+      function waitShortcut(wait, runs) {
+        const index = runs.findIndex(run => run.runId === wait.runId);
+        const action = ({ user: "去回答", permission: "去审批", file_input: "去补文件" })[wait.kind] || "去处理";
+        let subject = wait.fileInput?.path || wait.prompt || waitTitle(wait);
+        if (wait.kind === "permission") {
+          if (/^Allow read attachment /i.test(subject)) subject = "读取附件";
+          else subject = subject.replace(/^Allow (write|read) (.+?)(?: \((?:create|update)\))?\?$/i,
+            (_, tool, path) => (tool.toLowerCase() === "write" ? "写入 " : "读取 ") + path);
+        }
+        return [index < 0 ? null : `第 ${index + 1} 轮`, action, subject].filter(Boolean).join(" · ");
       }
       function WaitCard({ wait, root }) {
         const [answer, setAnswer] = React.useState(""), [snapshotId, setSnapshot] = React.useState(""), [sourcePath, setPath] = React.useState(wait.fileInput?.path || ""), [provisionMode, setProvisionMode] = React.useState("current_wait");
         const expired = wait.kind === "permission" && wait.expiresAt && Date.parse(wait.expiresAt) <= Date.now();
         const [snapshots, setSnapshots] = React.useState([]), [files, setFiles] = React.useState([]), [busy, setBusy] = React.useState(false), [error, setError] = React.useState(""), [receipt, setReceipt] = React.useState(null);
-        const work = fn => async () => { if (busy) return; setBusy(true); setError(""); try { await fn(); } catch (failure) { setError(failure.message); } finally { setBusy(false); } };
+        const locked = React.useRef(false);
+        const work = fn => async () => {
+          if (locked.current) return;
+          locked.current = true; setBusy(true); setError("");
+          try { await fn(); } catch (failure) { setError(failure.message); }
+          finally { locked.current = false; setBusy(false); }
+        };
         const submit = values => work(async () => { const result = await controller.resolveWait(wait, values); setReceipt(result); });
         const refreshVersions = work(async () => {
           const lookup = await controller.resource("workspace.find", { root });
@@ -1363,9 +1527,11 @@ ${COMPOSER_CSS}`;
           const result = await controller.resource("files.snapshots", { workspaceId: lookup.workspaceId }); setSnapshots(result.items || []);
         });
         const selectVersion = value => void work(async () => { setSnapshot(value); const snapshot = await controller.resource("files.snapshot", { snapshotId: value }); setFiles(snapshot.manifest?.files || []); })();
-        return h("section", { className: "sa-run-card", "aria-label": `${wait.kind === "file_input" ? "必需文件补件" : wait.kind === "permission" ? "动作审批" : "问题回答"} ${wait.waitId}` },
+        return h("section", { className: "sa-run-card sa-wait-card", tabIndex: -1,
+          id: `sa-wait-${wait.waitId}`, "aria-label": `${waitTitle(wait)} ${wait.waitId}` },
           h("strong", null, `${wait.kind === "file_input" ? "必需文件补件" : wait.kind === "permission" ? "动作审批" : "问题回答"} · ${({ waiting: "待确认", answered: "已处理", cancelled: "已取消" })[wait.status] || "状态未知"}`), h("p", null, wait.prompt),
           wait.context && h("pre", { style: { whiteSpace: "pre-wrap" } }, wait.context),
+          wait.artifactRefs?.length > 0 && h("p", null, `涉及文件或产物：${wait.artifactRefs.join("、")}`),
           wait.kind === "user" && h("p", { className: "sa-muted" }, wait.expiresAt ? `业务截止时间 ${new Date(wait.expiresAt).toLocaleString()}` : "此问题默认不自动超时；答案只回答问题，不批准动作。"),
           wait.kind === "permission" && h("p", { className: "sa-muted" }, `审批到期 ${wait.expiresAt ? new Date(wait.expiresAt).toLocaleString() : "未记录"}${expired ? " · 已过期，需要重新核验后生成新审批" : ""}`),
           expired && h("button", { type: "button", disabled: busy || wait.status !== "waiting", onClick: () => void work(async () => { setReceipt(await controller.renewApproval(wait)); })() }, "重新核验并创建新审批"),
@@ -1375,6 +1541,7 @@ ${COMPOSER_CSS}`;
             h("button", { type: "button", disabled: busy || !root || wait.status !== "waiting", onClick: () => void refreshVersions() }, "读取项目可用版本"),
             h("label", null, "补件快照", h("select", { "aria-label": "补件快照", value: snapshotId, disabled: busy, onChange: event => selectVersion(event.target.value) }, h("option", { value: "" }, "选择已发布版本"), ...snapshots.map(item => h("option", { key: item.snapshotId, value: item.snapshotId }, `${item.snapshotId} · ${item.rootHash}`)))),
             h("label", null, "源文件", h("select", { "aria-label": "源文件", value: sourcePath, disabled: busy, onChange: event => setPath(event.target.value) }, h("option", { value: "" }, "选择快照内文件"), ...files.map(item => h("option", { key: item.path, value: item.path }, `${item.path} · ${item.hash}`)))),
+            snapshotId && sourcePath && h("p", { className: "sa-muted" }, `已选源文件：${sourcePath}`),
             h("label", null, "补件用途", h("select", { "aria-label": "补件用途", value: provisionMode, disabled: busy, onChange: event => setProvisionMode(event.target.value) }, h("option", { value: "current_wait" }, "补给当前等待"), h("option", { value: "new_branch" }, "从原输入创建独立验证分支"))),
             provisionMode === "new_branch" && h("p", { className: "sa-muted" }, "新版本必须包含原缺失路径。新分支沿用原模型和权限，原等待保留；新任务可能排队，创建回执不表示完成。"),
             h("button", { type: "button", disabled: busy || wait.status !== "waiting" || !snapshotId || !files.some(item => item.path === sourcePath) || (provisionMode === "new_branch" && sourcePath !== wait.fileInput?.path), onClick: () => void submit({ snapshotId, sourcePath, ...(provisionMode === "new_branch" ? { mode: "new_branch" } : {}) })() }, provisionMode === "new_branch" ? "提供文件并创建独立验证分支" : "提供此版本的真实文件")) : wait.kind === "permission" ?
@@ -1429,10 +1596,13 @@ ${COMPOSER_CSS}`;
           h("p", { className: "sa-muted" }, "关系来自实际委派、报告和原输入独立重试事实。子任务终态与报告接收是两个状态，打开详情不会重复交付。"), error && h("p", { className: "sa-error", role: "alert" }, error),
           graph && !relations.length && h("p", null, "当前没有已记录的委派或报告关系"),
           ...relations.map(edge => h("p", { key: `${edge.kind}:${edge.factId}`, className: "sa-muted" }, `${{ parent_run: "父子任务", delegation: "委派", report_delivery: "报告路由关联", origin_run: "原输入独立重试" }[edge.kind]}：${edge.fromId} → ${edge.toId} · 事实 ${edge.factId}`)),
-          ...(graph?.nodes || []).filter(node => node.kind === "run" && ids.has(node.runId)).map(node => h("div", { className: "sa-run-card", key: node.runId }, h("p", null, `任务 ${node.runId} · ${node.status || "未知"} · 会话 ${node.conversationId || "未知"}`), h("button", { type: "button", disabled: busy || !node.conversationId, onClick: () => void inspect(node) }, "只读查看任务／报告详情"))),
+          ...(graph?.nodes || []).filter(node => node.kind === "run" && ids.has(node.runId)).map(node => h("div", { className: "sa-run-card", key: node.runId }, h("p", null, `任务 ${node.runId} · ${node.status || "未知"} · 会话 ${node.conversationId || "未知"}`), h("button", { type: "button", disabled: busy || !node.conversationId, onClick: () => void inspect(node) }, "查看任务／报告详情"))),
           detailError && h("p", { role: "alert", className: "sa-error" }, detailError),
-          detail && h("details", { open: true }, h("summary", null, `只读任务 ${detail.run.runId} · ${detail.run.status}`), h("p", null, detail.run.error || detail.run.answer || "尚无终态正文"),
+          detail && h("details", { open: true }, h("summary", null, `任务 ${detail.run.runId} · ${detail.run.status}`), h("p", null, detail.run.error || detail.run.answer || "尚无终态正文"),
             h("p", { className: "sa-muted" }, `冻结模型 ${detail.run.frozenModel?.provider || "未知"}/${detail.run.frozenModel?.modelId || "未知"} · 文件执行根 ${detail.run.fileBinding?.cwd || "无／未知"}`),
+            Delegations && s.taskFeatures?.delegationsV1 === true && detail.run.threadId === s.selected.threadId && h(Delegations, {
+              key: JSON.stringify([s.targetId, s.coreInstanceId, s.taskScope, detail.run.threadId, detail.run.conversationId, detail.run.runId]),
+              targetId: s.targetId, threadId: detail.run.threadId, conversationId: detail.run.conversationId, runId: detail.run.runId }),
             ...detail.reports.map(fact => h("p", { className: "sa-muted", key: fact.factId }, `报告 ${fact.payload.reportId} · ${fact.payload.status} · 原父任务 ${fact.payload.originalParentRunId || "未知"} · 接收任务 ${fact.payload.recipientRunId || "未接收"} · 已接收 ${fact.payload.receivedAt || "未记录"} · 已处理 ${fact.payload.processedAt || "未记录"}`)),
             !detail.reports.length && h("p", { className: "sa-muted" }, "此任务轨迹尚无报告接收事实；不能仅凭子任务完成判定已交付。"),
             h("details", null, h("summary", null, `持久消息 · ${detail.messages.length}`), ...detail.messages.map(message => h("article", { key: message.messageId, className: "sa-message", "data-role": message.role }, h("strong", null, message.role),
@@ -1443,6 +1613,11 @@ ${COMPOSER_CSS}`;
       function Space() {
         const snapshot = useSpace(), runMetrics = useRunMetrics(snapshot), s = { ...snapshot, runMetrics }, end = React.useRef(null), scroller = React.useRef(null), savedScroll = React.useRef(0), hero = !s.selected && !s.messages.length;
         const [tab, setTab] = React.useState("messages"), [atBottom, setAtBottom] = React.useState(true), [traceFocus, setTraceFocus] = React.useState(null);
+        const [threadDialog, setThreadDialog] = React.useState(null);
+        const openThreadControl = action => {
+          setOptionsOpen(false);
+          setThreadDialog({ action, threadId: s.selected.threadId, targetId: s.targetId });
+        };
         const [processOpen, setProcessOpen] = React.useState({}), [optionsOpen, setOptionsOpen] = React.useState(false);
         const surface = React.useRef(null), [available, setAvailable] = React.useState(1000), [expanded, setExpanded] = React.useState(false);
         const reviewLayout = diffLayout(available, s.diffWidth, expanded);
@@ -1462,18 +1637,42 @@ ${COMPOSER_CSS}`;
         React.useEffect(() => { if (tab === "messages" && scroller.current) scroller.current.scrollTop = savedScroll.current; }, [tab]);
         React.useEffect(() => { if (!s.selected && tab === "trace") setTab("messages"); }, [s.selected, tab]);
         const current = s.threads.find(t => t.threadId === s.selected?.threadId);
-        const groups = groupChatRuns(s.messages, s.live.map(message => ({ ...message, live: true })));
-        const openEvent = message => {
+        const pendingWaits = (s.waits || []).filter(wait => wait.status === "waiting" && wait.conversationId === s.selected?.conversationId);
+        const mainId = current?.mainConversationId || s.thread?.mainConversationId;
+        const onBranch = !!(mainId && s.selected?.conversationId && s.selected.conversationId !== mainId);
+        React.useEffect(() => { if (onBranch) void controller.loadBranches().catch(() => {}); }, [onBranch, s.selected?.conversationId, s.targetId]);
+        const sourceId = s.branches?.find(item => item.conversationId === s.selected?.conversationId)?.forkedFromConversationId;
+        const groups = groupChatRuns(s.messages, s.live.map(message => ({ ...message, live: true })), pendingWaits);
+        const jumpToWait = wait => {
+          const card = surface.current?.ownerDocument.getElementById(`sa-wait-${wait.waitId}`);
+          if (!card || !surface.current.contains(card)) return;
+          card.focus({ preventScroll: true });
+          card.scrollIntoView({ block: "start" });
+        };
+        const traceReturn = React.useRef(null);
+        const openEvent = (message, trigger) => {
           if (!message.runId) return;
+          traceReturn.current = { messageId: message.messageId, trigger, targetId: s.targetId, threadId: s.selected.threadId, conversationId: s.selected.conversationId, top: scroller.current?.scrollTop || 0 };
           setTraceFocus({ targetId: s.targetId, threadId: s.selected.threadId, conversationId: s.selected.conversationId,
             runId: message.runId, turnId: message.turnId || null, messageId: message.messageId || null, factId: message.factId || null });
           setTab("trace");
         };
+        React.useEffect(() => {
+          if (tab !== "messages" || !traceReturn.current) return;
+          const back = traceReturn.current; traceReturn.current = null;
+          if (back.targetId !== s.targetId || back.threadId !== s.selected?.threadId || back.conversationId !== s.selected?.conversationId) return;
+          const node = back.trigger?.isConnected ? back.trigger : Array.from(surface.current?.querySelectorAll("[data-trace-message]") || []).find(el => el.dataset.traceMessage === back.messageId);
+          savedScroll.current = back.top;
+          if (scroller.current) scroller.current.scrollTop = back.top;
+          node?.focus({ preventScroll: true }); node?.scrollIntoView({ block: "nearest" });
+        }, [tab, s.targetId, s.selected?.threadId, s.selected?.conversationId]);
         const activeRunId = [...(s.runDetails || [])].reverse().find(r => r.status === "completed" && r.fileBinding)?.runId;
         const fish = primitives.FISH_LOGO_VIEWBOX;
         return h("div", { ref: surface, className: "sa-space", style: { "--sa-diff-width": `${reviewLayout.width}px` }, "data-super-agent-space": true, "data-diff-open": Boolean(s.diffSelection && !tracing), "data-diff-expanded": Boolean(s.diffSelection && !tracing && reviewLayout.full) }, h("style", null, CSS),
           h("header", { className: "sa-space-header", "data-blank": hero, "data-window-drag": true },
             !hero && h("span", { className: "sa-header-title" }, current ? title(s, current) : "会话"),
+            onBranch && h("span", { className: "sa-crumb" }, `分支 ${s.selected.conversationId.slice(-8)}${sourceId ? " · 来源 " + (sourceId === mainId ? "主对话" : sourceId.slice(-8)) : ""}`),
+            onBranch && h("button", { type: "button", className: "sa-chip", onClick: () => void run(() => controller.selectThread(current?.threadId || s.selected.threadId, mainId)) }, "返回主对话"),
             tracing && h("span", { className: "sa-crumb sa-crumb-current" }, "Trace"),
             h("span", { style: { flex: "1 1 auto" } }),
             h("div", { className: "sa-header-actions", "data-window-no-drag": true },
@@ -1485,22 +1684,23 @@ ${COMPOSER_CSS}`;
             h("button", { className: "sa-chip", onClick: () => { controller.reportError(""); void controller.refresh(); } }, "重试")),
           s.historyError && h("div", { className: "sa-error", role: "alert" }, s.historyError, h("button", { className: "sa-chip", onClick: () => void controller.refresh() }, "重试历史")),
           h("main", { ref: scroller, className: "sa-scroll", "data-hero": hero, onScroll: event => {
+            if (tracing) return;
             savedScroll.current = event.currentTarget.scrollTop;
             setAtBottom(event.currentTarget.scrollHeight - event.currentTarget.scrollTop - event.currentTarget.clientHeight < 48);
           } },
             tracing && ConversationTrace && h("div", { className: "sa-message-list", "data-super-agent-trace-page": true }, h(Boundary || React.Fragment, { key: `trace:${s.targetId}:${s.selected.conversationId}` },
               h(ConversationTrace, { conversationId: s.selected.conversationId, threadId: s.selected.threadId, targetId: s.targetId,
-                title: current ? title(s, current) : s.selected.conversationId, threadTitle: current ? title(s, current) : s.selected.threadId,
+                title: current ? title(s, current) : "会话轨迹", conversationRuns: s.thread?.runs || s.runDetails || [],
                 messages: s.messages, initialFocus: traceFocus, controller,
                 onOpenConversation: conversationId => void controller.selectThread(s.selected.threadId, conversationId) }))),
-            !tracing && s.selected && s.taskFeatures?.backgroundTasksV1 && (s.backgroundTasks?.length || s.taskReadError || s.taskFeatures?.taskCreation?.schedules) ? h("section", { className: "sa-message-list", "aria-label": "后台任务", style: { flex: "none", maxHeight: "35vh", overflowY: "auto" } },
-              h("strong", null, "后台任务"), s.taskFeatures?.taskCreation?.schedules && h(ScheduleForm, { key: s.targetId + ":" + s.selected.conversationId, s }), s.taskReadError && h("p", { role: "alert" }, s.taskReadError),
-              ...s.backgroundTasks.filter(task => task.conversationId === s.selected.conversationId).map(task => h(BackgroundCard, { key: s.targetId + ":" + task.taskId, task, s }))) : null,
+            !tracing && s.selected && s.taskFeatures?.backgroundTasksV1 && (s.backgroundTasks?.length || s.taskReadError || s.taskReceiptNotice || s.pendingTaskOperations?.length || s.taskFeatures?.taskSchedulesV1 && s.taskFeatures?.taskCreation?.schedules) ? h("section", { className: "sa-message-list", "aria-label": "后台任务", style: { flex: "none", maxHeight: "35vh", overflowY: "auto" } },
+              h("strong", null, "后台任务"), s.taskReceiptNotice && h("p", { role: "status" }, s.taskReceiptNotice), ...(s.pendingTaskOperations || []).map(record => h(PendingTaskCommand, { key: record.payload.requestId, record })),
+              s.taskFeatures?.taskSchedulesV1 && s.taskFeatures?.taskCreation?.schedules && h(ScheduleForm, { key: s.targetId + ":" + s.selected.conversationId, s }), s.taskReadError && h("p", { role: "alert" }, s.taskReadError),
+              ...s.backgroundTasks.filter(task => task.conversationId === s.selected.conversationId).map(task => h(BackgroundCard, { key: s.taskScope + ":" + task.taskId, task, s }))) : null,
             !tracing && s.goal && h("div", { className: "sa-message-list", style: { flex: "none", paddingBottom: 0 } }, h(GoalCard, { key: s.goal.goalId, s })),
             hero && h("div", { className: "sa-hero" }, fish && h("svg", { className: "sa-hero-logo", viewBox: `0 0 ${fish.width} ${fish.height}`, "aria-hidden": true }, h("path", { d: primitives.FISH_LOGO_PATH, fill: "currentColor" })),
               h("span", null, "探索未至之境"), h("span", { className: "sa-badge" }, "Super Agent")),
             !hero && !tracing && (s.executions || []).filter(item => item.status === "unknown").map(execution => h("div", { className: "sa-message-list", key: `execution:${s.targetId}:${execution.executionId}`, style: { flex: "none", paddingBottom: 0 } }, h(Boundary || React.Fragment, null, h(ExecutionVerification, { execution })))),
-            !hero && !tracing && (s.waits || []).filter(wait => wait.status === "waiting").map(wait => h("div", { className: "sa-message-list", key: `wait:${s.targetId}:${wait.waitId}`, style: { flex: "none", paddingBottom: 0 } }, h(Boundary || React.Fragment, null, h(WaitCard, { wait, root: s.root })))),
             !hero && !tracing && h("div", { className: "sa-message-list", "aria-live": "polite" },
               ...groups.map(group => h(ChatRunGroup, { key: group.key, s, group,
                 processOpen: processOpen[group.key] === true,
@@ -1508,19 +1708,34 @@ ${COMPOSER_CSS}`;
                 onEvent: openEvent, onOpenDiff: runId => void run(() => controller.openDiff(runId)) })),
               h("div", { ref: end }),
               !atBottom && h("button", { type: "button", className: "sa-latest", onClick: () => { setAtBottom(true); savedScroll.current = 0; end.current?.scrollIntoView({ block: "end" }); } }, "返回最新内容")),
-            hero && h(Composer, { s })),
-          !hero && !tracing && h(Composer, { s }),
+            hero && h(Composer, { s, openThreadControl })),
+          !hero && !tracing && pendingWaits.length > 0 && h("nav", { className: "sa-wait-links", "aria-label": "当前对话待处理" },
+            ...pendingWaits.map(wait => h("button", { key: wait.waitId, type: "button", className: "sa-chip",
+              "aria-controls": `sa-wait-${wait.waitId}`, onClick: () => jumpToWait(wait) },
+              waitShortcut(wait, (s.thread?.runs || s.runDetails || []).filter(run => run.conversationId === wait.conversationId))))),
+          !tracing && s.waitReceipt?.targetId === s.targetId && s.waitReceipt?.conversationId === s.selected?.conversationId && s.waitReceipt &&
+            h("p", { className: "sa-control-notice", role: "status" }, `已接收${s.waitReceipt.title} · ${s.waitReceipt.waitId}。实际状态以任务记录为准。`),
+          !hero && !tracing && h(Composer, { s, openThreadControl }),
           !tracing && s.diffSelection && h(Boundary || React.Fragment, { key: `diff:${s.targetId}:${s.selected?.conversationId}:${s.diffSelection.runId}` }, h(DiffPanel, { s, layout: reviewLayout, expanded, onResize: width => controller.setDiffWidth(width), onExpand: () => setExpanded(value => !value) })),
+          s.goalsSupported && s.goalCancelIntent?.targetId === s.targetId && s.goalCancelIntent?.conversationId === s.selected?.conversationId && s.goalCancelIntent &&
+            h(Modal, { open: true, title: "永久取消目标？", closeLabel: "保留目标", onClose: controller.dismissGoalCancel,
+              description: `“${s.goalCancelIntent.objective}”取消后无法恢复。需要暂时中断时，可以改用“暂停目标”。`,
+              footer: h("div", { className: "sa-dialog-footer" }, h(Button, { onClick: controller.dismissGoalCancel }, "保留目标"),
+                h(Button, { disabled: s.goalBusy, onClick: () => void run(controller.confirmGoalCancel) }, "确认永久取消")) }),
+          threadDialog && threadDialog.threadId === s.selected?.threadId && threadDialog.targetId === s.targetId &&
+            h(ThreadControlDialog, { key: `${s.targetId}:${threadDialog.threadId}`, s, initialAction: threadDialog.action, close: () => setThreadDialog(null) }),
+          s.threadControlNotice?.threadId === s.selected?.threadId && s.threadControlNotice?.targetId === s.targetId && s.threadControlNotice &&
+            h("p", { className: "sa-control-notice", role: "status" }, s.threadControlNotice.message),
           h(Modal, { open: optionsOpen, onClose: () => setOptionsOpen(false), closeLabel: "关闭", title: "会话选项" },
             h("div", { className: "sa-dialog-body" },
-              h("div", { className: "sa-dialog-footer" }, ...["pause", "resume", "stop"].map(action => h("button", { key: action, type: "button", className: "sa-chip", disabled: s.busy || deleted(s), onClick: () => void run(() => controller.controlThread(action)) }, ({ pause: "暂停", resume: "恢复", stop: "停止" })[action])),
+              h("div", { className: "sa-dialog-footer" }, h("button", { type: "button", className: "sa-chip", disabled: deleted(s), onClick: () => openThreadControl("") }, "查看 Thread 状态与控制"),
                 h("button", { type: "button", className: "sa-chip", disabled: deleted(s) || !s.runDetails?.some(t => t.runId === s.contextView?.latestRunId && t.status === "completed"), onClick: () => void run(() => controller.compactConversation(s.contextView.latestRunId)) }, "显式压缩最近已完成任务"),
                 h("button", { type: "button", className: "sa-chip", onClick: () => void controller.refresh() }, "只读刷新状态")),
               s.contextView?.compactionOperation && h("section", { "aria-label": "最近压缩状态" },
                 h("p", { role: "status" }, compactionStatusLabel(s.contextView.compactionOperation)),
                 s.contextView.compactionOperation.reason && h("details", null, h("summary", null, "压缩状态详情"), h("p", null, s.contextView.compactionOperation.reason))),
               h(BranchList, { s, onOpen: conversationId => void run(() => controller.selectThread(s.selected.threadId, conversationId)), onLoad: () => void run(() => controller.loadBranches()) }),
-              s.selected && h(TaskGraph, { s }))),
+              s.selected && h(TaskGraph, { key: JSON.stringify([s.targetId, s.coreInstanceId, s.taskScope, s.selected.threadId, s.selected.conversationId]), s }))),
           h(Modal, { open: s.inspector, onClose: () => controller.setInspector(false), closeLabel: "关闭", title: "运行与观测" },
             s.inspector && h("div", { className: "sa-observation-dialog" }, h(Boundary || React.Fragment, null, h(Panel)))));
       }

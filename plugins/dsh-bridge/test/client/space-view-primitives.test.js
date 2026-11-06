@@ -77,6 +77,7 @@ function allNodes(value, output = []) {
 
 function buildView({ workspaceForm = false, directoryBrowser, threads, runEffects = false, managedDirectories = [], models } = {}) {
   const snapshot = {
+    attachmentCapabilities: { supported: true, inputPreview: true, projectFiles: true, skillSelection: true },
     ready: true, loaded: true, error: "", busy: false, draft: "", root: "/workspace", modelId: "model-a",
     models: models || [{ id: "model-a", selectable: true }], directories: [{ root: "/workspace" }],
     viewOptions: { grouping: "group", threadOrder: "updated", archiveFilter: "hide" },
@@ -219,15 +220,15 @@ describe("Super Agent Space uses injected DSH UI primitives", () => {
     view.snapshot.thread = { threadId: "thread-1", status: "running", activeRuns: ["run-1"], runs: [] };
     view.snapshot.conversation = {
       conversationId: "conversation-1", configRevision: "effective-r1",
-      config: { cwd: "/workspace", modelId: "model-a", thinkingLevel: "low", modelSource: "conversation_override" },
-      pendingConfig: { configRevision: "pending-r2", blockingRunId: "run-1", config: { modelId: "model-b", thinkingLevel: "high" } },
+      config: { cwd: "/workspace", modelId: "model-a", thinkingLevel: "low", modelSource: "conversation_override", permissionMode: "approve_all" },
+      pendingConfig: { configRevision: "pending-r2", blockingRunId: "run-1", config: { modelId: "model-b", thinkingLevel: "high", permissionMode: "workspace_auto" } },
     };
     view.snapshot.runDetails = [{ runId: "run-1", conversationId: "conversation-1", status: "running",
       frozenModel: { modelId: "model-a", thinkingLevel: "low" } }];
     const primitiveTypes = new Set(Object.values(view.primitives));
     view.React.beginRender();
     const tree = render(view.Space(), primitiveTypes);
-    expect(includesText(tree, "当前 Model A · low")).toBe(true);
+    expect(includesText(tree, "当前 Model A · low · 逐项审批；待生效：Model B · high · 工作区自动")).toBe(true);
     expect(includesText(tree, "新选择将在当前任务结束后生效")).toBe(true);
     expect(includesText(tree, "待任务 run-1")).toBe(false);
     expect(allNodes(tree).find(node => node.props?.["aria-label"] === "Super Agent 模型").props.children).toContain("Model B");
@@ -495,7 +496,7 @@ describe("formal composer attachment interactions", () => {
     expect(attachmentMenu.props.items.map(item => item.label)).toEqual(["添加图片或文件", "引用项目文件"]);
     expect(nodes.find(node => node.props?.["aria-label"] === "选择本次任务使用的 Skill")).toBeTruthy();
     expect(nodes.find(node => node.props?.["aria-label"] === "发送").props.disabled).toBeFalsy();
-    expect(nodes.find(node => node.props?.["aria-label"] === "停止")).toBeTruthy();
+    expect(nodes.find(node => node.props?.["aria-label"] === "停止")).toBeFalsy();
     expect(includesText(draw(view), "材料类型")).toBe(false);
     expect(includesText(draw(view), "查看本次上下文")).toBe(true);
   });
@@ -542,4 +543,27 @@ describe("formal composer attachment interactions", () => {
     expect(includesText(tree, "original.png")).toBe(true); expect(includesText(tree, "已接收")).toBe(true);
     expect(includesText(tree, "模型已理解")).toBe(false); expect(includesText(tree, "请求和 Trace 记录为准")).toBe(true);
   });
+});
+
+it.each([
+  ["full", { supported: true, projectFiles: true, skillSelection: true, inputPreview: true }, ["upload", "project"], true, true],
+  ["attachments without Skills", { supported: true, projectFiles: true, skillSelection: false, inputPreview: true }, ["upload", "project"], false, true],
+  ["upload without project files or preview", { supported: true, projectFiles: false, skillSelection: true, inputPreview: false }, ["upload"], true, false],
+  ["failed capability read", null, [], false, false],
+])("exposes just the negotiated %s composer actions with an existing draft", async (label, capabilities, actions, skill, preview) => {
+  const view = buildView();
+  view.snapshot.attachmentCapabilities = capabilities;
+  view.snapshot.attachmentCapabilityError = capabilities ? "" : "test unavailability";
+  view.snapshot.draft = "草稿保持"; view.snapshot.attachments = [{ id: "kept", name: "old.txt", status: "ready", size: 10 }];
+  view.controller.loadAttachmentCapabilities = vi.fn(async () => capabilities);
+  view.React.beginRender();
+  const root = render(view.Space(), new Set(Object.values(view.primitives))), nodes = allNodes(root);
+  const menu = nodes.find(n => n.type === view.primitives.Menu && n.props.anchor?.props?.["aria-label"] === "添加附件");
+  expect(menu?.props.items.map(i => i.id) || []).toEqual(actions);
+  expect(nodes.some(n => n.props?.["aria-label"] === "选择本次任务使用的 Skill")).toBe(skill);
+  expect(nodes.some(n => n.type === "button" && includesText(n, "查看本次上下文"))).toBe(preview);
+  expect(nodes.some(n => n.type === "textarea" && n.props.value === "草稿保持")).toBe(true);
+  const retry = nodes.find(n => n.type === "button" && includesText(n, "重新检测"));
+  if (!capabilities) { retry.props.onClick(); await Promise.resolve(); expect(view.controller.loadAttachmentCapabilities).toHaveBeenCalledWith({ force: true }); }
+  else expect(retry).toBeUndefined();
 });

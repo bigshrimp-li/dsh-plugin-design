@@ -155,3 +155,26 @@ describe("goal composer", () => {
     value.controller.dispose();
   });
 });
+
+it("requires confirmation for typed cancellation, preserves the draft on dismissal, and refuses a changed revision", async () => {
+  const value = fixture();
+  await value.controller.refresh();
+  value.controller.setDraft("/goal cancel");
+  await value.controller.send();
+  expect(value.controller.getSnapshot().goalCancelIntent).toMatchObject({ goalId: "g1", revision: 4, objective: "迁移" });
+  expect(value.requests.some(call => call.action === "goal.cancel")).toBe(false);
+  value.controller.dismissGoalCancel();
+  expect(value.controller.getSnapshot().draft).toBe("/goal cancel");
+  await value.controller.send();
+  value.setGoal({ ...value.getGoal(), revision: 5 });
+  await value.controller.refresh();
+  await expect(value.controller.confirmGoalCancel()).rejects.toThrow("修订已变化");
+  expect(value.requests.some(call => call.action === "goal.cancel")).toBe(false);
+  await value.controller.send();
+  await value.controller.confirmGoalCancel();
+  const cancellations = value.requests.filter(call => call.action === "goal.cancel");
+  expect(cancellations).toHaveLength(1);
+  expect(cancellations[0].payload).toMatchObject({ goalId: "g1", expectedRevision: 5 });
+  expect(value.controller.getSnapshot().goal.status).toBe("running");
+  value.controller.dispose();
+});

@@ -27,6 +27,7 @@ import { createObservationService } from "./observation-service.js";
 import { createLocalArtifactService } from "./local-artifacts.js";
 import { createFileDecisionActions } from "./file-decisions-service.js";
 import { createLocalUploadService } from "./local-uploads.js";
+import { createDelegationActions } from "./delegation-service.js";
 import { createBackgroundActions } from "./background-service.js";
 import { createGoalActions } from "./goal-service.js";
 export const CORE_ROUTE_PREFIX = "/super-agent";
@@ -62,7 +63,7 @@ const COMMANDS = new Set([
   "conversation.discardPending",
   "conversation.compact",
   "input.submit",
-  "task.cancel", "task.detach", "schedule.create", "schedule.pause", "schedule.resume", "schedule.cancel",
+  "delegation.cancel", "task.cancel", "task.detach", "schedule.create", "schedule.pause", "schedule.resume", "schedule.cancel",
   "goal.create", "goal.update", "goal.steer", "goal.pause", "goal.resume", "goal.cancel",
   "wait.answer",
   "wait.resolve",
@@ -243,8 +244,13 @@ export function createCoreService({ client, settingsClient, options, now = () =>
    * is what makes "what the panel can do" a list that can be read in one place
    * and asserted in one place.
    */
+  const scopeFor = async payload => {
+    const identity = await managedWorkspaceIdentity(payload);
+    return JSON.stringify([payload.targetId ?? null, identity.instanceId || [options.socketPath, identity.serverPid, identity.serverStartedAt], options.actorId || "local-core"]);
+  };
   const operations = {
-    ...createBackgroundActions({ client, attempt, requireText, optional }),
+    ...createDelegationActions({ client, attempt, requireText, optional, scopeFor, error: (code, message) => new CoreServiceError(code, message) }),
+    ...createBackgroundActions({ client, attempt, requireText, optional, cacheHome: options.localCacheHome || options.home, scopeFor }),
     ...createGoalActions({ client, attempt, error: (code, message) => new CoreServiceError(code, message) }),
     ...createFileDecisionActions({ client, attempt }),
     "files.capabilities": () => attempt(() => client.files.capabilities()),

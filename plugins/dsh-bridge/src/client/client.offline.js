@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
   chunk: "client.offline.js",
   factory() {
     /** The action ids the notice's controls raise through the facade. */
-    const ACTIONS = { reconnect: "core.reconnect", startCore: "core.start", openConfig: "core.openConfig" };
+    const ACTIONS = { reconnect: "core.reconnect" };
 
     const zh = {
       "offline.title": "Agent Core 未连接",
@@ -107,8 +107,6 @@ window.__ModuleLoader__.load({
             "div",
             { className: "sap-actions" },
             h(ActionBtn, { id: ACTIONS.reconnect, variant: "solid" }, t("offline.reconnect")),
-            h(ActionBtn, { id: ACTIONS.startCore }, t("offline.startCore")),
-            h(ActionBtn, { id: ACTIONS.openConfig }, t("offline.openConfig")),
           ),
           h(
             "div",

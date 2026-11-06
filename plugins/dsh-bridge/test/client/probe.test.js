@@ -39,6 +39,7 @@ await import("../../src/client/client.settings.js");
 await import("../../src/client/client.settings-content.js");
 await import("../../src/client/client.file-decisions.js");
 await import("../../src/client/client.trace.js");
+await import("../../src/client/client.delegations.js");
 await import("../../src/client/index.js");
 
 /** One registered chunk factory, by the chunk file it was loaded from. */
@@ -103,6 +104,7 @@ const CHUNK_FILES = {
   "./client.settings.js": "client.settings.js",
   "./client.settings-content.js": "client.settings-content.js",
   "./client.file-decisions.js": "client.file-decisions.js",
+  "./client.delegations.js": "client.delegations.js",
   "./client.trace.js": "client.trace.js",
 };
 

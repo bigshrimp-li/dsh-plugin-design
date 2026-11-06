@@ -104,7 +104,7 @@ describe("Conversation Trace page", () => {
     view.draw(); view.flushEffects(); await Promise.resolve(); await Promise.resolve();
     const tree = view.draw();
     expect(text(tree)).toContain("目标推进");
-    expect(text(tree)).toContain("目标 goal-a");
+    expect(text(tree)).toContain("关联目标");
     expect(allNodes(tree).some(node => node.type === "button" && text(node).includes("goal-a"))).toBe(false);
   });
   it("locates a fact, links only final messages to it, and exposes a typed Conversation relation", async () => {
@@ -154,9 +154,9 @@ describe("Conversation Trace page", () => {
     expect(body).toContain("FINAL_ANSWER");
     expect(body).not.toContain("INTERMEDIATE_TEXT");
     expect(body).toContain("事实 tool-fact");
-    expect(body).toContain("打开 Conversation conversation-0");
+    expect(body).toContain("打开来源对话");
 
-    const relation = allNodes(finalTree).find(node => node.type === "button" && text(node).includes("打开 Conversation conversation-0"));
+    const relation = allNodes(finalTree).find(node => node.type === "button" && text(node).includes("打开来源对话"));
     relation.props.onClick();
     expect(onOpenConversation).toHaveBeenCalledWith("conversation-0");
     expect(graph).toHaveBeenCalledWith("thread-1");
@@ -180,7 +180,7 @@ describe("Conversation Trace page", () => {
     await Promise.resolve();
     const body = text(view.draw());
     expect(body).toContain("深链身份与当前页面不一致");
-    expect(body).toContain("选择 Run、Turn 或事实查看详情");
+    expect(body).toContain("选择任务、执行步骤或事件查看详情");
   });
 
   it("keeps a failed content read inside the selected fact detail", async () => {
@@ -240,19 +240,55 @@ describe("Conversation Trace page", () => {
     await vi.waitFor(() => expect(text(view.draw())).toContain("Run run-1"));
 
     const focus = vi.fn();
-    const open = allNodes(view.draw()).find(node => node.type === "button" && text(node) === "Run 详情");
+    const open = allNodes(view.draw()).find(node => node.type === "button" && text(node) === "任务详情");
     open.props.onClick({ currentTarget: { focus } });
     expect(text(view.draw())).toContain("关闭详情");
 
     const close = allNodes(view.draw()).find(node => node.type === "button" && node.props?.["aria-label"] === "关闭 Trace 详情");
     close.props.onClick();
     expect(focus).toHaveBeenCalledOnce();
-    expect(text(view.draw())).toContain("选择 Run、Turn 或事实查看详情");
+    expect(text(view.draw())).toContain("选择任务、执行步骤或事件查看详情");
 
     open.props.onClick({ currentTarget: { focus } });
     const aside = allNodes(view.draw()).find(node => node.type === "aside" && node.props?.["aria-label"] === "Trace 节点详情");
     aside.props.onKeyDown({ key: "Escape", preventDefault: vi.fn() });
     expect(focus).toHaveBeenCalledTimes(2);
-    expect(text(view.draw())).toContain("选择 Run、Turn 或事实查看详情");
+    expect(text(view.draw())).toContain("选择任务、执行步骤或事件查看详情");
   });
+});
+
+it.each([[null, "https-target"], ["https-target", null]])("rejects Trace focus from target %s on target %s even if Conversation and Run IDs match", (origin, destination) => {
+  const view = harness({ read: async () => page([]), graph: async () => ({ nodes: [], edges: [] }),
+    props: { conversationId: "conversation-1", threadId: "thread-1", targetId: destination,
+      initialFocus: { targetId: origin, conversationId: "conversation-1", threadId: "thread-1", runId: "duplicate-id" } } });
+  expect(text(view.draw())).toContain("已拒绝跨目标定位");
+});
+
+it("keeps the authoritative round, task title and partial coverage visible while IDs and statistics stay inside collapsed diagnostics", async () => {
+  const raw = { factId: "opaque-fact-28", type: "run", threadId: "opaque-thread", conversationId: "opaque-conversation",
+    runId: "opaque-run", turnId: "opaque-turn", occurredAt: "2026-11-06T12:00:00Z", payload: { status: "completed" } };
+  const result = { ...page([raw]), conversationId: raw.conversationId, queryId: "opaque-query", watermark: "opaque-watermark",
+    coverage: { state: "partial", missingFields: ["model_attempt.inputTokens"], reason: "历史记录缺失" } };
+  const view = harness({ read: async () => result, graph: async () => ({ nodes: [], edges: [] }), props: {
+    title: "发布检查", conversationId: raw.conversationId, threadId: raw.threadId, targetId: null,
+    conversationRuns: [{ runId: "earlier-run", conversationId: raw.conversationId }, { runId: raw.runId, conversationId: raw.conversationId }],
+    messages: [{ runId: raw.runId, role: "user", kind: "user", text: "检查发布凭据" }],
+  } });
+  view.draw(); view.flushEffects();
+  await vi.waitFor(() => expect(text(view.draw())).toContain("opaque-watermark"));
+  const tree = view.draw();
+  function visible(value) {
+    if (Array.isArray(value)) return value.map(visible).join(" ");
+    if (value?.type === "details" && !value.props.open) return visible(value.props.children.find(child => child?.type === "summary"));
+    if (value?.type === "style") return "";
+    if (value && typeof value === "object") return visible(value.props.children);
+    return typeof value === "string" ? value : "";
+  }
+  const ordinary = visible(tree), diagnoses = allNodes(tree).find(n => n.type === "details" && text(n).includes("轨迹诊断详情"));
+  expect(ordinary).toContain("第 2 轮 · 检查发布凭据");
+  expect(ordinary).toContain("覆盖 部分"); expect(ordinary).toContain("model_attempt.inputTokens"); expect(ordinary).toContain("历史记录缺失");
+  for (const id of ["opaque-watermark", "opaque-query", raw.conversationId, raw.threadId, raw.runId, raw.turnId]) {
+    expect(ordinary).not.toContain(id); expect(text(diagnoses)).toContain(id);
+  }
+  expect(diagnoses.props.open).toBeFalsy();
 });

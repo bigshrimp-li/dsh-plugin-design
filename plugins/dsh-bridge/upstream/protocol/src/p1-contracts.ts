@@ -1044,6 +1044,8 @@ export type DelegationStatus = "created" | "running" | "completed" | "failed" | 
 export type DelegationDeliveryState = "pending" | "incorporated" | "processed" | "suppressed";
 
 export type DelegationView = {
+  /** Absent on legacy runtimes; clients display read-only details in that case. */
+  readonly allowedActions?: readonly "cancel"[];
   readonly id: string;
   readonly parentConversationId: string;
   readonly parentRunId: string;
