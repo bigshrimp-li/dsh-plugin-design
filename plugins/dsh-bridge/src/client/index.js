@@ -378,10 +378,6 @@ window.__ModuleLoader__.load({
       ctx.effect(() => ctx.locale.register(shell.LOCALE_NS, dictionaries), "dsh-bridge: dictionaries");
       shell.bindTranslate(ctx.locale.bind(shell.LOCALE_NS));
 
-      for (const module of [shell, main, runPanel, offline, observe, observationDetail]) {
-        if (module?.demoFixture !== undefined) services.registerFixtures(module.demoFixture);
-      }
-
       const trace = modules.trace.createTrace({ kernel, services });
       const workspaceTools = {};
       const space = modules.space.createSpace({ workspaceTools, kernel, services, transport, ctx, primitives, createSpaceView: options => modules.spaceView.createSpaceView({ ...options, Delegations: modules.delegations?.createDelegations(options) }), ConversationTrace: trace.ConversationTrace,

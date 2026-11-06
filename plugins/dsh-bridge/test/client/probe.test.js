@@ -337,22 +337,6 @@ describe("dsh-bridge client bundle", () => {
     }
   });
 
-  it("gives each page its own demo area, with no area claimed twice", async () => {
-    const { plugin, ctx } = activate();
-    const result = await plugin.activate(ctx, undefined);
-    expect(result.services.fixtureConflicts()).toEqual([]);
-    expect(result.services.fixtureAreas().sort()).toEqual([
-      "composer",
-      "delegations",
-      "observationDetail",
-      "observe",
-      "offline",
-      "recovery",
-      "run",
-      "snapshot",
-    ]);
-  });
-
   it("fails the activation when a chunk the interface cannot be drawn without is missing", async () => {
     const chunks = shippedChunks();
     chunks["./client.shell.js"] = null;
@@ -489,16 +473,12 @@ describe("dsh-bridge client bundle", () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort());
   });
 
-  it("hands the pages no fixture content until demo is explicitly on", async () => {
+  it("registers no demo data on the production activation path", async () => {
     const { plugin, ctx } = activate();
     const result = await plugin.activate(ctx, undefined);
-    expect(result.services.fixtureAreas()).toContain("composer");
+    expect(result.services.fixtureAreas()).toEqual([]);
     expect(result.services.fixture("composer")).toBeNull();
     result.services.setDemo(true);
-    expect(result.services.fixture("composer")).toEqual({
-      model: "go-main",
-      thinking: "medium",
-      permission: "workspace_auto",
-    });
+    expect(result.services.fixture("composer")).toBeNull();
   });
 });
