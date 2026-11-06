@@ -40,4 +40,14 @@
 - 仓库根：`npm run check`、`npm test`。插件目录：`npm pack --dry-run`。
 - 使用已构建的 Core checkout 设置 `SUPER_AGENT_SOURCE_ROOT`；使用官方 DSH Electron 设置 `DSH_ELECTRON`。在插件目录分别执行 `npm run test:host`、`npm run test:core`、`npm run test:goal-host-core`、`npm run test:background-host-core`、`npm run test:settings-host-core`、`npm run test:workspace-host-core`、`npm run test:delegation-host-core`。这些入口与默认单测分别执行。
 - 日常人工复验使用当前 DSH 的目标和模型。选择合成附件，检查预检后发送，处理问题与写入审批，从已完成消息查看差异、回传、Trace 并返回。另起一轮拒绝写入，在所属 Run 的产物清单核对零项。
-- 历史升级要在官方 rc.3 写入旧草稿，再用相同的历史 profile 在 rc.5 运行；不能降级正在使用的个人桌面。设置双端版本冲突、丢回执、CLI 故障等破坏性用例也使用测试记录。真实界面截图、个人历史、模型凭据不进入 Git 或分发包。
+- 历史升级要在官方 rc.3 写入旧草稿，再用相同的历史 profile 在 rc.5 运行；不能降级正在使用的个人桌面。按[原生分发验证说明](../../test/desktop/README.md)执行 `npm run test:desktop-install`：全新 rc.5 的输入框向专用 Go 发消息，核对回复的持久 Run；再检查旧版拒绝和原数据保留。设置冲突与故障注入使用测试记录。真实界面截图、个人历史、模型凭据不进入 Git 或分发包。
+
+### 正式桌面所选 HTTPS Go 服务的控制回读
+
+2026-11-07 在桌面当前配对的本机 7444 HTTPS Go Core 上，使用已安装插件的 Host 和公开 SDK 运行了[显式验收入口](../../test/desktop/live-thread-controls.mjs)。每次执行都创建带“验收”标题的新 Thread。该入口需显式传入选中的 HTTPS origin、场景名和报告的绝对路径；不会随普通测试运行。
+
+- **SA-03**：在主 Conversation 与 fork 分别形成真实 ask_user 等待。重建 Host 后读到相同 waitId。回答主线后，fork 中另一个 Run 的等待仍是 waiting，同 requestId 返回原回执。独立的周期计划审批有持久到期时间。重连后拒绝，Go 返回 answered 和 decision=deny，原 Run 随后 completed，计划数为零。permission 类型的 answer 字段可保存拒绝理由，展示时应看 kind 和 decision。
+- **SA-04**：暂停带有两个活动等待、两个排队输入的 Thread，回读为 paused_by_user。恢复时显式选择一项 drop、一项 run，continueRunIds 为空，startedRunIds 也为空；所选 Run 会等占用该 Conversation 的先前 Run 结束。再次在两个 Conversation 各产生一个等待，且 fork 有未首发的计划。停止 Thread 后，两个 Run、两个 Wait 和计划均为 cancelled；Thread 本身回读为 paused_by_user。重连后沿用原停止请求，收到相同回执。当前 activeRuns 和 waiting 均为零。
+- **SA-05**：新 Goal 暂停后回读 paused，累计 token 限额从 20,000 提高至 20,500，补充说明后仍为 paused。恢复后回读 running，永久取消后回读 cancelled。同键重放暂停、取消都得到原回执；此控制场景实际模型请求与已结算 token 均为零。
+- **当前桌面的文件与长历史**：真实附件预检后，模型问到了文件里的验收口令。允许写入的 Run 有一个新增文件，差异为三行，回传后实际字节一致；随后拒绝写入的 Run 产物清单为空。四轮完成后，第五轮提问可从输入区一次定位；切走后恢复同一个等待，回答后归档。进入第五轮 Trace 再返回，焦点回到该消息的按钮，未发送草稿逐字保留。
+- **覆盖边界**：当前服务对无工作区的 bash 提案在工具环境解析阶段结束，未产生审批。另以计划提案验证拒绝，以专用验收目录验证实际写入。补交缺失文件另用真实 Go 和公开 SDK 测试；正式服务未人工等到审批超时。确认弹窗退出与窄屏布局另有界面测试。
