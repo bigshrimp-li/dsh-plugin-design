@@ -35,6 +35,8 @@
 | SA-13 发布验收 | 原生桌面、Host 与 Go、组件宽度验证分别记录；普通用户路径使用当前桌面。历史升级和故障注入另用专用数据。 | 本页验证命令和发布检查；历史评审截图不计为本次通过。 |
 | SA-14 委派 | 在父任务查看真实委派的子任务状态与报告交付，按 Go 返回的 allowedActions 操作单条记录。 | [委派接口、权限和回执](../2026-11-07-delegation-details/spec.md)；[Core 配套 MR](https://github.com/bigshrimp-li/agent-loop-core/pull/6)。 |
 
+主对话的分支列表优先读取 Go 在 Thread 上保存的分支索引；当前分支的来源取自 Conversation 的直接父关系。轨迹图可能只覆盖部分事实，不适合作为新分支是否存在的依据。在旧实例上仍可读取已有轨迹，并提示覆盖范围。当前正式桌面的验收分支和主草稿在 Go 与 DSH 重启后都能恢复。
+
 ## 复验
 
 - 仓库根：`npm run check`、`npm test`。插件目录：`npm pack --dry-run`。

@@ -710,6 +710,23 @@ describe("independent Super Agent space controller", () => {
     value.controller.dispose();
   });
 
+  it("uses the Thread's durable fork index for empty and nested branches while observation coverage lags", async () => {
+    const main = "conversation-1", child = "empty-fork", nested = "nested-fork";
+    const value = await refreshed({ summaries: [{ threadId: "thread-1", mainConversationId: main }], action: {
+      "thread.get": async () => response({ result: { threadId: "thread-1", mainConversationId: main, runs: [], conversationBranches: [
+        { conversationId: child, parentConversationId: main }, { conversationId: nested, parentConversationId: child },
+      ] } }),
+    } });
+    const graph = vi.fn(() => { throw Error("projection dirty"); });
+    value.services.observations = { graph };
+    await value.controller.selectThread("thread-1", main);
+    expect((await value.controller.loadBranches()).map(row => [row.conversationId, row.forkedFromConversationId])).toEqual([[main, null], [child, main], [nested, child]]);
+    await value.controller.selectThread("thread-1", nested);
+    expect((await value.controller.loadBranches()).find(row => row.conversationId === nested).forkedFromConversationId).toBe(child);
+    expect(graph).not.toHaveBeenCalled();
+    value.controller.dispose();
+  });
+
   it("keeps a draft and pending selection when model or thinking changes fail", async () => {
     const pending = { configRevision: "pending-r2", blockingRunId: "run-a", config: { modelId: "model-a", thinkingLevel: "low" } };
     const value = await refreshed({ action: {

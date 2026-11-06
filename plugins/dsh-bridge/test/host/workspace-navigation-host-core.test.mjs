@@ -56,6 +56,8 @@ describe.skipIf(!process.versions.electron || !process.env.SUPER_AGENT_SOURCE_RO
       try {
         await reloaded.refresh();
         expect(reloaded.getSnapshot()).toMatchObject({ selected: { threadId, conversationId: branch.conversationId }, draft: "分支单独草稿" });
+        await second.selectThread(threadId, mainConversationId);
+        expect(await second.loadBranches()).toContainEqual(expect.objectContaining({ conversationId: branch.conversationId, forkedFromConversationId: mainConversationId }));
         await second.selectThread(threadId, branch.conversationId);
         for (const c of [reloaded, second]) {
           const branches = await c.loadBranches();

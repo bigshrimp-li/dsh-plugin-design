@@ -6,7 +6,7 @@
 
 当前插件版本为 0.1.3，支持 DSH 0.2.1-rc.5。连接支持后台任务的 Go Core 后，在 Conversation 的“后台任务”区域可转后台、查看退出码和分流日志、停止任务或创建有限期的周期检查。服务关闭新建时，已有任务仍可查看和停止。参见[宿主验收与操作说明](docs/2026-11-05-background-tasks/spec.md)和[后台任务 SDK 来源](provenance/sdk-background-tasks-2026-11-05.json)。
 
-Go 提供 `delegationsV1` 时，可以在父任务详情中查看单条真实委派、区分子任务状态和报告交付，并仅取消选中的委派。见[委派管理与验收](docs/2026-11-07-delegation-details/spec.md)和[当前 SDK 快照](provenance/sdk-delegations-2026-11-07.json)。
+Go 提供 `delegationsV1` 时，可以在父任务详情中查看单条真实委派、区分子任务状态和报告交付，并仅取消选中的委派。见[委派管理与验收](docs/2026-11-07-delegation-details/spec.md)和[当前 SDK 快照](provenance/sdk-conversation-branches-2026-11-07.json)。
 
 当前桌面的升级路径、14 张 ticket 和复验入口见[工作区 UI 与 Go 发布验收](docs/2026-11-07-workspace-ui/spec.md)。
 

@@ -1262,20 +1262,34 @@ window.__ModuleLoader__.load({
         },
         async loadBranches() {
           if (!state.selected) throw new Error("请先选择对话");
-          if (!services.observations?.graph) throw new Error("当前连接没有分支查询能力");
           const at = epoch, selected = state.selected;
           set({ branchLoading: true, branchError: "" });
           try {
-            const graph = await services.observations.graph(selected.threadId);
+            // The Thread owns its fork index. An observation graph can lag behind a successful fork.
+            const thread = await call("thread.get", { threadId: selected.threadId });
+            const mainId = thread?.mainConversationId || state.threads.find(item => item.threadId === selected.threadId)?.mainConversationId;
+            const durable = Array.isArray(thread?.conversationBranches);
+            const graph = !durable && services.observations?.graph ? await services.observations.graph(selected.threadId) : null;
             if (disposed || at !== epoch || state.selected?.conversationId !== selected.conversationId) return [];
-            const forkEdges = new Map((graph?.edges || []).filter(edge => edge.kind === "fork").map(edge => [edge.toId, edge.fromId]));
-            const mainId = state.thread?.mainConversationId || state.threads.find(item => item.threadId === selected.threadId)?.mainConversationId;
-            const nodes = (graph?.nodes || []).filter(node => node.kind === "conversation" && node.conversationId &&
-              (node.conversationId === mainId || node.conversationId === selected.conversationId || forkEdges.has(node.conversationId)));
-            const branches = nodes.map(node => ({ conversationId: node.conversationId, main: node.conversationId === mainId,
-              forkedFromConversationId: forkEdges.get(node.conversationId) || null, startedAt: node.startedAt || null }));
-            if (mainId && !branches.some(item => item.main)) branches.unshift({ conversationId: mainId, main: true, forkedFromConversationId: null });
-            set({ branches, branchError: "", branchesLoaded: true, branchLoading: false });
+            const rows = new Map();
+            function add(id, parent = null, startedAt = null) {
+              if (id) rows.set(id, { conversationId: id, main: id === mainId,
+                forkedFromConversationId: parent || rows.get(id)?.forkedFromConversationId || null,
+                startedAt: startedAt || rows.get(id)?.startedAt || null });
+            }
+            add(mainId);
+            if (durable) for (const row of thread.conversationBranches) add(row.conversationId, row.parentConversationId);
+            else {
+              const edges = new Map((graph?.edges || []).filter(edge => edge.kind === "fork").map(edge => [edge.toId, edge.fromId]));
+              for (const node of graph?.nodes || []) if (node.kind === "conversation" && (node.conversationId === mainId || node.conversationId === selected.conversationId || edges.has(node.conversationId)))
+                add(node.conversationId, edges.get(node.conversationId), node.startedAt);
+              for (const [child, parent] of edges) add(child, parent);
+            }
+            add(selected.conversationId, state.conversation?.conversationId === selected.conversationId ? state.conversation.parentConversationId : null);
+            const branches = [...rows.values()];
+            set({ branches, branchError: !durable && !graph ? "当前连接未提供完整分支列表" : "",
+              branchCoverageNote: !durable && graph?.coverage?.state === "partial" ? "轨迹只覆盖部分对话；列表可能不完整。" : "",
+              branchesLoaded: true, branchLoading: false });
             return branches;
           } catch (error) {
             if (at === epoch) set({ branchError: error.message, branchLoading: false });

@@ -682,11 +682,12 @@ ${COMPOSER_CSS}
         return h("details", { className: "sa-run-card sa-branch-list", "aria-label": "对话分支",
           onToggle: event => { if (event.currentTarget.open && !s.branchesLoaded && !s.branchLoading) onLoad(); } },
           h("summary", null, s.branchesLoaded ? `对话分支 · ${branches.length}` : s.branchLoading ? "读取对话分支…" : "对话分支 · 查找空分支"),
+          s.branchesLoaded && s.branchCoverageNote && h("p", { className: "sa-muted" }, s.branchCoverageNote),
           s.branchError && h("p", { role: "alert", className: "sa-error" }, `分支读取失败：${s.branchError}`, h("button", { type: "button", className: "sa-chip", onClick: onLoad }, "重试")),
           s.branchesLoaded && !branches.length && !s.branchError && h("p", null, "当前 Thread 没有其他分支"),
           ...branches.map(branch => h("div", { className: "sa-branch-row", key: branch.conversationId },
             h("code", null, branch.main ? "主对话" : `分支 ${branch.conversationId.slice(-8)}`),
-            branch.forkedFromConversationId && h("span", { className: "sa-muted" }, `来源 ${branch.forkedFromConversationId.slice(-8)}`),
+            branch.forkedFromConversationId && h("span", { className: "sa-muted" }, `来源 ${branches.some(row => row.main && row.conversationId === branch.forkedFromConversationId) ? "主对话" : "分支 " + branch.forkedFromConversationId.slice(-8)}`),
             branch.conversationId === s.selected?.conversationId ? h("span", { "aria-current": "page" }, "当前对话") : h("button", { type: "button", className: "sa-chip", "aria-label": branch.main ? "返回主对话" : `打开分支 ${branch.conversationId}`, onClick: () => onOpen(branch.conversationId) }, branch.main ? "返回主对话" : "打开"))),
           h("p", { className: "sa-muted" }, "消息分支只复制对话历史，不自动回滚文件。文件回滚需在对应 Run 的改动侧栏确认。"));
       }
@@ -1641,7 +1642,9 @@ ${COMPOSER_CSS}
         const mainId = current?.mainConversationId || s.thread?.mainConversationId;
         const onBranch = !!(mainId && s.selected?.conversationId && s.selected.conversationId !== mainId);
         React.useEffect(() => { if (onBranch) void controller.loadBranches().catch(() => {}); }, [onBranch, s.selected?.conversationId, s.targetId]);
-        const sourceId = s.branches?.find(item => item.conversationId === s.selected?.conversationId)?.forkedFromConversationId;
+        const sourceId = (s.conversation?.conversationId === s.selected?.conversationId && s.conversation?.parentConversationId)
+          || s.thread?.conversationBranches?.find(row => row.conversationId === s.selected?.conversationId)?.parentConversationId
+          || s.branches?.find(item => item.conversationId === s.selected?.conversationId)?.forkedFromConversationId;
         const groups = groupChatRuns(s.messages, s.live.map(message => ({ ...message, live: true })), pendingWaits);
         const jumpToWait = wait => {
           const card = surface.current?.ownerDocument.getElementById(`sa-wait-${wait.waitId}`);
@@ -1671,7 +1674,7 @@ ${COMPOSER_CSS}
         return h("div", { ref: surface, className: "sa-space", style: { "--sa-diff-width": `${reviewLayout.width}px` }, "data-super-agent-space": true, "data-diff-open": Boolean(s.diffSelection && !tracing), "data-diff-expanded": Boolean(s.diffSelection && !tracing && reviewLayout.full) }, h("style", null, CSS),
           h("header", { className: "sa-space-header", "data-blank": hero, "data-window-drag": true },
             !hero && h("span", { className: "sa-header-title" }, current ? title(s, current) : "会话"),
-            onBranch && h("span", { className: "sa-crumb" }, `分支 ${s.selected.conversationId.slice(-8)}${sourceId ? " · 来源 " + (sourceId === mainId ? "主对话" : sourceId.slice(-8)) : ""}`),
+            onBranch && h("span", { className: "sa-crumb" }, `分支 ${s.selected.conversationId.slice(-8)}${sourceId ? " · 来源 " + (sourceId === mainId ? "主对话" : "分支 " + sourceId.slice(-8)) : s.branchesLoaded ? " · 来源未提供" : ""}`),
             onBranch && h("button", { type: "button", className: "sa-chip", onClick: () => void run(() => controller.selectThread(current?.threadId || s.selected.threadId, mainId)) }, "返回主对话"),
             tracing && h("span", { className: "sa-crumb sa-crumb-current" }, "Trace"),
             h("span", { style: { flex: "1 1 auto" } }),
