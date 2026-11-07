@@ -27,6 +27,7 @@ await import("../../src/client/client.settings.js");
 await import("../../src/client/client.settings-content.js");
 await import("../../src/client/client.file-decisions.js");
 await import("../../src/client/client.trace.js");
+await import("../../src/client/client.delegations.js");
 await import("../../src/client/index.js");
 
 /** One registered chunk factory, by the chunk file it was loaded from. */
@@ -364,27 +365,13 @@ describe("dsh-bridge client bundle", () => {
       expect(render(badge, slotProps(t))).toContain("Core ready");
     });
 
-    it("injects that state from the settings surface, which is the only entry to it", () => {
+    it("keeps real connection state read-only in diagnostics", () => {
       const { services, shell, components } = buildShell();
       const t = translate(shell.dictionary.zh);
       const settings = mount(components.get("settings.plugins.tab"), slotProps(t));
 
-      const click = (label) => {
-        const button = elementsOf(settings.tree()).find(
-          (node) => node.type === "button" && textOf(node.props.children).includes(label),
-        );
-        expect(button, `no control labelled "${label}"`).toBeDefined();
-        button.props.onClick();
-      };
-
-      click("开启");
-      expect(services.viewState.get().demo).toBe(true);
-      click("关闭");
-      expect(services.viewState.get().demo).toBe(false);
-      click("Core ready");
-      expect(services.viewState.get().connection).toBe("ready");
-      click("Offline");
-      expect(services.viewState.get().connection).toBe("offline");
+      expect(elementsOf(settings.tree()).some(node => node.type === "button")).toBe(false);
+      expect(services.viewState.get()).toMatchObject({ demo: false, connection: "offline" });
     });
 
     it("refuses a second module's claim on an area another one already declared", () => {
@@ -536,7 +523,7 @@ describe("dsh-bridge client bundle", () => {
       const available =
         chunks ??
         Object.fromEntries(
-          ["client.styles.js", "client.services.js", "client.shell.js", "client.space.js", "client.space-view.js", "client.settings.js", "client.settings-content.js", "client.file-decisions.js", "client.trace.js"].map((file) => [
+          ["client.styles.js", "client.services.js", "client.shell.js", "client.space.js", "client.space-view.js", "client.settings.js", "client.settings-content.js", "client.file-decisions.js", "client.trace.js", "client.delegations.js"].map((file) => [
             `./${file}`,
             chunkFactories.get(file)(),
           ]),

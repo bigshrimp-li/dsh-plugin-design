@@ -54,8 +54,12 @@
     "test:unit": "vitest run",
     "test:core": "node scripts/test-core.mjs",
     "test:goal-host-core": "npm run build && node scripts/test-goal-host-core.mjs test/host/goal-host-core.test.mjs",
+    "test:workspace-host-core": "npm run build && node scripts/test-goal-host-core.mjs test/host/workspace-navigation-host-core.test.mjs",
+    "test:delegation-host-core": "npm run build && node scripts/test-goal-host-core.mjs test/host/delegation-host-core.test.mjs",
+    "test:settings-host-core": "npm run build && node scripts/test-goal-host-core.mjs test/host/settings-host-core.test.mjs",
     "test:background-host-core": "npm run build && node scripts/test-goal-host-core.mjs test/host/background-host-core.test.mjs",
-    "test:host": "npm run build && node scripts/test-host.mjs"
+    "test:host": "npm run build && node scripts/test-host.mjs",
+    "test:desktop-install": "node test/desktop/install-upgrade.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

@@ -7,7 +7,7 @@ const { createSettingsContent } = loaded.pop().factory();
 const h = (type, props, ...children) => ({ type, props: { ...props, children } });
 const text = value => Array.isArray(value) ? value.map(text).join(" ") : value && typeof value === "object" ? text(value.props?.children) : String(value ?? "");
 
-function fixture(handler, section = "workspace", executeEffects = false) {
+function fixture(handler, section = "workspace", executeEffects = false, sourceRunId) {
   const hooks = [], effects = [], calls = [], errors = [], notes = [], snapshots = [], runtime = { root: "/project", contextView: { latestRunId: "run-a" }, selected: { conversationId: "conversation-a" } };
   let cursor = 0, nextId = 0;
   const React = { Fragment: Symbol("fragment"), useSyncExternalStore: (_subscribe, read) => read(), useEffect(fn, deps) {
@@ -29,16 +29,16 @@ function fixture(handler, section = "workspace", executeEffects = false) {
     return { ...node, props: { ...node.props, children: render(node.props?.children), footer: render(node.props?.footer) } };
   };
   const nodes = (node, out = []) => { if (Array.isArray(node)) node.forEach(item => nodes(item, out)); else if (node && typeof node === "object") { out.push(node); nodes(node.props?.children, out); nodes(node.props?.footer, out); } return out; };
-  const tree = () => { cursor = 0; return render(content[section]({ settings, state })); };
+  const tree = () => { cursor = 0; return render(content[section]({ settings, state, sourceRunId })); };
   const all = () => nodes(tree());
   const click = async label => { const button = all().find(node => node.type === Button && text(node) === label); expect(button, label).toBeTruthy(); expect(button.props.disabled, label).toBeFalsy(); button.props.onClick(); await new Promise(resolve => setTimeout(resolve, 0)); };
   const field = label => { const owner = all().find(node => node.type === "label" && text(node).startsWith(label)); expect(owner, label).toBeTruthy(); return nodes(owner).find(node => ["input", "select", "textarea"].includes(node.type)); };
   const change = (label, value) => field(label).props.onChange({ target: { value } });
   const flush = async () => { for (let index = 0; index < 5; index++) { all(); for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setTimeout(resolve, 0)); } };
   const dispose = () => { for (const hook of hooks) hook?.cleanup?.(); };
-  return { calls, errors, notes, snapshots, state, click, change, all, field, flush, dispose };
+  return { calls, errors, notes, snapshots, state, click, change, all, field, flush, dispose, selectRun: id => { sourceRunId = id; } };
 }
-const artifacts = { inputSnapshot: { snapshotId: "input-a" }, resultSnapshot: { snapshotId: "result-a" }, files: [{ path: "edit.md", kind: "modified", before: { hash: "before" }, after: { hash: "after" } }] };
+const artifacts = { run: { runId: "run-a" }, inputSnapshot: { snapshotId: "input-a" }, resultSnapshot: { snapshotId: "result-a" }, files: [{ path: "edit.md", kind: "modified", before: { hash: "before" }, after: { hash: "after" } }] };
 const operation = { operationId: "operation-a", runId: "run-a", destination: "/destination", items: [{ path: "edit.md", status: "conflict" }] };
 
 describe("production file settings user actions", () => {
@@ -263,4 +263,26 @@ describe("reviewed Skill installation settings", () => {
       expect(ui.all().some(node => text(node) === "按所选项重新预检")).toBe(false);
     } finally { ui.dispose(); }
   });
+});
+
+it("never replaces the selected Run's artifact list with a slower source or a mismatched resource", async () => {
+  let unblock;
+  const delayed = new Promise(resolve => { unblock = resolve; });
+  const resultFor = id => ({ ...artifacts, run: { runId: id }, files: [{ ...artifacts.files[0], path: id + ".txt" }] });
+  const ui = fixture((action, args) => {
+    if (action === "files.applyOperations") return { items: [] };
+    if (action === "files.artifacts") return args.runId === "run-a" ? delayed : resultFor(args.runId === "run-b" ? "run-b" : "foreign");
+    throw Error(action);
+  }, "RunArtifacts", true, "run-a");
+  try {
+    await ui.flush();
+    ui.selectRun("run-b"); await ui.flush();
+    unblock(resultFor("run-a")); await ui.flush();
+    expect(text(ui.all())).toContain("run-b.txt");
+    expect(text(ui.all())).not.toContain("run-a.txt");
+    ui.selectRun("run-c"); await ui.flush();
+    expect(ui.errors).toContain("回传结果不属于当前任务，请重新读取。");
+    expect(text(ui.all())).not.toContain("foreign.txt");
+    expect(ui.calls.some(r => ["files.applyLocal", "files.applyConflict.resolve"].includes(r.action))).toBe(false);
+  } finally { ui.dispose(); }
 });

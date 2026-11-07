@@ -80,6 +80,69 @@ describe.skipIf(!process.versions.electron || !process.env.SUPER_AGENT_SOURCE_RO
     expect((await replay(resumed, checkpoint, shell.taskId)).seq).toBeGreaterThan(checkpoint);
     expect(await readFile(join(f.workspaceRoot, "launches"), "utf8")).toBe("x");
   });
+  it("recovers a dropped Go acknowledgement without duplicating a schedule or crossing principals", async () => {
+    const f = await nativeFixture(backgroundProvider(), enabled), conversationId = f.thread.mainConversationId;
+    const chunks = [];
+    globalThis.window = { __ModuleLoader__: { load: definition => chunks.push(definition) } };
+    await import("../../src/client/client.space.js");
+    const { createSpace } = chunks[0].factory();
+    const memory = new Map([["super-agent.space.v1", JSON.stringify({ selected: { threadId: f.thread.threadId, conversationId } })]]);
+    const storage = { getItem: key => memory.get(key), setItem: (key, value) => memory.set(key, value), removeItem: key => memory.delete(key) };
+    const posted = [];
+    let lookupAvailable = false, drop = true;
+    function browser(bridge) {
+      const fetchImpl = async (url, init = {}) => {
+        if (url.includes("/state")) return { ok: true, json: async () => ({ connection: "ready" }) };
+        const { action, payload } = JSON.parse(init.body);
+        if (action === "task.receipt" && !lookupAvailable) return { ok: true, json: async () => ({ result: { receipt: null } }) };
+        try {
+          const result = await bridge.call(action, payload);
+          if (action === "schedule.create") {
+            posted.push(structuredClone(payload));
+            if (drop) { drop = false; throw new Error("Go 已接收，但客户端断开"); }
+          }
+          return { ok: true, json: async () => ({ result }) };
+        } catch (error) {
+          return { ok: false, status: 503, json: async () => ({ error: { code: error.code || "CONNECTION_LOST", message: error.message } }) };
+        }
+      };
+      return createSpace({ kernel: { h: () => null, React: { createElement: () => null } }, ctx: { layout: { selectPanel() {} } },
+        services: { viewState: { set() {} } }, transport: { call: async () => ({}), nextRequestId: () => crypto.randomUUID() }, storage, fetchImpl, EventSourceImpl: null }).controller;
+    }
+    const first = browser(f.bridge);
+    await first.refresh();
+    const expiresAt = Date.now() + 600000, fields = { target: "build", prompt: "Inspect CI", stopCondition: "CI passed", intervalSec: 300, fireImmediately: false, expiresAt };
+    await expect(first.createTaskSchedule(fields)).rejects.toThrow("结果待确认");
+    const second = browser((await f.reconnect()).bridge);
+    await second.refresh();
+    const [record] = second.getSnapshot().pendingTaskOperations;
+    expect(record.payload).toMatchObject({ expiresAt, requestId: posted[0].requestId, conversationId });
+    await expect(second.createTaskSchedule({ ...fields, target: "changed" })).rejects.toThrow("原操作");
+    second.newConversation("");
+    await expect(second.recoverTaskOperation(record, true)).rejects.toThrow("原对话");
+    await second.selectThread(f.thread.threadId, conversationId);
+    expect(posted).toHaveLength(1);
+    const receipt = await second.recoverTaskOperation(record, true);
+    expect(posted).toHaveLength(2); expect(posted[1]).toEqual(posted[0]);
+    const plans = await f.bridge.call("schedule.list", { conversationId });
+    expect(plans.items).toHaveLength(1);
+    expect(plans.items[0]).toMatchObject({ scheduleId: receipt.resourceId, expiresAt });
+    lookupAvailable = true;
+    expect((await f.bridge.call("task.receipt", { ...posted[0], operation: "schedule.create" })).receipt).toEqual(receipt);
+    await expect(f.bridge.call("schedule.create", { ...posted[0], target: "different" })).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
+    await expect(f.bridge.call("task.receipt", { ...posted[0], taskScope: "another-actor", operation: "schedule.create" })).rejects.toMatchObject({ code: "TASK_SCOPE_CHANGED" });
+    await expect(f.bridge.call("schedule.create", { ...posted[0], taskScope: "another-instance" })).rejects.toMatchObject({ code: "TASK_SCOPE_CHANGED" });
+    expect((await f.bridge.call("schedule.list", { conversationId })).items).toHaveLength(1);
+    // A second lost reply is resolved entirely by read-only lookup after reload.
+    lookupAvailable = false; drop = true;
+    await expect(second.createTaskSchedule({ ...fields, target: "second authorization" })).rejects.toThrow("结果待确认");
+    lookupAvailable = true;
+    const third = browser((await f.reconnect()).bridge);
+    await third.refresh();
+    expect(third.getSnapshot().pendingTaskOperations).toEqual([]);
+    expect(third.getSnapshot().taskReceiptNotice).toContain("已核对");
+    expect(posted).toHaveLength(3);
+  });
   it("creates, follows and controls an authorized schedule through Host actions", async () => {
     const f = await nativeFixture(backgroundProvider(), enabled), conversationId = f.thread.mainConversationId;
     await input(f, "origin", "检查 PR #42 的 CI");
@@ -93,9 +156,18 @@ describe.skipIf(!process.versions.electron || !process.env.SUPER_AGENT_SOURCE_RO
     expect(done.occurrences[0].conversationId).not.toBe(conversationId);
     expect((await f.bridge.call("run.get", { runId: done.occurrences[0].runId })).status).toBe("completed");
     const plan = await f.bridge.call("schedule.create", { ...request, requestId: "later", fireImmediately: false });
+    const taskScope = await f.bridge.call("task.scope", {});
+    let current = await f.bridge.call("schedule.get", { scheduleId: plan.resourceId });
+    await expect(f.bridge.call("schedule.pause", { scheduleId: plan.resourceId, conversationId, taskScope,
+      expectedRevision: current.revision + 1, requestId: "wrong-revision" })).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
     for (const [method, status] of [["pause", "paused"], ["resume", "active"], ["cancel", "cancelled"]]) {
-      await f.bridge.call("schedule." + method, { scheduleId: plan.resourceId, requestId: method });
-      expect((await f.bridge.call("schedule.get", { scheduleId: plan.resourceId })).status).toBe(status);
+      const fields = { scheduleId: plan.resourceId, conversationId, taskScope, requestId: method, expectedRevision: current.revision };
+      const ack = await f.bridge.call("schedule." + method, fields);
+      expect((await f.bridge.call("task.receipt", { ...fields, operation: "schedule." + method })).receipt).toEqual(ack);
+      await expect(f.bridge.call("task.receipt", { ...fields, expectedRevision: current.revision + 100, operation: "schedule." + method })).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
+      current = await f.bridge.call("schedule.get", { scheduleId: plan.resourceId });
+      expect(current.status).toBe(status);
+      expect((await f.bridge.call("task.list", { conversationId })).items.find(t => t.taskId === plan.resourceId)).toMatchObject({ status: current.status, revision: current.revision });
     }
     expect((await f.bridge.call("schedule.list", { conversationId })).items.map(p => p.scheduleId).sort()).toEqual([plan.resourceId, receipt.resourceId].sort());
   });

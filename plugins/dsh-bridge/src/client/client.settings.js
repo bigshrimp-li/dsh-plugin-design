@@ -39,16 +39,36 @@ window.__ModuleLoader__.load({
     }
     function createSettingsController({ transport, onTargetChanged, onTargetForgotten, fetchImpl = globalThis.fetch, storage = globalThis.localStorage }) {
       let state = { section: "connection", targets: [], selectedId: null, compatibilityUds: true, baseline: null, draft: null, version: null, instanceId: null,
-        changes: [], unconfirmedOperation: false, busy: false, error: "", note: "", operation: null, conflict: null, catalog: [], loaded: false, resources: {}, mcpChecks: {} };
+        executionConnection: "checking", configConnection: "checking", legacyDraft: false, changes: [], unconfirmedOperation: false, busy: false, error: "", note: "", operation: null, conflict: null, catalog: [], loaded: false, resources: {}, mcpChecks: {} };
       const listeners = new Set(); let epoch = 0, pendingApply = null;
-      const storageKey = (target = state.selectedId, instance = state.instanceId) => `super-agent.settings-draft.v1.${target || "uds"}.${instance || "unknown"}`;
-      const persistDraft = () => { try { if (!state.instanceId) return; if (state.changes.length || pendingApply) storage?.setItem(storageKey(), JSON.stringify({ baseline: state.baseline, draft: state.draft, version: state.version, operation: state.operation, pendingApply })); else storage?.removeItem(storageKey()); } catch {} };
+      const legacyKey = (target, instance) => `super-agent.settings-draft.v1.${target || "uds"}.${instance || "unknown"}`;
+      const storageKey = (target = state.selectedId, instance = state.instanceId) => {
+        const actor = state.targets.find(item => item.id === target)?.actorId;
+        return legacyKey(target, instance) + (actor ? "." + encodeURIComponent(actor) : "");
+      };
+      const persistDraft = (required = false) => {
+        try {
+          if (!state.instanceId || !state.baseline || !state.draft) return;
+          if (state.changes.length || pendingApply) {
+            if (!storage && required) throw new Error("本机存储不可用");
+            storage?.setItem(storageKey(), JSON.stringify({ baseline: state.baseline, draft: state.draft, version: state.version, operation: state.operation, pendingApply }));
+          } else storage?.removeItem(storageKey());
+        } catch (error) { if (required) throw error; }
+      };
       const hasUnconfirmedOperation = () => !!pendingApply || !!(state.operation && !["succeeded", "failed"].includes(state.operation.status));
       const set = patch => { state = { ...state, ...patch }; state.unconfirmedOperation = hasUnconfirmedOperation(); state.changes = changesBetween(state.baseline, state.draft); persistDraft(); for (const listener of listeners) listener(); };
       const call = async (action, payload = {}) => {
         if (hasUnconfirmedOperation() && (action === "targets.select" || ["targets.save", "targets.logout", "targets.remove"].includes(action) && payload.targetId === state.selectedId)) throw new Error("原配置操作尚未确认；请先查询原操作，再修改、注销、移除或切换目标");
-        if (hasUnconfirmedOperation() && action === "targets.pair" && payload.targetId === state.selectedId) payload = { ...payload, expectedInstanceId: state.instanceId };
-        const response = await fetchImpl("/super-agent/action", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, payload: { ...payload, ...(!action.startsWith("targets.") && (Object.hasOwn(payload, "targetId") ? payload.targetId : state.selectedId) ? { targetId: Object.hasOwn(payload, "targetId") ? payload.targetId : state.selectedId } : {}) } }) });
+        if (hasUnconfirmedOperation() && action === "targets.pair" && payload.targetId === state.selectedId) {
+          const originalActor = state.targets.find(item => item.id === state.selectedId)?.actorId;
+          if (originalActor && payload.actorId !== originalActor) throw new Error("请使用原操作者重新配对并查询原操作。");
+          payload = { ...payload, expectedInstanceId: state.instanceId };
+        }
+        const protectedTarget = !action.startsWith("targets.");
+        const targetId = Object.hasOwn(payload, "targetId") ? payload.targetId : state.selectedId;
+        const selected = state.targets.find(item => item.id === targetId);
+        const scope = protectedTarget ? { targetId, ...(selected?.instanceId && { expectedInstanceId: selected.instanceId }), ...(selected?.actorId && { expectedActorId: selected.actorId }) } : {};
+        const response = await fetchImpl("/super-agent/action", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, payload: { ...scope, ...payload } }) });
         const body = await response.json();
         if (!response.ok) { const error = new Error(body?.error?.message || `HTTP ${response.status}`); error.code = body?.error?.code; throw error; }
         return body.result;
@@ -58,25 +78,37 @@ window.__ModuleLoader__.load({
         const at = ++epoch; set({ busy: true, error: "" });
         try {
           const targets = await call("targets.list"); if (at !== epoch) return;
-          set({ ...targets, loaded: true });
-          const [settings, models] = await Promise.allSettled([call("settings.get"), call("models.list")]); if (at !== epoch) return;
+          const target = targets.targets.find(item => item.id === targets.selectedId);
+          const priorTarget = state.targets.find(item => item.id === state.selectedId);
+          if (state.selectedId !== targets.selectedId || priorTarget?.actorId !== target?.actorId || target?.instanceId && state.instanceId && target.instanceId !== state.instanceId) {
+            pendingApply = null;
+            set({ baseline: null, draft: null, version: null, instanceId: null, operation: null, conflict: null, mcpChecks: {}, catalog: [], resources: {} });
+          }
+          set({ ...targets, loaded: true, executionConnection: "checking", configConnection: "checking" });
+          const canConfigure = !!targets.selectedId && target?.authenticated !== false;
+          const [settings, models, info] = await Promise.allSettled([canConfigure ? call("settings.get") : Promise.resolve(null), call("models.list"), call("server.info")]); if (at !== epoch) return;
+          set({ executionConnection: info.status === "fulfilled" && info.value?.state === "ready" ? "connected" : info.value?.state === "degraded" ? "degraded" : "unavailable",
+            configConnection: !canConfigure ? "unpaired" : settings.status === "fulfilled" && settings.value?.configuration ? "paired" : "unavailable" });
           if (models.status === "fulfilled") set({ catalog: Array.isArray(models.value) ? models.value : models.value?.items || [] });
           if (settings.status === "fulfilled" && settings.value?.configuration) {
             if (preserve && state.draft && state.baseline) {
               const result = mergeDraft(state.baseline, settings.value.configuration, state.draft);
               set({ conflict: { server: settings.value, mine: copy(state.draft), base: copy(state.baseline), ...result } });
             } else {
+              const legacy = legacyKey(state.selectedId, settings.value.instanceId);
+              let legacyDraft = false;
+              try { legacyDraft = storageKey(state.selectedId, settings.value.instanceId) !== legacy && !!storage?.getItem(legacy); } catch {}
               let restored;
               if (!state.baseline && !state.draft) { try { restored = JSON.parse(storage?.getItem(storageKey(state.selectedId, settings.value.instanceId)) || "null"); } catch {} }
               if (restored?.baseline && restored?.draft) {
                 const merged = mergeDraft(restored.baseline, settings.value.configuration, restored.draft);
                 pendingApply = restored.pendingApply || null;
                 set({ baseline: copy(settings.value.configuration), draft: merged.merged, version: settings.value.version, instanceId: settings.value.instanceId,
-                  operation: restored.operation || null, conflict: merged.conflicts.length ? { server: settings.value, mine: restored.draft, base: restored.baseline, ...merged } : null,
+                  operation: restored.operation || null, legacyDraft: false, conflict: merged.conflicts.length ? { server: settings.value, mine: restored.draft, base: restored.baseline, ...merged } : null,
                   note: pendingApply ? "已恢复原配置操作；请先查询原操作。" : "已恢复此目标的未应用草稿；请核对临时凭据有效期后重新审阅。" });
-              } else set({ baseline: copy(settings.value.configuration), draft: copy(settings.value.configuration), version: settings.value.version, instanceId: settings.value.instanceId, conflict: null });
+              } else set({ baseline: copy(settings.value.configuration), draft: copy(settings.value.configuration), version: settings.value.version, instanceId: settings.value.instanceId, legacyDraft, conflict: null });
             }
-          } else set({ error: settings.reason?.message || "当前目标未提供设置合同", baseline: null, draft: null, version: null });
+          } else set({ error: canConfigure ? settings.reason?.message || "配置管理暂时不可用，请检查配对状态。" : "", ...(hasUnconfirmedOperation() || state.changes.length ? {} : { baseline: null, draft: null, version: null }) });
         } catch (error) { if (at === epoch) set({ error: error.message, loaded: true }); }
         finally { if (at === epoch) set({ busy: false }); }
       };
@@ -86,6 +118,17 @@ window.__ModuleLoader__.load({
         catch (error) { set({ error: error.message }); throw error; }
         finally { set({ busy: false }); }
       };
+      async function confirmActivation(operation) {
+        const owner = storageKey(), targetId = pendingApply?.targetId ?? state.selectedId, instanceId = state.instanceId;
+        const view = await call("settings.get", { targetId });
+        if (owner !== storageKey()) return;
+        if (targetId !== state.selectedId || view?.instanceId !== instanceId || !view.configuration || !Number.isInteger(operation.version) || view.version < operation.version) {
+          throw new Error("激活回执已收到，尚未读到原实例的配置版本。请查询原操作。");
+        }
+        pendingApply = null;
+        set({ operation, baseline: copy(view.configuration), draft: copy(view.configuration), version: view.version, conflict: null,
+          note: `配置已激活，版本 ${operation.version}。${view.version > operation.version ? "当前版本 " + view.version + "。" : ""}` });
+      }
       const controller = {
         getSnapshot: () => state, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener); },
         load, call, action, nextRequestId: id,
@@ -97,6 +140,24 @@ window.__ModuleLoader__.load({
           const result = await action("mcp.check", { server });
           if (epoch === at && state.selectedId === targetId && state.instanceId === instanceId) set({ mcpChecks: { ...state.mcpChecks, [server.id]: { server: copy(server), result: copy(result) } } });
           return result;
+        },
+        async restoreLegacyDraft() {
+          if (!state.legacyDraft || hasUnconfirmedOperation() || state.changes.length || !state.selectedId || state.configConnection !== "paired") return;
+          const at = epoch, key = legacyKey(state.selectedId, state.instanceId), actor = state.targets.find(item => item.id === state.selectedId)?.actorId;
+          const saved = JSON.parse(storage?.getItem(key) || "null");
+          if (!saved?.baseline || !saved?.draft) throw new Error("旧版草稿无法读取。");
+          const operationId = saved.pendingApply?.requestId || saved.operation?.operationId;
+          if (operationId) {
+            const original = await call("settings.operation", { operationId });
+            if (!actor || original?.actorId !== actor) throw new Error("当前操作者无法确认旧版操作的归属。");
+          }
+          if (at !== epoch) throw new Error("目标已变化，请返回原设置重新核对。");
+          const merged = mergeDraft(saved.baseline, state.baseline, saved.draft);
+          pendingApply = saved.pendingApply || null;
+          set({ draft: merged.merged, operation: saved.operation || null, legacyDraft: false,
+            conflict: merged.conflicts.length ? { server: { configuration: state.baseline, version: state.version }, mine: saved.draft, base: saved.baseline, ...merged } : null,
+            note: pendingApply ? "旧版操作已恢复，请查询原回执。" : "旧版草稿已恢复，请审阅后应用。" });
+          if (storage?.getItem(storageKey())) storage.removeItem(key);
         },
         edit(update) { if (hasUnconfirmedOperation()) throw new Error("原配置操作尚未确认；请先查询原操作再编辑草稿"); if (!state.draft) return; const draft = copy(state.draft); update(draft); set({ draft }); },
         async abandon() {
@@ -122,24 +183,38 @@ window.__ModuleLoader__.load({
         },
         async stageSecret(secret) { if (hasUnconfirmedOperation()) throw new Error("原配置操作尚未确认；请先查询原操作，再暂存新凭据"); return action("credentials.stage", { requestId: id("credentials.stage"), secret }); },
         async apply() {
-          if (!state.draft || !state.changes.length || state.conflict) return;
+          if (!state.draft || !state.changes.length || state.conflict || hasUnconfirmedOperation() || state.configConnection !== "paired") return;
           if (!pendingApply) pendingApply = { requestId: id("settings.apply"), expectedVersion: state.version, configuration: copy(state.draft), targetId: state.selectedId };
+          try { persistDraft(true); } catch (error) {
+            pendingApply = null; set({ error: "无法保存原配置请求，尚未提交：" + error.message }); return;
+          }
           set({ busy: true, error: "", note: "正在提交配置，接收回执不表示激活成功。" });
+          const owner = storageKey(), record = pendingApply;
           try {
-            const operation = await call("settings.apply", pendingApply); set({ operation });
-            if (operation.status === "succeeded") { pendingApply = null; set({ baseline: null, draft: null }); await load(); set({ note: `完整配置已激活，版本 ${operation.version}。已接收任务保留冻结配置。` }); }
+            const operation = await call("settings.apply", record);
+            if (owner !== storageKey() || pendingApply?.requestId !== record.requestId) return;
+            set({ operation });
+            if (operation.status === "succeeded") await confirmActivation(operation);
             else if (operation.status === "failed") { pendingApply = null; set({ error: `配置未激活：${operation.errorCode || "校验失败"}` }); }
             else set({ note: `配置操作 ${operation.operationId}：${operation.status}。请查询原操作。` });
           } catch (error) {
+            if (owner !== storageKey() || pendingApply?.requestId !== record.requestId) return;
             if (["VERSION_CONFLICT", "CAS_MISMATCH", "REVISION_CONFLICT"].includes(error.code)) { pendingApply = null; await load({ preserve: true }); }
-            else set({ error: `${error.message}。草稿保留；先查询原操作，不要创建新请求。`, operation: { operationId: pendingApply.requestId, status: "unknown" } });
-          } finally { set({ busy: false }); }
+            else set({ error: `${error.message}。草稿保留；先查询原操作，不要创建新请求。`, operation: { operationId: record.requestId, status: "unknown" } });
+          } finally { if (owner === storageKey()) set({ busy: false }); }
         },
         async queryOperation() {
-          const operationId = state.operation?.operationId || pendingApply?.requestId; if (!operationId) return;
-          const operation = await action("settings.operation", { operationId }); set({ operation });
-          if (operation.status === "succeeded") { pendingApply = null; set({ baseline: null, draft: null }); await load(); set({ note: `配置已激活，版本 ${operation.version}` }); }
-          else if (operation.status === "failed") { pendingApply = null; set({ error: `配置未激活：${operation.errorCode}` }); }
+          const owner = storageKey(), operationId = pendingApply?.requestId || state.operation?.operationId;
+          if (!operationId) return;
+          set({ busy: true, error: "" });
+          try {
+            const operation = await call("settings.operation", { operationId });
+            if (owner !== storageKey()) return;
+            set({ operation });
+            if (operation.status === "succeeded") await confirmActivation(operation);
+            else if (operation.status === "failed") { pendingApply = null; set({ error: `配置未激活：${operation.errorCode}` }); }
+          } catch (error) { if (owner === storageKey()) set({ error: error.message }); }
+          finally { if (owner === storageKey()) set({ busy: false }); }
         },
         resolveConflict(choices = {}) {
           const conflict = state.conflict; if (!conflict) return;
@@ -202,9 +277,12 @@ window.__ModuleLoader__.load({
             notice("先保存入口，再配对。认证令牌仅保存在 DSH 宿主，本页不读取令牌。不同 Core 实例须重新配对。"), s.error && h("div", { role: "alert", className: "sa-settings-error" }, s.error)));
       }
       function Connections({ s, setDialog }) {
-        return h(React.Fragment, null, h("div", { className: "sa-settings-row" }, h("div", null, h("h3", null, "连接与环境"), h("p", { className: "sa-settings-muted" }, "本地和远程使用相同的 HTTPS 校验与认证。所有连接用户均可配置和运行。")), button("添加连接", () => setDialog({ type: "target" }))),
+        return h(React.Fragment, null, h("div", { className: "sa-settings-row" }, h("div", null, h("h3", null, "连接与环境"), h("p", { className: "sa-settings-muted" }, "本地和远程使用相同的 HTTPS 校验与认证。配置权限由所选服务和配对身份决定。")), button("添加连接", () => setDialog({ type: "target" }))),
           !s.targets.length && notice("尚未添加 HTTPS Core。先添加入口并配对；空模型目录不影响打开设置。"),
-          s.compatibilityUds && notice("运行区当前使用兼容 UDS 通道。正式配置和密钥管理请添加并选择 HTTPS 目标。"),
+          h("p", { className: "sa-settings-notice" }, s.executionConnection === "connected" ? "执行已连接" : s.executionConnection === "degraded" ? "执行服务受限" : s.executionConnection === "checking" ? "正在检查执行连接" : "执行连接不可用", s.compatibilityUds ? " · 本机 UDS" : s.selectedId ? " · HTTPS" : ""),
+          h("p", { className: "sa-settings-notice" }, s.configConnection === "paired" ? `配置管理已配对 · 配置版本 ${s.version ?? "正在读取"}` : s.configConnection === "unpaired" ? "配置管理需 HTTPS 配对" : s.configConnection === "checking" ? "正在检查配置管理连接" : "配置管理暂时不可用"),
+          s.legacyDraft && h("div", { className: "sa-settings-card" }, notice("此目标留有未记录操作者的旧版草稿。请确认草稿属于当前身份后恢复。"),
+            button("恢复我的旧版草稿", controller.restoreLegacyDraft, { disabled: s.busy || s.unconfirmedOperation || !!s.changes.length })),
           ...s.targets.map(target => h("div", { className: "sa-settings-card", key: target.id }, h("div", { className: "sa-settings-row" }, h("strong", null, target.name), h("span", { className: "sa-settings-tag" }, s.selectedId === target.id ? "当前目标" : target.authenticated ? "已配对" : "未配对")),
             h("p", { className: "sa-settings-muted" }, target.baseUrl), h("p", { className: "sa-settings-muted" }, `实例 ${target.instanceId || "尚未检测"} · 身份 ${target.actorId || "未登录"} · ${target.authenticationState === "expired" ? "登录已过期，请重新配对 · " : ""}${target.customCa ? "自定义 CA" : "系统信任 CA"} · 最近检测 ${target.checkedAt || "尚未检测"}`),
             h("div", { className: "sa-settings-actions" }, button(s.unconfirmedOperation && target.id === s.selectedId ? "重新认证原实例以查询操作" : "编辑／重新配对", () => setDialog({ type: "target", target })), button("检测连接", async () => { const report = await controller.action("targets.test", { targetId: target.id }); controller.note(`检测成功：实例 ${report.instanceId}，协议 ${report.protocolVersion}；证书校验通过。`); }),
@@ -325,7 +403,7 @@ window.__ModuleLoader__.load({
           if (!receipt) throw new Error(`真实任务接收尚未确认：${space.controller.getSnapshot().error || "请在下方保留原输入重试，并核对原请求"}`);
           controller.note("真实任务已提交；接收不代表完成。下方沿用同一任务处理问题、审批与轨迹；产物需读取实际结果版本。");
         } catch (failure) { setError(failure.message); } finally { setBusy(false); } };
-        return h(React.Fragment, null, h("h3", null, "八工具真实运行验证"), notice(`目标 ${s.targets.find(item => item.id === s.selectedId)?.name || "未选择"} · 实例 ${s.instanceId || "未知"} · 有效配置 ${s.version ?? "未知"}。此操作会调用真实模型并产生用量、审批及测试产物。`),
+        return h(React.Fragment, null, h("details", null, h("summary", null, "诊断：八工具真实运行验证"), notice(`目标 ${s.targets.find(item => item.id === s.selectedId)?.name || "未选择"} · 实例 ${s.instanceId || "未知"} · 有效配置 ${s.version ?? "未知"}。此操作会调用真实模型并产生用量、审批及测试产物。`),
           h("div", { className: "sa-settings-grid" },
             h("label", null, "验证模型", h("select", { "aria-label": "验证模型", value: modelId, onChange: event => setModel(event.target.value) }, h("option", { value: "" }, "选择可用模型"), ...(runtime.models || []).map(model => h("option", { key: `${model.provider}:${model.id}`, value: model.id, disabled: model.selectable === false }, `${model.provider}/${model.id}`)))),
             h("label", null, "验证工作区", h("input", { "aria-label": "验证工作区", list: "sa-validation-workspaces", placeholder: "已注册测试项目的绝对路径", value: root, onChange: event => { setRoot(event.target.value); setSnapshots([]); setSnapshot(""); setCaps(null); } }), h("datalist", { id: "sa-validation-workspaces" }, ...(runtime.directories || []).map(item => h("option", { key: item.root, value: item.root })))),
@@ -334,7 +412,7 @@ window.__ModuleLoader__.load({
           notice(`有效配置启用工具：${effective?.tools?.enabled?.join("、") || "未知"}；缺少必需工具：${missingTools.join("、") || "无"}。审批默认 ${effective?.tools?.approval || "未知"}。Skill 与目录以任务冻结请求为准，可在下方实际上下文及轨迹核对。`),
           caps && notice(`已读取真实环境能力。操作系统沙箱：${caps.operatingSystemSandbox ? "有独立沙箱" : "未声明独立沙箱"}；文件范围仍由任务目录与权限检查控制。输入采用固定快照，将创建独立验证分支。`),
           h("div", { className: "sa-settings-actions" }, button("开始八工具真实回归", start, { variant: "primary", disabled: busy || !snapshotId || !root || !modelId || !!missingTools.length || !!s.changes.length }), button("审阅当前任务真实产物", () => controller.setSection("workspace"), { disabled: !runtime.contextView?.latestRunId }), button("打开独立运行区", () => { if (runtime.selected) void space.controller.selectThread(runtime.selected.threadId, runtime.selected.conversationId); else space.controller.newConversation(root); })),
-          error && h("p", { role: "alert", className: "sa-settings-error" }, error),
+          error && h("p", { role: "alert", className: "sa-settings-error" }, error)),
           RuntimeSpace && h("div", { style: { height: "min(720px,75vh)", minHeight: 420, border: "1px solid var(--dsw-alias-border-l3)", borderRadius: 10, marginTop: 16, overflow: "hidden" } }, h(RuntimeBoundary || React.Fragment, { key: `run:${s.selectedId}` }, h(RuntimeSpace))),
           h("details", null, h("summary", null, "服务与观测详情"), h(RuntimeBoundary || React.Fragment, { key: `detail:${s.selectedId}` }, h(Panel))));
       }
@@ -345,14 +423,14 @@ window.__ModuleLoader__.load({
         componentDidCatch(error) { console.error("[super-agent] isolated runtime panel failure", error); }
         render() { return this.state.error ? h("div", { className: "sa-settings-error", role: "alert" }, `运行详情读取失败：${this.state.error.message}`, button("重试运行详情", () => { this.setState({ error: null }); void space.controller.refresh(); })) : this.props.children; }
       };
-      function Settings() {
+      function Settings({ modelSetup = false } = {}) {
         const s = useSettings(), [dialog, setDialog] = React.useState(null), [choices, setChoices] = React.useState({});
         React.useEffect(() => { if (!controller.getSnapshot().loaded) void controller.load(); }, []);
-        const close = () => setDialog(null), editable = !!s.draft;
+        const close = () => setDialog(null), editable = !!s.draft && s.configConnection === "paired";
         const panel = s.section === "connection" ? h(Connections, { s, setDialog }) : s.section === "models" ? h(Models, { s, setDialog }) : s.section === "context" ? h(Context, { s }) : s.section === "tools" ? h(Tools, { s, setDialog }) : s.section === "runtime" ? h(RuntimeValidation, { key: s.selectedId || "uds", state: s }) : content?.[s.section] ? h(content[s.section], { settings: controller, state: s }) : notice(s.section === "skills" ? "Skill 本机／云端内容入口由当前服务能力决定。宿主公开接口没有完整依赖包导出，自动导入不可用；请使用明确选择的目录包。" : "请选择已注册工作区，文件版本与同步入口加载后显示。纯文本聊天无需工作区。");
         return h("section", { className: "sa-settings", "data-super-agent-settings": true, "aria-busy": s.busy }, h("style", null, CSS),
-          h("header", { className: "sa-settings-head" }, h("div", null, h("h2", null, "Super Agent"), h("p", { className: "sa-settings-muted" }, `${s.targets.find(target => target.id === s.selectedId)?.name || (s.instanceId ? "本地 Core" : "未连接")} · 配置版本 ${s.version ?? "未知"}`)), button("刷新", () => s.changes.length ? controller.load({ preserve: true }) : controller.load(), { disabled: s.busy })),
-          h("nav", { className: "sa-settings-nav", role: "tablist", "aria-label": "Super Agent 配置分区" }, ...SECTIONS.map(([id, label]) => h("button", { key: id, type: "button", role: "tab", "aria-selected": s.section === id, onClick: () => controller.setSection(id) }, label))),
+          h("header", { className: "sa-settings-head" }, h("div", null, h("h2", null, "Super Agent"), h("p", { className: "sa-settings-muted" }, `${s.targets.find(target => target.id === s.selectedId)?.name || (s.compatibilityUds ? "本机 UDS" : "未选择目标")} · 配置版本 ${s.version ?? "未知"}`)), button("刷新", () => s.changes.length ? controller.load({ preserve: true }) : controller.load(), { disabled: s.busy })),
+          h("nav", { className: "sa-settings-nav", role: "tablist", "aria-label": "Super Agent 配置分区" }, ...SECTIONS.filter(([id]) => !modelSetup || id === "models" || id === "connection").map(([id, label]) => h("button", { key: id, type: "button", role: "tab", "aria-selected": s.section === id, onClick: () => controller.setSection(id) }, label))),
           h("main", { className: "sa-settings-body", role: "tabpanel" }, s.error && h("div", { className: "sa-settings-error", role: "alert" }, s.error), s.note && h("div", { className: "sa-settings-notice", role: "status" }, s.note), !s.loaded ? notice("正在读取本机入口…") : panel,
             s.operation && notice(`配置操作 ${s.operation.operationId}：${s.operation.status}`), s.unconfirmedOperation && notice("原操作结果尚未确认。请先查询原操作；当前保留原请求、完整草稿和凭据引用，不能放弃或切换目标。"), s.operation && button("查询原操作", controller.queryOperation),
             s.conflict && h("div", { className: "sa-settings-card" }, h("h3", null, `服务器版本已更新为 ${s.conflict.server.version}，草稿已保留`),
@@ -363,8 +441,8 @@ window.__ModuleLoader__.load({
           dialog?.type === "revoke" && h(Modal, { open: true, title: "紧急吊销模型凭据？", onClose: close, closeLabel: "取消", footer: h("div", { className: "sa-settings-actions" }, button("取消", close), button("确认紧急吊销", async () => { const result = await controller.action("credentials.revoke", { requestId: controller.nextRequestId("credentials.revoke"), credentialRef: dialog.credential.credentialRef }); controller.note(`凭据 ${result.credentialRef} 已吊销，操作者 ${result.actorId}。引用旧身份的后续调用会被拒绝，任务不会自动换模型。`); close(); }, { variant: "primary", disabled: s.busy })) }, h("div", { className: "sa-settings sa-settings-editor" }, h("style", null, CSS), notice(`目标实例 ${s.instanceId}；凭据 ${dialog.credential.credentialRef}。吊销会影响所有引用该身份的运行、队列与待生效选择。请先核对下列实际绑定；本页不会猜测未知关联。`), h("pre", null, JSON.stringify(dialog.history, null, 2)))),
           dialog?.type === "target" && h(TargetEditor, { target: dialog.target, close }), dialog?.type === "editor" && h(ModelEditor, { kind: dialog.kind, item: dialog.item, close }),
           ["review", "discard", "switch", "remove"].includes(dialog?.type) && h(Modal, { open: true, title: { review: "审阅完整配置", discard: "放弃未应用更改？", switch: "切换 Core 目标？", remove: "移除本机入口？" }[dialog.type], onClose: s.busy ? () => {} : close, closeLabel: "取消",
-            footer: h("div", { className: "sa-settings-actions" }, button("继续编辑", close, { disabled: s.busy }), button(dialog.type === "review" ? "应用完整配置" : dialog.type === "remove" ? "移除入口" : dialog.type === "switch" ? "放弃草稿并切换" : "放弃草稿", async () => { if (dialog.type === "review") await controller.apply(); else if (dialog.type === "remove") await controller.targetAction("remove", { targetId: dialog.target.id }); else { await controller.abandon(); if (dialog.type === "switch") await controller.targetAction("select", { targetId: dialog.target.id }); } close(); }, { variant: "primary", disabled: s.busy || (dialog.type === "review" && !!s.conflict) })) },
-            h("div", { className: "sa-settings sa-settings-editor" }, h("style", null, CSS), dialog.type === "review" ? h(React.Fragment, null, notice(`目标 ${s.targets.find(target => target.id === s.selectedId)?.name || "UDS 兼容目标"} · 实例 ${s.instanceId} · 基于版本 ${s.version}。成功激活后影响后续任务，当前运行和已接收队列保持原版本。`), ...s.changes.map(change => h("div", { className: "sa-settings-diff", key: change.field }, h("strong", null, change.field), h("pre", null, `${json(change.before)}\n→ ${json(change.after)}`)))) : notice(dialog.type === "remove" ? "只移除本机入口和登录引用。云端任务继续，云端配置、历史和文件不会删除。" : `将放弃 ${s.changes.length} 项未应用配置修改。已发布的普通内容版本继续保留。`))));
+            footer: h("div", { className: "sa-settings-actions" }, button("继续编辑", close, { disabled: s.busy }), button(dialog.type === "review" ? "应用完整配置" : dialog.type === "remove" ? "移除入口" : dialog.type === "switch" ? "保留草稿并切换" : "放弃草稿", async () => { if (dialog.type === "review") await controller.apply(); else if (dialog.type === "remove") await controller.targetAction("remove", { targetId: dialog.target.id }); else if (dialog.type === "switch") await controller.targetAction("select", { targetId: dialog.target.id }); else await controller.abandon(); close(); }, { variant: "primary", disabled: s.busy || (dialog.type === "review" && !!s.conflict) })) },
+            h("div", { className: "sa-settings sa-settings-editor" }, h("style", null, CSS), dialog.type === "review" ? h(React.Fragment, null, notice(`目标 ${s.targets.find(target => target.id === s.selectedId)?.name || "UDS 兼容目标"} · 实例 ${s.instanceId} · 基于版本 ${s.version}。成功激活后影响后续任务，当前运行和已接收队列保持原版本。`), ...s.changes.map(change => h("div", { className: "sa-settings-diff", key: change.field }, h("strong", null, change.field), h("pre", null, `${json(change.before)}\n→ ${json(change.after)}`)))) : notice(dialog.type === "remove" ? "只移除本机入口和登录引用。云端任务继续，云端配置、历史和文件不会删除。" : dialog.type === "switch" ? `这 ${s.changes.length} 项更改会保存在当前目标，返回后可继续审阅。` : `将放弃 ${s.changes.length} 项未应用配置修改。已发布的普通内容版本继续保留。`))));
       }
       return { Settings, controller, registrations: [{ slot: "settings.section", label: "Super Agent settings", options: { name: "settings.section", id: "super-agent", order: 20, label: "Super Agent" }, component: Settings }] };
     }

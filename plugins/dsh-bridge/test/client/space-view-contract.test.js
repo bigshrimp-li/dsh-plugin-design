@@ -14,7 +14,7 @@ function fixture(messages = [], { deletedAt, observations, resources = {} } = {}
   const layoutSelections = [];
   const state = {
     directories: [{ root: "/workspace" }], root: "/workspace", modelId: "model-a",
-    titles: { "conversation-1": "A saved Super Agent thread" },
+    titles: { "conversation-1": "Old local title" },
   };
   const React = {
     createElement,
@@ -46,7 +46,7 @@ function fixture(messages = [], { deletedAt, observations, resources = {} } = {}
     requests.push({ action, payload });
     if (resources[action]) return { ok: true, status: 200, json: async () => ({ result: await resources[action](payload) }) };
     const result = action === "models.list" ? [{ id: "model-a", selectable: true }]
-      : action === "thread.list" ? { items: [{ threadId: "thread-1", mainConversationId: "conversation-1", ...(deletedAt ? { deletedAt, recoverUntil: "2026-11-21T00:00:00.000Z" } : {}) }] }
+      : action === "thread.list" ? { items: [{ threadId: "thread-1", mainConversationId: "conversation-1", title: "A saved Super Agent thread", ...(deletedAt ? { deletedAt, recoverUntil: "2026-11-21T00:00:00.000Z" } : {}) }] }
         : action === "conversation.get" ? { conversationId: payload.conversationId, config: { cwd: "/workspace", modelId: "model-a" } }
           : action === "messages.list" ? { items: messages, caughtUp: true }
             : action === "thread.get" ? { threadId: payload.threadId, activeRuns: [], ...(deletedAt ? { deletedAt, recoverUntil: "2026-11-21T00:00:00.000Z" } : {}) }
@@ -145,7 +145,13 @@ describe("independent Super Agent space view contract", () => {
     await selection;
     const tree = render(space.Space(), new Set(Object.values(space.primitives))), nodes = values(tree);
     expect(visibleText(tree)).toContain("retained historical answer"); expect(visibleText(tree)).toContain("无法恢复");
-    for (const label of ["暂停", "恢复", "停止", "从此分支", "添加附件", "选择本次任务使用的 Skill", "显式压缩最近已完成任务"]) {
+    for (const label of ["暂停 Thread", "恢复 Thread", "停止此 Thread 的活动任务"])
+      expect(nodes.some(node => node.type === "button" && node.props["aria-label"] === label)).toBe(false);
+    for (const label of ["添加附件", "选择本次任务使用的 Skill"]) {
+      const node = nodes.find(node => node.props?.["aria-label"] === label);
+      if (node) expect(node.props.disabled, label).toBe(true);
+    }
+    for (const label of ["查看 Thread 状态与控制", "从此分支", "显式压缩最近已完成任务"]) {
       const node = nodes.find(node => visibleText(node) === label || node.props?.["aria-label"] === label);
       expect(node, label).toBeTruthy(); expect(node.props.disabled, label).toBe(true);
     }
@@ -206,4 +212,29 @@ describe("independent Super Agent space view contract", () => {
     expect(values(after).some((node) => node.type === "aside")).toBe(false);
     space.controller.dispose();
   });
+});
+
+it("renders the current Conversation's waits by their own Run and provides matching keyboard anchors", async () => {
+  const thread = "thread-1", conversation = "conversation-1";
+  const waits = [
+    { waitId: "ask-main", runId: "a", conversationId: conversation, kind: "user", status: "waiting", prompt: "选择格式" },
+    { waitId: "approval-main", runId: "b", conversationId: conversation, kind: "permission", status: "waiting", prompt: "Allow write 验收结果.txt (create)?" },
+    { waitId: "ask-other", runId: "other", conversationId: "other-conversation", kind: "user", status: "waiting", prompt: "另一分支的问题" },
+  ];
+  const value = fixture([{ messageId: "m", entryId: 1, kind: "user", role: "user", runId: "a", text: "回答测试" }], { resources: {
+    "thread.get": () => ({ threadId: thread, activeRuns: [], runs: waits.map(wait => ({ runId: wait.runId, conversationId: wait.conversationId })) }),
+    "waits.list": ({ status }) => ({ items: status === "waiting" ? waits : [] }),
+  } });
+  await value.controller.refresh();
+  await value.controller.selectThread(thread, conversation);
+  const tree = render(value.Space(), new Set(Object.values(value.primitives)));
+  const nodes = values(tree);
+  for (const wait of waits.slice(0, 2)) {
+    const group = nodes.find(node => node.props?.["data-run-id"] === wait.runId);
+    expect(values(group).some(node => node.props.id === "sa-wait-" + wait.waitId && node.props.tabIndex === -1)).toBe(true);
+    expect(nodes.some(node => node.type === "button" && node.props["aria-controls"] === "sa-wait-" + wait.waitId)).toBe(true);
+  }
+  expect(nodes.some(node => node.props.id === "sa-wait-ask-other")).toBe(false);
+  expect(nodes.find(node => node.props["aria-controls"] === "sa-wait-approval-main").props.children).toContain("第 2 轮 · 去审批 · 写入 验收结果.txt");
+  value.controller.dispose();
 });

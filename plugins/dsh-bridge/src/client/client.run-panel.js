@@ -1001,22 +1001,26 @@ window.__ModuleLoader__.load({
        * any of them pretending: unreachable, connected-and-idle, and running.
        */
       function BackgroundTasks({ state, revision }) {
-        const [items, setItems] = React.useState([]), [note, setNote] = React.useState("");
-        const supported = state.info?.runtimeFeatures?.backgroundTasksV1 === true, conversationId = state.conversationId;
+        const [page, setPage] = React.useState(null);
+        const features = state.info?.runtimeFeatures || {}, supported = features.backgroundTasksV1 === true;
+        const conversationId = state.conversationId, targetId = state.target?.selectedId ?? null;
+        const target = state.target?.targets?.find(row => row.id === targetId);
+        const scope = JSON.stringify([targetId, target?.instanceId || state.info?.startedAt, target?.actorId, conversationId]);
         React.useEffect(() => {
           let current = true;
-          if (supported && conversationId) void services.run("task.list", { conversationId, limit: 12 }).then(response => {
+          if (supported && conversationId) void services.run("task.list", { conversationId, targetId, limit: 12 }).then(response => {
             if (!current) return;
-            if (response?.status === "done") { setItems(response.result.items); setNote(""); }
-            else setNote(response?.reason || "任务列表暂时不可用");
-          });
+            setPage(response?.status === "done" ? { scope, rows: response.result.items, note: response.result.nextCursor ? "打开对话可查看其余任务。" : "" }
+              : { scope, rows: [], note: response?.reason || "任务列表暂时不可用" });
+          }, error => { if (current) setPage({ scope, rows: [], note: error.message }); });
           return () => { current = false; };
-        }, [supported, conversationId, revision]);
+        }, [supported, scope, revision]);
         if (!supported || !conversationId) return null;
+        const visible = page?.scope === scope ? page : null;
         return h("section", { "aria-label": "后台任务" }, h("strong", null, "后台任务"),
-          ...items.filter(task => task.conversationId === conversationId).map(task =>
+          ...(visible?.rows || []).filter(task => task.conversationId === conversationId && (task.kind !== "monitor" || features.taskMonitorsV1) && (task.kind !== "schedule" || features.taskSchedulesV1)).map(task =>
             h("p", { key: task.taskId }, task.taskId + " · " + task.status + (task.exitCode == null ? "" : " · 退出码 " + task.exitCode))),
-          note && h("p", { role: "status" }, note));
+          visible?.note && h("p", { role: "status" }, visible.note));
       }
       function RunPanel(props) {
         const state = useStore(services.viewState);

@@ -591,86 +591,17 @@ window.__ModuleLoader__.load({
               h(Dot, { tone: subagent.status === "running" ? "ok" : "idle" }),
               h("span", { className: "sap-muted" }, t("tool.subagent.running")),
             ),
-            h(
-              "button",
-              {
-                type: "button",
-                className: "sap-link",
-                onClick: () => {
-                  services.run("delegation.view", { name: subagent.name });
-                },
-              },
-              t("delegation.view"),
-            ),
           ),
         );
       }
 
-      /**
-       * `settings.plugins.tab`: where the view state is injected explicitly.
-       *
-       * This is the product surface for demo content: nothing else can turn it
-       * on, and while it is on every page carries the demo marker. The plugin's
-       * configuration is echoed read-only next to it.
-       */
+      /** Reflect Host state. Connection settings live in the workspace. */
       function SettingsTab(props) {
-        const state = useViewState();
-        const t = props.t ?? translate;
-        const choice = (active, label, onClick) =>
-          h(
-            "button",
-            { type: "button", className: "sap-choice-btn", "data-active": active ? "true" : undefined, onClick },
-            label,
-          );
-        return h(
-          "div",
-          { className: "sap-root sap-settings" },
-          Style(),
-          h("div", { className: "sap-settings-title" }, t("settings.tab.title")),
-          h("p", { className: "sap-muted", style: { margin: 0, fontSize: 12, lineHeight: 1.6 } }, t("settings.tab.body")),
-          h(Card, {
-            title: t("settings.tab.state"),
-            children: [
-              h(
-                "div",
-                { className: "sap-choice", key: "connection" },
-                choice(
-                  state.connection === "ready",
-                  t("settings.tab.state.ready"),
-                  () => services.setConnection("ready"),
-                ),
-                choice(
-                  state.connection !== "ready",
-                  t("settings.tab.state.offline"),
-                  () => services.setConnection("offline"),
-                ),
-              ),
-              h("div", { className: "sap-field", key: "home" }, h(Field, { label: t("settings.tab.coreHome"), value: state.core.home })),
-              h(
-                "div",
-                { className: "sap-field", key: "socket" },
-                h(Field, { label: t("settings.tab.socketPath"), value: state.core.socketPath }),
-              ),
-              h(
-                "div",
-                { className: "sap-field", key: "autostart" },
-                h(Field, { label: t("settings.tab.autoStart"), value: String(state.core.autoStart) }),
-              ),
-            ],
-          }),
-          h(Card, {
-            title: t("settings.tab.demo"),
-            children: [
-              h(
-                "div",
-                { className: "sap-choice", key: "demo" },
-                choice(state.demo === true, t("settings.tab.demo.on"), () => services.setDemo(true)),
-                choice(state.demo !== true, t("settings.tab.demo.off"), () => services.setDemo(false)),
-              ),
-              h("div", { className: "sap-muted", key: "hint", style: { fontSize: 11, lineHeight: 1.6 } }, t("settings.tab.demo.hint")),
-            ],
-          }),
-        );
+        const state = useViewState(), t = props.t ?? translate;
+        return h(Card, { title: t("settings.tab.state"), children: [
+          h(Field, { key: "state", label: t("settings.tab.state"), value: t(state.connection === "ready" ? "settings.tab.state.ready" : "settings.tab.state.offline") }),
+          h(Field, { key: "socket", label: t("settings.tab.socketPath"), value: state.core.socketPath }),
+        ] });
       }
 
       /** Bind the fallback translator this activation's components use. */

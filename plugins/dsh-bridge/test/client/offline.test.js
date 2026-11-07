@@ -227,15 +227,15 @@ describe("the disconnected notice", () => {
     expect(text).not.toContain("ENOENT");
   });
 
-  it("reports each connection action as unsupported, under its own id", async () => {
+  it("only offers reconnect while the execution service is unavailable", async () => {
     const { offline, services, t } = buildOffline();
     services.setConnection("offline");
     const tree = renderTree(offline.OfflineNotice, tabProps(t));
     const buttons = elementsOf(tree).filter((node) => node.type === "button");
-    expect(buttons.map((node) => textOf(node.props.children))).toEqual(["重新连接", "启动 Core", "打开配置目录"]);
+    expect(buttons.map((node) => textOf(node.props.children))).toEqual(["重新连接"]);
     for (const button of buttons) button.props.onClick();
     await Promise.resolve();
-    for (const id of ["core.reconnect", "core.start", "core.openConfig"]) {
+    for (const id of ["core.reconnect"]) {
       expect(services.outcomeOf(id).status, id).toBe("unsupported");
     }
   });

@@ -12,7 +12,7 @@ export async function waitFor(read, predicate, label) {
   while (Date.now() < end) { last = await read(); if (predicate(last)) return last; await new Promise(resolve => setTimeout(resolve, 20)); }
   throw new Error(`${label}: ${JSON.stringify(last)}`);
 }
-export async function nativeFixture(respond, runtimeEnv = {}) {
+export async function nativeFixture(respond, runtimeEnv = {}, capabilities, { files = false } = {}) {
   expect(process.versions.electron).toBeTruthy();
   const root = process.env.SUPER_AGENT_SOURCE_ROOT;
   // Chord declares an import-only public export; require.resolve would select the wrong condition.
@@ -20,7 +20,7 @@ export async function nativeFixture(respond, runtimeEnv = {}) {
   const contextExport = JSON.parse(await readFile(join(chordRoot, "package.json"), "utf8")).exports["./context"];
   const contextEntry = typeof contextExport === "string" ? contextExport : contextExport?.import;
   if (typeof contextEntry !== "string") throw new Error("Chord must declare its public ./context ESM entry");
-  const [{ CoreServer, createConfiguredGoServingFactory, initialSettings }, { createClient }, { BACKGROUND_CONTEXT }, { createCoreServiceFor }] = await Promise.all([
+  const [{ CoreServer, createConfiguredGoServingFactory, initialSettings, WorkspaceFileService }, { createClient }, { BACKGROUND_CONTEXT }, { createCoreServiceFor }] = await Promise.all([
     import(pathToFileURL(join(root, "packages/server/dist/index.js")).href),
     import(pathToFileURL(join(root, "packages/client/dist/index.js")).href),
     import(pathToFileURL(join(chordRoot, contextEntry)).href),
@@ -43,7 +43,7 @@ export async function nativeFixture(respond, runtimeEnv = {}) {
       requestPolicy: { totalTimeoutMs: 5000, streamIdleTimeoutMs: 2000, maxAttempts: 1 } }, maxConcurrentRuns: 2, retention: { maxEvents: 1000, maxAgeMs: null }, firstAdmissionCredentialRefs: ["fixture"] };
   const settings = initialSettings(configuration.modelConfiguration);
   const server = new CoreServer({ home, heartbeatIntervalMs: 50, runtime: createConfiguredGoServingFactory({ context: BACKGROUND_CONTEXT, configuration,
-    runtimeEnv, env: { NATIVE_GOAL_FIXTURE_KEY: "synthetic-loopback-only" }, binaryPath: process.env.SUPER_AGENT_GO_RUNTIME_BINARY || join(root, "go-runtime/bin/runtime-worker"), enableBuiltinTools: true, runtimeSettings: () => settings }) });
+    runtimeEnv, ...(capabilities && { capabilities }), ...(files && { fileService: new WorkspaceFileService({ directory: join(home, "files"), allowedRoots: [home] }) }), env: { NATIVE_GOAL_FIXTURE_KEY: "synthetic-loopback-only" }, binaryPath: process.env.SUPER_AGENT_GO_RUNTIME_BINARY || join(root, "go-runtime/bin/runtime-worker"), enableBuiltinTools: true, runtimeSettings: () => settings }) });
   cleanups.push(() => server.stop()); await server.start();
   const socketPath = server.info().socketPath;
   const reconnect = async () => {

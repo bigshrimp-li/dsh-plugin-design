@@ -7,10 +7,10 @@ window.__ModuleLoader__.load({
 .sa-trace-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sa-trace-toolbar input{flex:1 1 220px;min-width:0}
 .sa-trace-toolbar select{max-width:220px}
-.sa-trace-meta{margin:0;font-size:12px;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere}
+.sa-trace-meta{margin:0;font-size:12px;color:var(--dsw-alias-label-secondary,#51565c);overflow-wrap:anywhere}
 .sa-trace-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,356px);gap:14px;align-items:start;min-width:0}
 .sa-trace-runs{display:flex;flex-direction:column;gap:10px;min-width:0}
-.sa-trace-run,.sa-trace-turn,.sa-trace-detail{border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);min-width:0}
+.sa-trace-toolbar>*{min-width:0}.sa-trace-run,.sa-trace-turn,.sa-trace-detail{border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);min-width:0}
 .sa-trace-run{padding:10px}
 .sa-trace-turn{margin:8px 0 0 12px;padding:8px}
 .sa-trace-row{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;min-width:0}
@@ -21,19 +21,19 @@ window.__ModuleLoader__.load({
 .sa-trace-fact{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:start;width:100%;padding:7px 8px;border:0;border-radius:var(--dsw-radius-sm);background:transparent;color:inherit;text-align:left}
 .sa-trace-fact:hover,.sa-trace-fact[aria-pressed=true]{background:var(--dsw-alias-interactive-bg-hover)}
 .sa-trace-fact code,.sa-trace-relation code,.sa-trace-final code{overflow-wrap:anywhere}
-.sa-trace-hit{font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.sa-trace-hit{font-size:12px;color:var(--dsw-alias-label-secondary,#51565c)}
 .sa-trace-detail{position:sticky;top:8px;padding:12px;max-height:calc(100vh - 180px);overflow:auto}
 .sa-trace-detail-head{display:flex;justify-content:flex-end;margin-bottom:6px}
 .sa-trace-detail pre,.sa-trace-final pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
 .sa-trace-detail dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 10px;margin:8px 0}
-.sa-trace-detail dt{color:var(--dsw-alias-label-tertiary)}
+.sa-trace-detail dt{color:var(--dsw-alias-label-secondary,#51565c)}
 .sa-trace-detail dd{margin:0;overflow-wrap:anywhere}
 .sa-trace-relations{display:flex;flex-direction:column;gap:5px}
 .sa-trace-relation{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.sa-trace-final{margin-top:8px;padding:8px;border-left:3px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-l1)}
+.sa-trace-final{margin-top:8px;padding:8px;border-left:3px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-module-platform,#f4f5f6)}
 .sa-trace-empty{padding:20px;text-align:center}
-.sa-trace button:focus-visible,.sa-trace input:focus-visible,.sa-trace select:focus-visible,.sa-trace summary:focus-visible{outline:2px solid var(--dsw-alias-border-l3);outline-offset:2px}
-@media(max-width:760px){.sa-trace{padding:10px}.sa-trace-grid{grid-template-columns:minmax(0,1fr)}.sa-trace-detail{position:static;max-height:none}.sa-trace-turn{margin-left:0}.sa-trace-toolbar>*{flex:1 1 140px}.sa-trace-toolbar select{max-width:none}.sa-trace-actions{width:100%;margin-left:0}}
+.sa-trace button:focus-visible,.sa-trace input:focus-visible,.sa-trace select:focus-visible,.sa-trace summary:focus-visible{outline:2px solid var(--dsw-alias-link,#2855a0);outline-offset:2px}
+@container(max-width:760px){.sa-trace{padding:10px}.sa-trace-grid{grid-template-columns:minmax(0,1fr)}.sa-trace-detail{position:static;max-height:none}.sa-trace-turn{margin-left:0}.sa-trace-toolbar>*{flex:1 1 140px}.sa-trace-toolbar select{max-width:none}.sa-trace-actions{width:100%;margin-left:0}}
 `;
     const factKey = fact => fact ? `${fact.factId}:${fact.sourceRevision || ""}` : "";
     const coverageText = coverage => {
@@ -322,15 +322,16 @@ window.__ModuleLoader__.load({
         else if (fact.type === "report") typed = h("p", null, `报告 ${p.reportId || "未知"} · ${p.status || "状态未知"} · 原父任务 ${p.originalParentRunId || "未知"} · 接收任务 ${p.recipientRunId || "未接收"} · 生成 ${time(p.generatedAt)} · 接收 ${time(p.receivedAt)} · 处理 ${time(p.processedAt)}`);
         else if (fact.type === "conversation") typed = h("p", null, `用途 ${p.purpose || "未知"} · 来源 Conversation ${p.forkedFromConversationId || "无"}`);
         else if (fact.type === "thread") typed = h("p", null, `状态 ${p.status || "未知"} · Agent ${p.agentDefinitionVersion || "未知"} · 模型绑定 ${p.modelBinding || "未知"} · 权限 ${p.permissionMode || "未知"} · 版本 ${p.deploymentVersion || "未知"}`);
-        return h(React.Fragment, null, typed,
-          h("details", null, h("summary", null, "结构化载荷"),
+        return h(React.Fragment, null,
+          h("p", { className: "sa-trace-meta" }, `${statusOf(fact)} · ${time(fact.occurredAt)} · 覆盖 ${coverageText(fact.coverage)}`),
+          h("details", null, h("summary", null, "节点诊断详情"), common, typed,
             h("pre", null, JSON.stringify(p, null, 2))),
           ...(fact.contentRefs || []).map(reference => h(Content, {
             key: referenceKey(reference), reference, onLoaded: onLoadedContent,
           })));
       }
 
-      function ConversationTrace({ conversationId, threadId, targetId, title, threadTitle, messages = [], initialFocus, onOpenConversation, controller: spaceController }) {
+      function ConversationTrace({ conversationId, threadId, targetId, title, threadTitle, messages = [], conversationRuns = [], initialFocus, onOpenConversation }) {
         const read = services.observations?.conversationTrace;
         const traceController = React.useMemo(() => createTraceController({ read, conversationId }), [read, conversationId]);
         const state = React.useSyncExternalStore(traceController.subscribe, traceController.getState, traceController.getState);
@@ -346,9 +347,8 @@ window.__ModuleLoader__.load({
         const [graphError, setGraphError] = React.useState("");
         const [loadedContent, setLoadedContent] = React.useState([]);
         const [exportState, setExportState] = React.useState("");
-        const [controlState, setControlState] = React.useState("");
         const detailTrigger = React.useRef(null);
-        const focusTargetMismatch = Boolean(initialFocus?.targetId && targetId && initialFocus.targetId !== targetId);
+        const focusTargetMismatch = Boolean(initialFocus && Object.hasOwn(initialFocus, "targetId") && (initialFocus.targetId ?? null) !== (targetId ?? null));
         const focusConversationMismatch = Boolean(initialFocus?.conversationId && initialFocus.conversationId !== conversationId);
         const focusThreadMismatch = Boolean(initialFocus?.threadId && threadId && initialFocus.threadId !== threadId);
         const focusKey = JSON.stringify(initialFocus || null);
@@ -380,9 +380,9 @@ window.__ModuleLoader__.load({
             }
             if (found.error) setFocusNotice(`定位失败：${found.error}`);
             else if (found.level === "conversation" && requestedLevel !== "conversation") {
-              setFocusNotice(`未找到${requestedLabel} ${initialFocus.factId || initialFocus.turnId || initialFocus.runId}；${found.exhausted ? `已读取当前查询全部 ${traceController.getState().total} 条事实` : "当前覆盖范围尚未结束"}，降级显示整个 Conversation。`);
+              setFocusNotice(`未找到${requestedLabel}。已显示当前对话的轨迹，${found.exhausted ? "现有记录已全部读取" : "仍有记录未读取"}。`);
             } else if (found.level && found.level !== requestedLevel) {
-              setFocusNotice(`未找到${requestedLabel}，已降级定位到 ${found.level === "fact" ? "事实" : found.level === "turn" ? "Turn" : "Run"} ${found.factId || found.turnId || found.runId}。`);
+              setFocusNotice(`未找到${requestedLabel}，已定位到所属${found.level === "turn" ? "执行步骤" : "任务"}。`);
             }
           });
           return () => { active = false; };
@@ -400,6 +400,22 @@ window.__ModuleLoader__.load({
 
         const allRuns = groupConversationFacts(state.facts);
         const runs = allRuns.filter(run => run.runId);
+        // Use the same Conversation Run order as the file diff. Filtered Trace pages cannot supply an absolute round.
+        const order = conversationRuns.filter(run => run.conversationId === conversationId).map(run => run.runId);
+        const titles = new Map();
+        for (const message of messages) {
+          if (!message.runId || titles.has(message.runId) || message.role !== "user" || (message.kind && message.kind !== "user") || (message.source && message.source !== "user")) continue;
+          const text = typeof message.text === "string" ? message.text.trim().replace(/\s+/g, " ") : "";
+          if (text) titles.set(message.runId, Array.from(text).slice(0, 48).join(""));
+        }
+        const runLabel = id => {
+          const index = order.indexOf(id), heading = titles.get(id);
+          return index >= 0 ? `第 ${index + 1} 轮${heading ? " · " + heading : ""}` : heading || "未命名任务";
+        };
+        const turnLabel = turn => {
+          const first = turn.facts.find(fact => fact.occurredAt);
+          return first ? "执行步骤 · " + time(first.occurredAt) : "执行步骤";
+        };
         const runOptions = runs.map(run => run.runId);
         const effectiveRunFilter = runOptions.includes(runFilter) ? runFilter : "";
         const factTypes = [...new Set(state.facts.map(fact => fact.type))].sort();
@@ -418,7 +434,8 @@ window.__ModuleLoader__.load({
         }
         const threadFact = state.facts.find(fact => fact.type === "thread");
         const conversationFact = state.facts.find(fact => fact.type === "conversation");
-        const defaultRunId = selection?.runId || initialFocus?.runId || runs.at(-1)?.runId || null;
+        const sameFocusScope = !focusTargetMismatch && !focusConversationMismatch && !focusThreadMismatch;
+        const defaultRunId = selection?.runId || (sameFocusScope ? initialFocus?.runId : null) || runs.at(-1)?.runId || null;
         const selectedFact = selection?.kind === "fact" ? state.facts.find(fact => fact.factId === selection.id) : null;
         const selectedRun = selection?.kind === "run" ? runs.find(run => run.runId === selection.id) : null;
         const selectedTurn = selection?.kind === "turn"
@@ -501,19 +518,10 @@ window.__ModuleLoader__.load({
             setExportState(`导出失败：${error.message}`);
           }
         };
-        const pauseThread = async () => {
-          if (!spaceController?.controlThread || !threadId) return;
-          setControlState("暂停请求处理中…");
-          try {
-            await spaceController.controlThread("pause");
-            setControlState("暂停请求已接收；实际 Thread 状态以刷新为准。");
-          } catch (error) {
-            setControlState(`暂停失败：${error.message}`);
-          }
-        };
+
         const finalMessages = messages.filter(message => message?.isFinal === true && message.runId);
-        const renderFinal = message => h("article", { className: "sa-trace-final", key: `final:${message.messageId}`, "aria-label": `最终回答 ${message.messageId}` },
-          h("div", { className: "sa-trace-row" }, h("strong", null, "最终回答"), h("code", null, message.messageId)),
+        const renderFinal = message => h("article", { className: "sa-trace-final", key: `final:${message.messageId}`, "aria-label": "最终回答" },
+          h("div", { className: "sa-trace-row" }, h("strong", null, "最终回答")),
           h("pre", null, message.text || "正文未知"));
         const renderFact = fact => {
           const selected = selection?.kind === "fact" && selection.id === fact.factId;
@@ -524,22 +532,21 @@ window.__ModuleLoader__.load({
             onClick: event => selectFact(fact, event),
           },
             h("span", null, lane(fact)),
-            h("span", null, h("strong", null, fact.payload?.toolName || fact.payload?.modelId || fact.payload?.skillId || fact.payload?.reportId || fact.type),
+            h("span", null, h("strong", null, fact.payload?.toolName || fact.payload?.modelId || fact.payload?.skillId || lane(fact)),
               h("span", { className: "sa-muted" }, ` · ${statusOf(fact)} · ${time(fact.occurredAt)}`),
-              hit && h("span", { className: "sa-trace-hit" }, " · 命中可读取内容")),
-            h("code", null, fact.factId));
+              hit && h("span", { className: "sa-trace-hit" }, " · 命中可读取内容")));
         };
         const detail = selectedFact ? h(React.Fragment, null,
-          h("div", { className: "sa-trace-row" }, h("strong", null, `事实 ${selectedFact.factId}`), h("span", { className: "sa-muted" }, lane(selectedFact))),
+          h("div", { className: "sa-trace-row" }, h("strong", null, selectedFact.payload?.toolName || selectedFact.payload?.modelId || lane(selectedFact)), h("span", { className: "sa-muted" }, runLabel(selectedFact.runId))),
           h(FactDetail, { fact: selectedFact, onLoadedContent: loaded => setLoadedContent(current =>
             current.some(entry => referenceKey(entry.ref) === referenceKey(loaded.ref)) ? current : [...current, loaded]) }))
           : selectedTurn ? h(React.Fragment, null,
-            h("div", { className: "sa-trace-row" }, h("strong", null, `Turn ${selectedTurn.turnId}`), h("span", { className: "sa-muted" }, `Run ${selectedTurn.runId} · ${selectedTurn.facts.length} 条事实`)),
-            ...selectedTurn.facts.map(fact => h("p", { key: fact.factId }, `${lane(fact)} · ${statusOf(fact)} · ${fact.factId}`)))
+            h("div", { className: "sa-trace-row" }, h("strong", null, turnLabel(selectedTurn)), h("span", { className: "sa-muted" }, runLabel(selectedTurn.runId))),
+            ...selectedTurn.facts.map(fact => h("p", { key: fact.factId }, `${lane(fact)} · ${statusOf(fact)} · ${time(fact.occurredAt)}`)))
             : selectedRun ? h(React.Fragment, null,
-              h("div", { className: "sa-trace-row" }, h("strong", null, `Run ${selectedRun.runId}`), h("span", { className: "sa-muted" }, `Turn ${selectedRun.turns.size} · 事实 ${selectedRun.facts.length}`)),
+              h("div", { className: "sa-trace-row" }, h("strong", null, runLabel(selectedRun.runId))),
               ...selectedRun.facts.slice(0, 20).map(fact => h("p", { key: fact.factId }, `${lane(fact)} · ${statusOf(fact)} · ${time(fact.occurredAt)}`)))
-              : h("p", { className: "sa-muted" }, "选择 Run、Turn 或事实查看详情。");
+              : h("p", { className: "sa-muted" }, "选择任务、执行步骤或事件查看详情。");
         const detailOpen = Boolean(selectedFact || selectedTurn || selectedRun);
         const empty = !state.loaded && state.busy ? "读取轨迹…"
           : state.error && !state.facts.length ? "轨迹读取失败；不能据此判断没有执行"
@@ -551,10 +558,17 @@ window.__ModuleLoader__.load({
           h("style", null, TRACE_CSS),
           h("header", null,
             h("div", { className: "sa-trace-row" },
-              h("strong", null, title || `Conversation ${conversationId}`),
-              h("span", { className: "sa-muted" }, `Thread ${threadTitle || threadId || "未知"} · ${conversationFact?.payload?.purpose || "用途未知"} · 创建 ${time(conversationFact?.occurredAt)}`)),
-            h("p", { className: "sa-trace-meta" }, `Conversation ${conversationId} · Thread ${threadId || "未知"} · ${runs.length} Run · ${turnCount} Turn · Agent ${threadFact?.payload?.agentDefinitionVersion || "未知"}`),
-            h("p", { className: "sa-trace-meta" }, `Run 状态：${runStatusCounts.size ? [...runStatusCounts].map(([status, count]) => `${status} ${count}`).join(" · ") : "未知"} · 读取 ${state.facts.length}/${state.total} 条事实`),
+              h("strong", null, defaultRunId ? runLabel(defaultRunId) : title || threadTitle || "会话轨迹"),
+              defaultRunId && (title || threadTitle) && h("span", { className: "sa-muted" }, title || threadTitle)),
+            h("p", { className: "sa-trace-meta" }, `覆盖 ${coverageText(state.coverage)}`),
+            h("details", { className: "sa-trace-meta" }, h("summary", null, "轨迹诊断详情"),
+              h("p", null, `Conversation ${conversationId} · Thread ${threadId || "未知"} · Agent ${threadFact?.payload?.agentDefinitionVersion || "未知"} · 创建 ${time(conversationFact?.occurredAt)}`),
+              h("p", null, `水位 ${state.watermark || "未知"} · 查询 ${state.queryId || "读取中"} · 截至 ${time(state.asOf)} · 上次成功 ${time(state.lastSuccessAt)}`),
+              h("p", null, `${runs.length} Run · ${turnCount} Turn · 已读 ${state.facts.length}/${state.total} 条事实`),
+              h("p", null, `Run 状态：${runStatusCounts.size ? [...runStatusCounts].map(([status, count]) => `${status} ${count}`).join(" · ") : "未知"}`),
+              ...runs.map(run => h("p", { key: run.runId }, `${runLabel(run.runId)} · Run ${run.runId} · Turn ${[...run.turns.keys()].join("、") || "未记录"}`)),
+              selection?.kind === "fact" && h("p", null, `当前事实 ${selection.id}`),
+              ...relationRows.map(row => h("p", { key: JSON.stringify(row.edge) }, `${relationLabel(row.edge.kind)}：${row.edge.fromId} → ${row.edge.toId}`))),
             (focusTargetMismatch || focusConversationMismatch || focusThreadMismatch) && h("p", { role: "alert", className: "sa-error" }, "深链身份与当前页面不一致，已拒绝跨目标定位。"),
             focusNotice && h("p", { role: "status", className: "sa-muted" }, focusNotice)),
           h("form", { className: "sa-trace-toolbar", onSubmit: event => { event.preventDefault(); void traceController.search(search); } },
@@ -563,30 +577,26 @@ window.__ModuleLoader__.load({
             h("button", { type: "submit", disabled: state.busy }, "搜索"),
             h("button", { type: "button", disabled: state.busy, onClick: () => { setSearch(""); void traceController.search(""); } }, "清除搜索"),
             h("button", { type: "button", disabled: state.busy, onClick: () => void traceController.refresh() }, "刷新"),
-            h("button", { type: "button", onClick: download }, "导出 Trace"),
-            spaceController?.controlThread && threadId && h("button", { type: "button", onClick: () => void pauseThread() }, "暂停 Thread")),
+            h("button", { type: "button", onClick: download }, "导出 Trace")),
           h("div", { className: "sa-trace-toolbar", "aria-label": "Trace 筛选" },
             h("select", { "aria-label": "按 Run 筛选", value: effectiveRunFilter, onChange: event => setRunFilter(event.target.value) },
-              h("option", { value: "" }, "全部 Run"), ...runOptions.map(runId => h("option", { key: runId, value: runId }, runId))),
+              h("option", { value: "" }, "全部任务"), ...runOptions.map(runId => h("option", { key: runId, value: runId }, runLabel(runId)))),
             h("select", { "aria-label": "按节点类型筛选", value: typeFilter, onChange: event => setTypeFilter(event.target.value) },
               h("option", { value: "" }, "全部节点类型"), ...factTypes.map(type => h("option", { key: type, value: type }, lane({ type })))),
             h("select", { "aria-label": "按状态筛选", value: statusFilter, onChange: event => setStatusFilter(event.target.value) },
               h("option", { value: "" }, "全部状态"), ...statuses.map(status => h("option", { key: status, value: status }, status))),
             h("span", { className: "sa-muted" }, "按 Run、类型和状态筛选仅作用于已加载事实。")),
-          h("p", { className: "sa-trace-meta" }, `水位 ${state.watermark || "未知"} · 查询 ${state.queryId || "读取中"} · ${time(state.asOf)} · 覆盖 ${coverageText(state.coverage)} · 上次成功 ${time(state.lastSuccessAt)}`),
           state.error && state.facts.length > 0 && h("p", { role: "alert", className: "sa-error" }, `${state.error}。保留上次成功读取的 ${state.facts.length} 条事实。`),
           state.error && !state.facts.length && h("p", { role: "alert", className: "sa-error" }, state.error),
           graphError && h("p", { role: "alert", className: "sa-muted" }, `关联关系读取失败：${graphError}。Run 和事实仍可读取。`),
           exportState && h("p", { role: "status", className: "sa-muted" }, exportState),
-          controlState && h("p", { role: "status", className: "sa-muted" }, controlState),
           relationRows.length > 0 && h("section", { className: "sa-trace-relations", "aria-label": "Trace 关联关系" },
             h("strong", null, "关联关系"),
             ...relationRows.map(row => h("div", { className: "sa-trace-relation", key: `${row.edge.kind}:${row.edge.factId}:${row.edge.fromId}:${row.edge.toId}` },
               h("span", null, relationLabel(row.edge.kind)),
-              h("code", null, `${row.edge.fromId} → ${row.edge.toId}`),
-              row.target?.kind === "goal" && h("span", { className: "sa-muted" }, `目标 ${row.target.id}`),
+              row.target?.kind === "goal" && h("span", { className: "sa-muted" }, "关联目标"),
               row.target && row.target.kind !== "goal" && h("button", { type: "button", className: "sa-chip", onClick: () => openRelation(row) },
-                row.target.conversationId && row.target.conversationId !== conversationId ? `打开 Conversation ${row.target.conversationId}` : `定位 ${row.target.runId || row.target.id}`)))),
+                row.target.conversationId && row.target.conversationId !== conversationId ? (row.edge.kind === "fork" && row.direction === "incoming" ? "打开来源对话" : "打开关联对话") : `定位：${runLabel(row.target.runId)}`)))),
           empty && h("p", { className: "sa-trace-empty", role: state.error ? "alert" : "status" }, empty),
           h("div", { className: "sa-trace-grid" },
             h("div", { className: "sa-trace-runs" }, ...visibleRuns.map(run => {
@@ -597,15 +607,13 @@ window.__ModuleLoader__.load({
               const model = attempts.at(-1)?.payload;
               const elapsed = runFact?.type === "run" && runFact.payload.startedAt && runFact.payload.endedAt
                 ? Date.parse(runFact.payload.endedAt) - Date.parse(runFact.payload.startedAt) : null;
-              const user = messages.find(message => message.runId === runId && (message.role === "user" || message.kind === "user"));
               const runFinals = finalMessages.filter(message => message.runId === runId && !message.turnId);
               const turnNodes = [...run.turns.values()].map(turn => h("section", { className: "sa-trace-turn", key: turn.turnId },
                 h("div", { className: "sa-trace-row" },
                   h("button", { type: "button", className: "sa-chip", "aria-expanded": turnOpen(runId, turn.turnId), onClick: () => setOpenTurns(current => ({ ...current, [`${runId}:${turn.turnId}`]: !turnOpen(runId, turn.turnId) })) },
-                    turnOpen(runId, turn.turnId) ? "收起 Turn" : "展开 Turn"),
-                  h("button", { type: "button", className: "sa-chip", onClick: event => selectTurn(runId, turn.turnId, event) }, "Turn 详情"),
-                  h("strong", null, `Turn ${turn.turnId}`),
-                  h("span", { className: "sa-muted" }, `${turn.facts.length} 条事实`)),
+                    turnOpen(runId, turn.turnId) ? "收起步骤" : "展开步骤"),
+                  h("button", { type: "button", className: "sa-chip", onClick: event => selectTurn(runId, turn.turnId, event) }, "步骤详情"),
+                  h("strong", null, turnLabel(turn))),
                 turnOpen(runId, turn.turnId) && h("div", { className: "sa-trace-facts" }, ...turn.facts.map(renderFact)),
                 ...finalMessages.filter(message => message.runId === runId && message.turnId === turn.turnId).map(renderFinal)));
               const expanded = runOpen(runId) && h(React.Fragment, null,
@@ -615,11 +623,11 @@ window.__ModuleLoader__.load({
               return h("section", { className: "sa-trace-run", key: runId, "data-run-id": run.runId },
                 h("div", { className: "sa-trace-row" },
                   h("button", { type: "button", className: "sa-chip", "aria-expanded": runOpen(runId), onClick: () => setOpenRuns(current => ({ ...current, [runId]: !runOpen(runId) })) },
-                    runOpen(runId) ? "收起 Run" : "展开 Run"),
-                  h("button", { type: "button", className: "sa-chip", onClick: event => selectRun(run.runId, event), disabled: !run.runId }, "Run 详情"),
-                  h("strong", null, run.runId ? `Run ${run.runId}` : "未归属 Run"),
-                  h("span", { className: "sa-muted" }, `${runStatus} · ${run.turns.size} Turn · ${run.facts.length} 事实`)),
-                h("p", { className: "sa-trace-meta" }, `输入 ${user?.text ? user.text.slice(0, 160) : "摘要未知"} · 模型 ${model ? `${model.providerId || "未知"}/${model.modelId || "未知"}` : "未知"} · 用时 ${Number.isFinite(elapsed) ? duration(elapsed) : "未知"}`),
+                    runOpen(runId) ? "收起任务" : "展开任务"),
+                  h("button", { type: "button", className: "sa-chip", onClick: event => selectRun(run.runId, event), disabled: !run.runId }, "任务详情"),
+                  h("strong", null, run.runId ? runLabel(run.runId) : "对话事件"),
+                  h("span", { className: "sa-muted" }, runStatus)),
+                h("p", { className: "sa-trace-meta" }, `模型 ${model ? `${model.providerId || "未知"}/${model.modelId || "未知"}` : "未知"} · 用时 ${Number.isFinite(elapsed) ? duration(elapsed) : "未知"}`),
                 expanded);
             })),
             h("aside", {
@@ -634,8 +642,7 @@ window.__ModuleLoader__.load({
                 h("button", { type: "button", className: "sa-chip", "aria-label": "关闭 Trace 详情", onClick: closeDetail }, "关闭详情")),
               detail)),
           state.nextCursor && h("button", { type: "button", disabled: state.busy, onClick: () => void traceController.more() },
-            state.busy ? "读取下一页…" : `读取下一页 · 已读 ${state.facts.length}/${state.total}`),
-          h("p", { className: "sa-trace-meta" }, "Trace 查询、展开和导出只读取持久事实；不会调用模型、执行工具、回答等待或恢复任务。"));
+            state.busy ? "读取下一页…" : "读取下一页"));
       }
       return { ConversationTrace };
     }
