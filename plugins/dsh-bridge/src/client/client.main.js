@@ -26,15 +26,8 @@ window.__ModuleLoader__.load({
   factory() {
     /** The action ids these cards raise through the facade. */
     const ACTIONS = {
-      restartCore: "core.restart",
       viewLogs: "core.logs",
-      openConfig: "core.openConfig",
       reconnect: "core.reconnect",
-      startCore: "core.start",
-      switchModel: "snapshot.switchModel",
-      switchPermission: "snapshot.switchPermission",
-      cancelDelegation: "delegation.cancel",
-      viewDelegation: "delegation.view",
     };
 
     const zh = {
@@ -186,7 +179,7 @@ window.__ModuleLoader__.load({
                 "div",
                 { className: "sap-actions", key: "actions" },
                 h(ActionBtn, { id: ACTIONS.reconnect, variant: "solid" }, t("panel.coreProcess.reconnect")),
-                h(ActionBtn, { id: ACTIONS.startCore }, t("panel.coreProcess.startCore")),
+
                 h(ActionBtn, { id: ACTIONS.viewLogs }, t("panel.coreProcess.logs")),
               ),
             ],
@@ -214,10 +207,10 @@ window.__ModuleLoader__.load({
             h(
               "div",
               { className: "sap-actions", key: "actions" },
-              h(ActionBtn, { id: ACTIONS.restartCore }, t("panel.coreProcess.restart")),
+
               h(ActionBtn, { id: ACTIONS.viewLogs }, t("panel.coreProcess.logs")),
               h("span", { className: "sap-spacer" }),
-              h(ActionBtn, { id: ACTIONS.openConfig, variant: "link" }, t("panel.coreProcess.openConfig")),
+
             ),
           ],
         });
@@ -360,12 +353,6 @@ window.__ModuleLoader__.load({
           ),
           h("div", { className: "sap-note", key: "capabilities" }, t("panel.snapshot.capabilityNotice")),
           h("div", { className: "sap-note", key: "notice" }, t("panel.snapshot.notice")),
-          h(
-            "div",
-            { className: "sap-actions", key: "actions" },
-            h(ActionBtn, { id: ACTIONS.switchModel }, t("panel.snapshot.switchModel")),
-            h(ActionBtn, { id: ACTIONS.switchPermission }, t("panel.snapshot.switchPermission")),
-          ),
         ];
       }
 
@@ -419,58 +406,6 @@ window.__ModuleLoader__.load({
           return card(line(t("panel.snapshot.reading")));
         }
         return card(snapshotFields(snapshot, t));
-      }
-
-      /**
-       * The subagent delegations; only the connected layout shows them.
-       *
-       * Like the config snapshot, this card has no live source in this
-       * milestone — nothing reads a Thread's delegations — so with demo off it
-       * says exactly that. What it must not do is read an absent sample as a
-       * Core that is down: the link is fine, the *read* does not exist yet, and
-       * the two are different statements about different things.
-       */
-      function DelegationsCard(props) {
-        const state = useStore(services.viewState);
-        const t = props.t;
-        const delegations = services.fixture("delegations");
-        if (delegations === null) {
-          return h(Card, {
-            title: t("panel.delegations.title"),
-            collapsible: true,
-            id: "delegations",
-            aside: h("span", { className: "sap-mono sap-muted", style: { fontSize: 11 } }, t("value.unknown")),
-            children: h(
-              "div",
-              { className: "sap-unavailable" },
-              t(state.connection === "ready" ? "panel.delegations.none" : "panel.delegations.unavailable"),
-            ),
-          });
-        }
-        const row = (entry) =>
-          h(
-            "div",
-            { className: "sap-turn", key: entry.name },
-            h(Dot, { tone: entry.status === "running" ? "ok" : "idle" }),
-            h("span", { className: "sap-mono" }, entry.name),
-            h("span", { className: "sap-tag" }, t(entry.mode === "sync" ? "delegation.sync" : "delegation.async")),
-            h("span", { className: "sap-spacer" }),
-            h(
-              "span",
-              { className: entry.status === "running" ? "" : "sap-muted", style: { fontSize: 11 } },
-              t(entry.status === "running" ? "delegation.running" : "delegation.delivered"),
-            ),
-            entry.status === "running"
-              ? h(ActionBtn, { id: `${ACTIONS.cancelDelegation}:${entry.name}`, variant: "link" }, t("delegation.cancel"))
-              : h(ActionBtn, { id: `${ACTIONS.viewDelegation}:${entry.name}`, variant: "link" }, t("delegation.view")),
-          );
-        return h(Card, {
-          title: t("panel.delegations.title"),
-          collapsible: true,
-          id: "delegations",
-          aside: h("span", { className: "sap-mono sap-muted", style: { fontSize: 11 } }, String(delegations.length)),
-          children: h("div", { className: "sap-turns" }, delegations.map(row)),
-        });
       }
 
       /** Recovery and blocking; the disconnected layout leads with it. */
@@ -530,7 +465,6 @@ window.__ModuleLoader__.load({
           ["threads", ThreadsCard],
           ["run", parts.RunPanel],
           ["snapshot", SnapshotCard],
-          ["delegations", DelegationsCard],
         ]);
       }
 
@@ -541,7 +475,6 @@ window.__ModuleLoader__.load({
         ThreadsCard,
         RecoveryCard,
         SnapshotCard,
-        DelegationsCard,
         ACTIONS,
         dictionary: { zh, en },
         /** The connected layout's sample content, drawn only while demo is on. */

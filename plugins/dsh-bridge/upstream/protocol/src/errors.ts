@@ -63,6 +63,7 @@ export const ERROR_CODES = [
 
   // 410 — the requested cursor is older than what is still retained.
   "CURSOR_EXPIRED",
+  "OUTPUT_EXPIRED",
 
   // 413 — the context no longer fits the model.
   "CONTEXT_OVERFLOW",
@@ -73,6 +74,7 @@ export const ERROR_CODES = [
 
   // 429 — the process is at capacity; retry later.
   "CAPACITY",
+  "BACKGROUND_CAPACITY_EXCEEDED",
 
   // 500 — an internal invariant failed.
   "INTERNAL",
@@ -134,6 +136,7 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   CANCELLED: 409,
 
   CURSOR_EXPIRED: 410,
+  OUTPUT_EXPIRED: 410,
 
   CONTEXT_OVERFLOW: 413,
 
@@ -141,6 +144,7 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   ACCOUNT_CHANGED: 422,
 
   CAPACITY: 429,
+  BACKGROUND_CAPACITY_EXCEEDED: 429,
 
   INTERNAL: 500,
   COMPACTION_FAILED: 500,

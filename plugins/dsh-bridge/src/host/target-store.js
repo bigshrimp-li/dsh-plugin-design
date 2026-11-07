@@ -149,7 +149,12 @@ export async function openTargetService({ options, createService = createCoreSer
         changing = result.then(() => undefined, () => undefined);
         return result;
       }
-      if (payload && Object.hasOwn(payload, "targetId") && payload.targetId !== document.selectedId) throw failure("VERSION_CONFLICT", "当前 Core 目标已切换，请刷新后重试");
+      await changing;
+      const selected = document.targets.find(item => item.id === document.selectedId);
+      if (payload?.expectedActorId && selected?.actorId !== payload.expectedActorId || selected && payload?.expectedInstanceId && selected.instanceId !== payload.expectedInstanceId) {
+        throw failure("TARGET_SCOPE_CHANGED", "Core 实例或操作者已变化，请重新读取目标。");
+      }
+      if (payload && Object.hasOwn(payload, "targetId") && payload.targetId !== document.selectedId) throw failure(payload.taskScope ? "TASK_SCOPE_CHANGED" : "VERSION_CONFLICT", "当前 Core 目标已切换，请刷新后重试");
       return (await current()).call(action, payload);
     },
     async state(query) { try { return { ...await (await current()).state(query), target: list() }; } catch (error) { return { connection: "offline", core: { error: { code: error.code, message: error.message } }, target: list(), threads: [] }; } },

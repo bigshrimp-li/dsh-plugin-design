@@ -15,7 +15,7 @@ const manifest = JSON.parse(await read("../../package.json"));
 const lock = JSON.parse(await read("../../../../package-lock.json"));
 const bridgeLock = lock.packages?.["plugins/dsh-bridge"];
 const patch = await read("../../cordis.patch.yml");
-const VALIDATED_DSH_RANGE = "0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3";
+const VALIDATED_DSH_RANGE = "0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.5";
 
 describe("bundle manifest", () => {
   it("declares the patch dsh composes into a profile", () => {

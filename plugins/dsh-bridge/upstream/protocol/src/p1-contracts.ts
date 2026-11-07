@@ -112,7 +112,7 @@ export const MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
 
 export type MessageRole = (typeof MESSAGE_ROLES)[number];
 
-export const MESSAGE_SOURCES = ["core", "user", "agent", "tool", "subagent"] as const;
+export const MESSAGE_SOURCES = ["core", "user", "agent", "tool", "subagent", "orchestration", "goal", "background_task"] as const;
 
 export type MessageSource = (typeof MESSAGE_SOURCES)[number];
 
@@ -340,6 +340,8 @@ export type ThreadView = {
   readonly pinned?: boolean;
   readonly threadId: string;
   readonly mainConversationId: string;
+  /** Committed fork edges reachable from the main Conversation, including forks with no Run. Older servers omit this field. */
+  readonly conversationBranches?: readonly { readonly conversationId: string; readonly parentConversationId: string }[];
   readonly status: ThreadStatus;
   /** Why the Thread is not progressing, most decisive first. Empty when it is. */
   readonly blockingReasons: readonly BlockingReason[];
@@ -586,6 +588,8 @@ export type ConversationView = {
   readonly pendingConfig?: { readonly invalidReason?: string; readonly configRevision: string; readonly blockingRunId: string; readonly config: ConversationConfigView } | null;
   readonly modelCapabilities?: ConversationModelCapabilities;
   /** Inheritance boundary when this Conversation was forked; `null` for a fresh one. */
+  /** Direct source of a public fork. Null for the main line; omitted by older servers. */
+  readonly parentConversationId?: string | null;
   readonly inheritedThrough: number | null;
   readonly createdAt: string;
 };
@@ -1044,6 +1048,8 @@ export type DelegationStatus = "created" | "running" | "completed" | "failed" | 
 export type DelegationDeliveryState = "pending" | "incorporated" | "processed" | "suppressed";
 
 export type DelegationView = {
+  /** Absent on legacy runtimes; clients display read-only details in that case. */
+  readonly allowedActions?: readonly "cancel"[];
   readonly id: string;
   readonly parentConversationId: string;
   readonly parentRunId: string;

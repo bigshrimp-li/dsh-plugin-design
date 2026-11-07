@@ -20,6 +20,6 @@ execFileSync(executable, ["--input-type=module", "-e", `
 const require = createRequire(import.meta.url), manifestPath = require.resolve("vitest/package.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const cli = path.resolve(path.dirname(manifestPath), typeof manifest.bin === "string" ? manifest.bin : manifest.bin.vitest);
-const result = spawnSync(executable, ["--expose-internals", cli, "run", "--config", "vitest.goal-host-core.config.mjs"], { env, stdio: "inherit" });
+const result = spawnSync(executable, ["--expose-internals", cli, "run", "--config", "vitest.goal-host-core.config.mjs", ...process.argv.slice(2)], { env, stdio: "inherit" });
 if (result.error) throw result.error;
 process.exit(result.status ?? 1);

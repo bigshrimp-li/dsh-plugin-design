@@ -56,7 +56,10 @@ export const GOAL_EVENT_TYPES = [
 ] as const;
 export type GoalEventType = (typeof GOAL_EVENT_TYPES)[number];
 
+export const BACKGROUND_TASK_EVENT_TYPES = ["background_task.created", "background_task.status_changed", "background_task.finished", "background_task.delivery_changed", "monitor.batch", "schedule.changed", "schedule.fired", "schedule.skipped"] as const;
+
 export const THREAD_EVENT_TYPES = [
+  ...BACKGROUND_TASK_EVENT_TYPES,
   ...GOAL_EVENT_TYPES,
   "thread.created",
   "thread.status_changed",

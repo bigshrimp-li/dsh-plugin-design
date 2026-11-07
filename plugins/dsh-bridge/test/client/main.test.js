@@ -245,7 +245,7 @@ describe("the Run & session tab", () => {
     // plus the Threads card, which lists what the Core holds, and the session
     // card, which names which dsh session this panel belongs to — and the Core
     // card, which the case does not name, is not foldable.
-    expect([...controls.keys()].sort()).toEqual(["delegations", "run", "session", "snapshot", "threads"]);
+    expect([...controls.keys()].sort()).toEqual(["run", "session", "snapshot", "threads"]);
     for (const [id, control] of controls) {
       expect(control.props["aria-expanded"], id).toBe(true);
       expect(control.props["aria-controls"], id).toBe(`${id}-body`);
@@ -287,21 +287,13 @@ describe("the Run & session tab", () => {
     expect(text).not.toContain("未连接 Core，读不到会话配置快照。");
     // The delegation card has no read to draw from at all, and says that rather
     // than blaming a link that is up.
-    expect(text).toContain("还没有可读的子 Agent 委派信息");
+    expect(text).not.toContain("子 Agent 委派");
     expect(text).not.toContain("未连接 Core，读不到子 Agent 委派。");
     expect(text).not.toContain("go-main");
     expect(text).not.toContain("researcher");
   });
 
-  it("claims the Core is not connected on the delegation card only when it is not", () => {
-    const { main, services, t } = buildMain();
-    services.setConnection("offline");
-    expect(render(main.DelegationsCard, tabProps(t))).toContain("未连接 Core，读不到子 Agent 委派。");
-    services.setConnection("ready");
-    const text = render(main.DelegationsCard, tabProps(t));
-    expect(text).toContain("还没有可读的子 Agent 委派信息");
-    expect(text).not.toContain("未连接 Core");
-  });
+
 
   /**
    * The snapshot card over a state the caller sets.
@@ -900,14 +892,12 @@ describe("the Run & session tab", () => {
       "提供方",
       "super-agent",
       "skillRoots",
-      "子 Agent 委派",
-      "researcher",
     ]) {
       expect(text, expected).toContain(expected);
     }
 
     // The connected layout is Core, Run, snapshot, delegations — in that order.
-    const order = ["Core 进程", "当前 Run", "会话配置快照", "子 Agent 委派"].map((label) => text.indexOf(label));
+    const order = ["Core 进程", "当前 Run", "会话配置快照"].map((label) => text.indexOf(label));
     expect(order).toEqual([...order].sort((a, b) => a - b));
   });
 
@@ -949,37 +939,23 @@ describe("the Run & session tab", () => {
     const text = render(main.RunSessionTab, tabProps(t));
     expect(text).toContain("Core 进程");
     expect(text).toContain("会话配置快照");
-    expect(text).toContain("子 Agent 委派");
+    expect(text).not.toContain("子 Agent 委派");
     expect(text).not.toContain("当前 Run");
   });
 
-  it("reports a Core action as unsupported instead of a success", async () => {
+  it("keeps unimplemented diagnostic controls out of both keyboard and pointer navigation", () => {
     const { main, services, t } = buildMain();
-    services.setConnection("ready");
-    services.setDemo(true);
-    const tree = renderTree(main.RunSessionTab, tabProps(t));
-    const restart = elementsOf(tree).find(
-      (node) => node.type === "button" && textOf(node.props.children).includes("重启 Core"),
-    );
-    expect(restart, "no restart control").toBeDefined();
-    restart.props.onClick();
-    await Promise.resolve();
-    expect(services.outcomeOf("core.restart").status).toBe("unsupported");
+    for (const connection of ["offline", "ready"]) {
+      services.setConnection(connection);
+      const buttons = elementsOf(renderTree(main.RunSessionTab, tabProps(t))).filter(node => node.type === "button").map(node => textOf(node.props.children));
+      for (const label of ["启动 Core", "重启 Core", "打开配置目录", "切换模型", "修改权限模式", "查看委派", "取消委派"]) {
+        expect(buttons.join(" ")).not.toContain(label);
+      }
+      expect(render(main.RunSessionTab, tabProps(t))).not.toContain("researcher");
+    }
   });
 
-  it("keeps a delegation's own action id, so two rows do not share one outcome", async () => {
-    const { main, services, t } = buildMain();
-    services.setConnection("ready");
-    services.setDemo(true);
-    const tree = renderTree(main.RunSessionTab, tabProps(t));
-    const cancel = elementsOf(tree).find(
-      (node) => node.type === "button" && textOf(node.props.children).includes("取消"),
-    );
-    expect(cancel).toBeDefined();
-    cancel.props.onClick();
-    await Promise.resolve();
-    expect(services.outcomeOf("delegation.cancel:researcher").status).toBe("unsupported");
-  });
+
 });
 
 describe("the composer shows the selected Session's fixed Core binding", () => {
@@ -1801,4 +1777,14 @@ describe("the Thread's own controls", () => {
     // A resume that started a Run says which one, as the Core named it.
     expect(text).toContain("已启动 Run：run-9");
   });
+});
+
+it.each(["offline", "ready"])("keeps all seven obsolete command IDs out of %s diagnostics, including disabled controls", state => {
+  const { main, services, t } = buildMain();
+  services.setConnection(state);
+  const buttons = elementsOf(renderTree(main.RunSessionTab, tabProps(t))).filter(n => n.type === "button");
+  const exposed = new Set(buttons.map(n => n.props?.["data-action"]));
+  const obsolete = ["core.start", "core.restart", "core.openConfig", "snapshot.switchModel", "snapshot.switchPermission", "delegation.view", "delegation.cancel"];
+  expect(obsolete.filter(id => exposed.has(id))).toEqual([]);
+  expect(buttons.length).toBeGreaterThan(0);
 });

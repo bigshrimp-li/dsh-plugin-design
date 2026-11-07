@@ -117,6 +117,17 @@ export const THREADS_QUERY_SESSION_ID = "sessionId";
 
 /** Names the matcher can return; the handler switches on these. */
 export type ThreadRouteName =
+  | "conversationBackgroundTasks"
+  | "threadBackgroundTasks"
+  | "backgroundTaskOutput"
+  | "backgroundTaskCancel"
+  | "backgroundTaskDetach"
+  | "backgroundTask"
+  | "conversationSchedules"
+  | "schedulePause"
+  | "scheduleResume"
+  | "scheduleCancel"
+  | "schedule"
   | "conversationGoals"
   | "goal"
   | "goalUpdate"
@@ -169,6 +180,18 @@ export type ThreadRouteSpec = {
 };
 
 export const THREAD_ROUTES: readonly ThreadRouteSpec[] = [
+  { name: "conversationBackgroundTasks", method: "GET", path: "/v1/conversations/{conversationId}/background-tasks" },
+  { name: "threadBackgroundTasks", method: "GET", path: "/v1/threads/{threadId}/background-tasks" },
+  { name: "backgroundTaskOutput", method: "GET", path: "/v1/background-tasks/{taskId}/output" },
+  { name: "backgroundTaskCancel", method: "POST", path: "/v1/background-tasks/{taskId}:cancel" },
+  { name: "backgroundTaskDetach", method: "POST", path: "/v1/background-tasks/{taskId}:detach" },
+  { name: "backgroundTask", method: "GET", path: "/v1/background-tasks/{taskId}" },
+  { name: "conversationSchedules", method: "GET", path: "/v1/conversations/{conversationId}/schedules" },
+  { name: "conversationSchedules", method: "POST", path: "/v1/conversations/{conversationId}/schedules" },
+  { name: "schedulePause", method: "POST", path: "/v1/schedules/{scheduleId}:pause" },
+  { name: "scheduleResume", method: "POST", path: "/v1/schedules/{scheduleId}:resume" },
+  { name: "scheduleCancel", method: "POST", path: "/v1/schedules/{scheduleId}:cancel" },
+  { name: "schedule", method: "GET", path: "/v1/schedules/{scheduleId}" },
   { name: "conversationGoals", method: "GET", path: "/v1/conversations/{conversationId}/goals" },
   { name: "conversationGoals", method: "POST", path: "/v1/conversations/{conversationId}/goals" },
   { name: "goalPause", method: "POST", path: "/v1/goals/{goalId}:pause" },

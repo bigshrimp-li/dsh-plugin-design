@@ -26,6 +26,7 @@ window.__ModuleLoader__.load({
       settings: { file: "./client.settings.js", required: true },
       settingsContent: { file: "./client.settings-content.js", required: true },
       fileDecisions: { file: "./client.file-decisions.js", required: true },
+      delegations: { file: "./client.delegations.js", required: false },
       trace: { file: "./client.trace.js", required: true },
       main: { file: "./client.main.js", required: false },
       runPanel: { file: "./client.run-panel.js", required: false },
@@ -377,12 +378,9 @@ window.__ModuleLoader__.load({
       ctx.effect(() => ctx.locale.register(shell.LOCALE_NS, dictionaries), "dsh-bridge: dictionaries");
       shell.bindTranslate(ctx.locale.bind(shell.LOCALE_NS));
 
-      for (const module of [shell, main, runPanel, offline, observe, observationDetail]) {
-        if (module?.demoFixture !== undefined) services.registerFixtures(module.demoFixture);
-      }
-
       const trace = modules.trace.createTrace({ kernel, services });
-      const space = modules.space.createSpace({ kernel, services, transport, ctx, primitives, createSpaceView: modules.spaceView.createSpaceView, ConversationTrace: trace.ConversationTrace,
+      const workspaceTools = {};
+      const space = modules.space.createSpace({ workspaceTools, kernel, services, transport, ctx, primitives, createSpaceView: options => modules.spaceView.createSpaceView({ ...options, Delegations: modules.delegations?.createDelegations(options) }), ConversationTrace: trace.ConversationTrace,
         directoryBrowser: {
           pickDirectory: () => ctx.uiWorkspace.pickDirectory(),
           listDirectory: (path, signal) => ctx.uiWorkspace.listDirectory(path, signal),
@@ -393,6 +391,17 @@ window.__ModuleLoader__.load({
       const content = modules.settingsContent.createSettingsContent({ kernel, primitives, space, fileDecisions });
       const settings = modules.settings.createSettings({ kernel, transport, primitives, space, content,
         Panel: shell.registrations.find(entry => entry.slot === "sidebar.right.pane.tab").component });
+      workspaceTools.ModelSettings = settings.Settings;
+      workspaceTools.selectModels = () => settings.controller.setSection("models");
+      workspaceTools.Artifacts = ({ runId, targetId }) => {
+        const { React, h } = kernel;
+        const [notice, setNotice] = React.useState("");
+        const operations = { call: space.controller.resource, nextRequestId: action => transport.nextRequestId(action),
+          note: setNotice, report: error => setNotice(error?.message || String(error || "")) };
+        return h("div", { className: "sa-settings" }, h("style", null, modules.settings.CSS),
+          notice && h("p", { role: "status" }, notice),
+          h(content.RunArtifacts, { settings: operations, state: { selectedId: targetId }, sourceRunId: runId }));
+      };
       for (const entry of [...space.registrations, ...settings.registrations]) {
         ctx.effect(() => registerSlot(ctx, entry, shell.LOCALE_NS), `dsh-bridge: ${entry.label}`);
       }

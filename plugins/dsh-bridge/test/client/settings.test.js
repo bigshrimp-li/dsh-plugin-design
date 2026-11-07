@@ -6,7 +6,8 @@ const { createSettingsController, mergeDraft, prepareProviderEdit, SECTIONS } = 
 const configuration = { modelConfiguration: { credentials: [], providers: [], models: [] }, defaultModelConfigId: null,
   context: { autoInstructions: true, maxFileBytes: 65536, maxTotalBytes: 262144, timeoutMs: 2000 }, tools: { enabled: ["read"], approval: "workspace_auto" } };
 function fixture(handler, storage) {
-  let next = 0; const calls = [];
+  let next = 0; const calls = [], memory = new Map();
+  storage ??= { getItem: key => memory.get(key), setItem: (key, value) => memory.set(key, value), removeItem: key => memory.delete(key) };
   const controller = createSettingsController({ transport: { nextRequestId: action => `${action}-${++next}` }, ...(storage ? { storage } : {}), fetchImpl: async (_url, init) => {
     const command = JSON.parse(init.body); calls.push(command);
     const result = await handler?.(command, calls) || (command.action === "targets.list" ? { selectedId: "target-a", targets: [], compatibilityUds: false } : command.action === "settings.get" ? { configuration: structuredClone(configuration), version: 1, instanceId: "core-a" } : command.action === "models.list" ? [] : {});
@@ -97,7 +98,8 @@ describe("production settings draft", () => {
 });
 
 it("does not discard an unknown operation or release its prepared credential reference", async () => {
-  const { controller, calls } = fixture(({ action }) => { if (action === "settings.apply") throw new Error("transport outcome unknown"); if (action === "settings.operation") return { operationId: "settings.apply-1", status: "succeeded", version: 2 }; });
+  let activeVersion = 1;
+  const { controller, calls } = fixture(({ action }) => { if (action === "settings.get") return { configuration: structuredClone(configuration), version: activeVersion, instanceId: "core-a" }; if (action === "settings.apply") throw new Error("transport outcome unknown"); if (action === "settings.operation") return { operationId: "settings.apply-1", status: "succeeded", version: 2 }; });
   await controller.load(); controller.edit(draft => { draft.modelConfiguration.credentials.push({ id: "staged-id", kind: "api_key", source: { type: "credential_store", ref: "prepared-ref" } }); });
   await controller.apply();
   expect(controller.getSnapshot().unconfirmedOperation).toBe(true);
@@ -113,5 +115,57 @@ it("does not discard an unknown operation or release its prepared credential ref
   await controller.queryOperation();
   expect(calls.find(call => call.action === "settings.operation").payload.operationId).toBe("settings.apply-1");
   expect(calls.filter(call => call.action === "settings.apply")).toHaveLength(1);
+  expect(controller.getSnapshot().unconfirmedOperation).toBe(true);
+  expect(controller.getSnapshot().note).not.toContain("已激活");
+  activeVersion = 2;
+  await controller.queryOperation();
   expect(controller.getSnapshot().unconfirmedOperation).toBe(false);
+});
+
+it("keeps a draft and its credentials with its target/instance when another Core is selected", async () => {
+  const values = new Map(), storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+  let selected = "a";
+  const { controller, calls } = fixture(({ action, payload }) => {
+    if (action === "targets.select") { selected = payload.targetId; return {}; }
+    if (action === "targets.list") return { selectedId: selected, compatibilityUds: false, targets: ["a", "b"].map(id => ({ id, instanceId: "instance-" + id, actorId: "owner-" + id, authenticated: true })) };
+    if (action === "settings.get") return { configuration: structuredClone(configuration), instanceId: "instance-" + selected, version: 1 };
+  }, storage);
+  await controller.load();
+  controller.edit(draft => { draft.context.timeoutMs = 3080; });
+  await controller.targetAction("select", { targetId: "b" });
+  expect(controller.getSnapshot().draft.context.timeoutMs).toBe(2000);
+  controller.edit(draft => { draft.context.timeoutMs = 4090; });
+  await controller.targetAction("select", { targetId: "a" });
+  expect(controller.getSnapshot().draft.context.timeoutMs).toBe(3080);
+  expect(calls.some(c => c.action === "credentials.release" || c.action === "settings.apply")).toBe(false);
+});
+
+it("keeps a pre-upgrade target draft available for explicit owner review without applying it", async () => {
+  const legacy = "super-agent.settings-draft.v1.target-a.core-a", values = new Map();
+  const draft = structuredClone(configuration); draft.context.timeoutMs = 3200;
+  values.set(legacy, JSON.stringify({ draft, baseline: configuration, version: 1 }));
+  const storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+  const { controller, calls } = fixture(({ action }) => action === "targets.list" ? { selectedId: "target-a", targets: [{ id: "target-a", actorId: "owner", instanceId: "core-a", authenticated: true }] } : null, storage);
+  await controller.load(); expect(controller.getSnapshot()).toMatchObject({ legacyDraft: true, changes: [] });
+  await controller.restoreLegacyDraft();
+  expect(controller.getSnapshot()).toMatchObject({ legacyDraft: false, draft: { context: { timeoutMs: 3200 } } });
+  expect(values.has(legacy)).toBe(false);
+  expect(calls.some(command => command.action === "settings.apply")).toBe(false);
+});
+
+it("ignores a late activation receipt after another client switches the selected target", async () => {
+  let target = "a", finish;
+  const { controller, calls } = fixture(({ action }) => {
+    if (action === "targets.list") return { selectedId: target, targets: ["a", "b"].map(id => ({ id, instanceId: "i-" + id, actorId: "user", authenticated: true })) };
+    if (action === "settings.get") return { instanceId: "i-" + target, configuration, version: 1 };
+    if (action === "settings.apply") return new Promise(resolve => { finish = resolve; });
+  });
+  await controller.load(); controller.edit(draft => { draft.context.timeoutMs = 9999; });
+  const submitted = controller.apply();
+  target = "b"; await controller.load();
+  finish({ operationId: "op-a", version: 2, status: "succeeded" }); await submitted;
+  expect(controller.getSnapshot()).toMatchObject({ instanceId: "i-b", version: 1, operation: null, unconfirmedOperation: false });
+  expect(calls.filter(c => c.action === "settings.get" && c.payload.targetId === "b")).toHaveLength(1);
+  target = "a"; await controller.load();
+  expect(controller.getSnapshot().unconfirmedOperation).toBe(true);
 });

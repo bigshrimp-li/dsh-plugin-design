@@ -113,7 +113,7 @@ export type ThreadObservationFact = ObservationFactBase & {
 export type ConversationObservationFact = ObservationFactBase & {
   readonly type: "conversation";
   readonly payload: {
-    readonly purpose: "entry" | "subagent" | "report_followup" | "compaction" | "unknown";
+    readonly purpose: "entry" | "internal" | "subagent" | "report_followup" | "compaction" | "unknown";
     readonly forkedFromConversationId: string | null;
   };
 };
@@ -533,7 +533,7 @@ export type ObservationGraphNode = {
 };
 
 export type ObservationGraphEdge = {
-  readonly kind: "goal_iteration" | "parent_run" | "origin_run" | "delegation" | "report_delivery" | "fork";
+  readonly kind: "goal_iteration" | "goal_assessment" | "parent_run" | "origin_run" | "delegation" | "report_delivery" | "fork";
   readonly fromId: string;
   readonly toId: string;
   readonly factId: string;
