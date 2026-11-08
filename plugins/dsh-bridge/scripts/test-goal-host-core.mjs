@@ -7,7 +7,7 @@ const source = process.env.SUPER_AGENT_SOURCE_ROOT;
 if (!source || !path.isAbsolute(source)) throw new Error("Set SUPER_AGENT_SOURCE_ROOT to a built absolute agent-loop-core checkout");
 const executable = process.env.DSH_ELECTRON || "/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness";
 const dshRoot = process.env.DSH_INSTALL_ROOT || path.resolve(path.dirname(executable), "../Resources/app.asar/dsh");
-for (const target of [executable, path.join(source, "packages/server/dist/index.js"), path.join(source, "packages/client/dist/index.js"), process.env.SUPER_AGENT_GO_RUNTIME_BINARY || path.join(source, "go-runtime/bin/runtime-worker")]) await access(target);
+for (const target of [executable, process.env.SUPER_AGENT_GO_RUNTIME_BINARY || path.join(source, "go-runtime/bin/super-agent-runtime")]) await access(target);
 const env = { ...process.env, SUPER_AGENT_SOURCE_ROOT: source, DSH_ELECTRON: executable, DSH_INSTALL_ROOT: dshRoot, ELECTRON_RUN_AS_NODE: "1" };
 execFileSync(executable, ["--input-type=module", "-e", `
   import fs from 'node:fs';

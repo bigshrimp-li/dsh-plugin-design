@@ -1,0 +1,47 @@
+{
+  "formatVersion": 1,
+  "repository": "agent-loop-core",
+  "baseCommit": "1190a9e801e3593eda35cb29a4d149bdb27e73ba",
+  "packages": {
+    "client": {
+      "package.json": "521906fbab6fbddf63dddac645248781834e9b2028e31fdc4ce8538542437d30",
+      "src/attachments.ts": "968c8e69a305b7ae0718284ec5e4d820240b2e752ee948680a89d5ebd98a827d",
+      "src/background-tasks.ts": "1fee8ac8c6e48ceb8886cb415cb2b0ea58fe05d83e16ab61293ea71927e1ceb7",
+      "src/client.ts": "f5714031c51b5b1f58e8296263b951495a120c2a4088aba37c9b55bbcf6e67f5",
+      "src/delegations.ts": "e95d4bf6ef163891dc1f0e5486fd1a059b528bdcb69f6c21120c2cd5ac59e2bb",
+      "src/errors.ts": "78e0b01e5ae3338e364ba41a88701b6ce965c0a49074426d623104101fa86f50",
+      "src/event-socket.ts": "16727b18f3ffb08dba19c3f93e8e2c9ffc347ff2616a84460d7dff3cc3a5a9fc",
+      "src/goals.ts": "a99db7422bd85369bbd4e52d687381a60342ad60ce7ea9a4838cba4a43e534d2",
+      "src/index.ts": "e8fac5505cd5208c9d8f223c308d94c08e5916a2530d1b5c58d67d92617ca555",
+      "src/managed-workspaces.ts": "daa811a585eddd63cc24951a7b023b2faf4a8a4e8f44391974544dbbed55d68f",
+      "src/settings.ts": "af4071733f4d46b7d6683d079b8222dc5f3af02d450222251783f353197d98a4",
+      "src/skill-installations.ts": "09b2c31ca54616bcfb2e14f7c73d696146fcce2c8832df4edc9cf90bac685421",
+      "src/skill-sources.ts": "a589053ede595c20a207ed3284ce897f5fd18caba35643679cf50d2808157ba5",
+      "src/sse.ts": "bed42b0db863ed13a201a86c36170d00b09e931ff930bce9601a365769781236",
+      "src/subscription.ts": "b6b3807c1c7167c16666ec16c62b8070a4c46c0b70b9b4a8b2a1cf136be0e61c",
+      "src/transport.ts": "59df9b2d03e4c84ef82948ac7c99db8f899caa69cbb526f8ff7d770bcf16c883",
+      "src/workspace-files.ts": "e4ec6214b14771864391e8046e6ffc3a1d1f0eb8e96e02b424d0e665fe511b91"
+    },
+    "protocol": {
+      "package.json": "509c9b598b076d8be8c246e1d736b52524123ac1d78560fe274c4f7423fa0ce9",
+      "src/attachments.ts": "d0fd0b10ef331d27cc20bd0cb510a2475d5e42476a48648efcc2d42e056c766e",
+      "src/background-tasks.ts": "acfcc943a7c736b5fa320fd3503d30c2e2837bbaf4c2bdcde6a4ed040392ff21",
+      "src/composer.ts": "d8c0fedf9656195f8f23d4fd88b65eaaa2e96fa7d777de73215dd809b19c1e0c",
+      "src/errors.ts": "86e43f699f267a1656a80f8fce3f3e1974a1e42ecd57e178a94a43f0458b37b6",
+      "src/events.ts": "f2623dfbe94677ef8ccaee0ab14a3bb364ef9881177f8e78a59571107a820d8d",
+      "src/executions.ts": "6f0abc9e49aeb37685e798ef82f23cc19a138e787311992623864c63e6fd41f5",
+      "src/goals.ts": "6103fc318ae8157b17ebeebc54bc7001cdcaed762a9d2563e52587646e7565e0",
+      "src/index.ts": "ffca415ab10439fb0ec3365d8a7fd77230379b2d8f81253edb2f3b65d57b2938",
+      "src/json.ts": "bd79ad232b5adc19bc6e66d506cc03a4656d53eab4391e700144693b3f7bf235",
+      "src/layout.ts": "941568dc311c81f4d5d3a19eff39505cecf2746a51069438c7a486c3538a5a4f",
+      "src/observation.ts": "e30ef32fb8836c57a5a4abf01ff897f3e5d37f34f65c2f75ac4d4d1bf1868c2b",
+      "src/p1-contracts.ts": "8db13a2de4f9e39a6a262067c71d2ce1df114633fe87b61395d9b9c29a62e84c",
+      "src/routes.ts": "14cbe032564b8ca4583cb34e4090a7196d3700812ec4112b9e516b41efae19c3",
+      "src/settings.ts": "b22a365abd23cfd7284a894f735e53b69985c5435cb261380d454d9080fe2062",
+      "src/skill-installations.ts": "abfdd9a85637d088bd755f5e618fabfa923bc7e70268b13eda93d94cbc5552a2",
+      "src/version.ts": "5de75f507e9f31c571fe5cde131f6abf29e124be3b0d783827381805e71de7e3",
+      "src/views.ts": "da64ea12b344a3b21603946c1d02f771be5466de3404756e05caceac688ee2ec",
+      "src/workspace-files.ts": "5d2fb3468b9d57fe5d1ec8967d5119112d6ba1a45a23dec817584535373beaa1"
+    }
+  }
+}

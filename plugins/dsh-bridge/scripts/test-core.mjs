@@ -7,7 +7,7 @@ if (!root || !isAbsolute(root)) {
   console.error('Set SUPER_AGENT_SOURCE_ROOT to an absolute agent-loop-core checkout with installed dependencies.');
   process.exit(2);
 }
-await access(root + '/packages/server/src/index.ts');
+await access(process.env.SUPER_AGENT_GO_RUNTIME_BINARY || root + '/go-runtime/bin/super-agent-runtime');
 const result = spawnSync('vitest', ['run'], { stdio: 'inherit', env: process.env });
 if (result.error) throw result.error;
 process.exit(result.status ?? 1);

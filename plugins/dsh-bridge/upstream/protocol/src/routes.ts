@@ -6,6 +6,10 @@
  */
 
 export const API_PREFIX = "/v1";
+/** Go Runtime UDS stream endpoints. Separate from the legacy server route switch. */
+export const EVENT_SNAPSHOT_PATH = "/v1/events/snapshot";
+export const EVENT_SOCKET_PATH = "/v1/events/ws";
+export const EVENT_SOCKET_PROTOCOL = "superagent.events.v1";
 
 export const ROUTES = {
   /** Version, protocol range, state, pid, home, socket and lock paths, recovery. */

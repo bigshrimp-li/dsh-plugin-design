@@ -1,7 +1,9 @@
-import { mkdtemp, mkdir, readFile, realpath, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { createClient } from "@super-agent/client";
+import { startGo, configureModel } from "./go-service.mjs";
+import { createCoreServiceFor } from "../../dist/host/core-service.js";
 import { afterEach, expect } from "vitest";
 
 const cleanups = [];
@@ -12,20 +14,8 @@ export async function waitFor(read, predicate, label) {
   while (Date.now() < end) { last = await read(); if (predicate(last)) return last; await new Promise(resolve => setTimeout(resolve, 20)); }
   throw new Error(`${label}: ${JSON.stringify(last)}`);
 }
-export async function nativeFixture(respond, runtimeEnv = {}, capabilities, { files = false } = {}) {
+export async function nativeFixture(respond, runtimeEnv = {}, capabilities) {
   expect(process.versions.electron).toBeTruthy();
-  const root = process.env.SUPER_AGENT_SOURCE_ROOT;
-  // Chord declares an import-only public export; require.resolve would select the wrong condition.
-  const chordRoot = join(root, "node_modules/@earendil-works/chord");
-  const contextExport = JSON.parse(await readFile(join(chordRoot, "package.json"), "utf8")).exports["./context"];
-  const contextEntry = typeof contextExport === "string" ? contextExport : contextExport?.import;
-  if (typeof contextEntry !== "string") throw new Error("Chord must declare its public ./context ESM entry");
-  const [{ CoreServer, createConfiguredGoServingFactory, initialSettings, WorkspaceFileService }, { createClient }, { BACKGROUND_CONTEXT }, { createCoreServiceFor }] = await Promise.all([
-    import(pathToFileURL(join(root, "packages/server/dist/index.js")).href),
-    import(pathToFileURL(join(root, "packages/client/dist/index.js")).href),
-    import(pathToFileURL(join(chordRoot, contextEntry)).href),
-    import("../../dist/host/core-service.js"),
-  ]);
   const home = await realpath(await mkdtemp("/tmp/sa-native-host-")); cleanups.push(() => rm(home, { recursive: true, force: true }));
   const requests = [];
   const upstream = createServer((request, res) => { void (async () => {
@@ -36,16 +26,14 @@ export async function nativeFixture(respond, runtimeEnv = {}, capabilities, { fi
   })().catch(error => { res.writeHead(500); res.end(JSON.stringify({ error: String(error) })); }); });
   await new Promise((resolve, reject) => { upstream.once("error", reject); upstream.listen(0, "127.0.0.1", resolve); });
   cleanups.push(async () => { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); });
-  const configuration = { schemaVersion: 1, agent: { name: "Native Goal Host fixture", mission: "Produce and verify fixture proof" },
-    modelConfiguration: { schemaVersion: 1, app: { name: "native-goal-fixture", version: "1" }, credentials: [{ id: "fixture", kind: "api_key", source: { type: "env", name: "NATIVE_GOAL_FIXTURE_KEY" } }],
-      providers: [{ id: "fixture", driver: "compatible", protocol: "openai-completions", baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, credentialRef: "fixture", authScheme: "bearer", allowLoopbackHttp: true, protocolOptions: { maxTokensField: "max_tokens" } }],
-      models: [{ id: "fixture-model", providerRef: "fixture", modelId: "native-goal-model", definition: { source: "explicit", contextWindow: 16384, maxOutputTokens: 1024, capabilities: { input: ["text"], tools: true, thinking: false, toolResultImages: "unsupported" } }, generation: { maxOutputTokens: 256, reasoning: { mode: "provider_default" } } }],
-      requestPolicy: { totalTimeoutMs: 5000, streamIdleTimeoutMs: 2000, maxAttempts: 1 } }, maxConcurrentRuns: 2, retention: { maxEvents: 1000, maxAgeMs: null }, firstAdmissionCredentialRefs: ["fixture"] };
-  const settings = initialSettings(configuration.modelConfiguration);
-  const server = new CoreServer({ home, heartbeatIntervalMs: 50, runtime: createConfiguredGoServingFactory({ context: BACKGROUND_CONTEXT, configuration,
-    runtimeEnv, ...(capabilities && { capabilities }), ...(files && { fileService: new WorkspaceFileService({ directory: join(home, "files"), allowedRoots: [home] }) }), env: { NATIVE_GOAL_FIXTURE_KEY: "synthetic-loopback-only" }, binaryPath: process.env.SUPER_AGENT_GO_RUNTIME_BINARY || join(root, "go-runtime/bin/runtime-worker"), enableBuiltinTools: true, runtimeSettings: () => settings }) });
-  cleanups.push(() => server.stop()); await server.start();
-  const socketPath = server.info().socketPath;
+  await writeFile(join(home, "serving-config.json"), JSON.stringify({
+    agent: { id: "main", revision: "1", name: "Native Host fixture", mission: "Produce and verify fixture proof", usage: ["main"] },
+    agents: capabilities?.agents || [], maxConcurrentRuns: 2, retention: { maxEvents: 1000, maxAgeMs: null },
+  }), { mode: 0o600 });
+  const server = await startGo(home, "dsh-super-agent-space", runtimeEnv);
+  cleanups.push(server.stop);
+  await configureModel(server, `http://127.0.0.1:${upstream.address().port}/v1`, "native-goal-model", ["bash", "read", "write"]);
+  const { socketPath } = server.options;
   const reconnect = async () => {
     const sdk = createClient({ socketPath, caller: "dsh-super-agent-space", heartbeatIntervalMs: 50 });
     return { sdk, bridge: await createCoreServiceFor({ caller: "dsh-super-agent-space", options: { home: join(home, "bridge"), socketPath } }) };

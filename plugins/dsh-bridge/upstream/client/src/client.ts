@@ -19,6 +19,9 @@ import {
   THREADS_QUERY_CLIENT,
   THREADS_QUERY_SESSION_ID,
   httpStatusForError,
+  EVENT_SNAPSHOT_PATH,
+  type EventSnapshot,
+  type EventSocketMessage,
   type AnswerWaitRequest,
   type ClientRef,
   type CommandReceipt,
@@ -68,6 +71,7 @@ import { createDelegationClient, type DelegationClient } from "./delegations.js"
 import { createGoalClient, type GoalClient } from "./goals.js";
 
 import { CoreClientError, clientErrorFromEnvelope, parseErrorEnvelope } from "./errors.js";
+import { eventQuery, openEventSocket, type EventScope, type EventSocketOptions } from "./event-socket.js";
 import { createSubscription, type SubscriptionOptions } from "./subscription.js";
 import { malformedResponse, sendRequest, type HttpResponse, type ConnectionOptions } from "./transport.js";
 import type {
@@ -140,6 +144,8 @@ export interface CoreClient {
   readonly socketPath: string;
   readonly caller: string;
   getServerInfo(): Promise<ServerInfo>;
+  getEventSnapshot(scope?: EventScope): Promise<EventSnapshot>;
+  openEventSocket(options?: EventSocketOptions): AsyncIterable<EventSocketMessage>;
   getServerLogs(options?: GetServerLogsOptions): Promise<ServerLogsView>;
   /** Models the connected Core can select for a new Thread. */
   listModels(): Promise<readonly ModelCatalogEntry[]>;
@@ -299,6 +305,20 @@ class Client implements CoreClient {
       timeoutMs: this.#requestTimeoutMs,
     });
     return this.#readJson<ServerInfo>(response);
+  }
+
+  async getEventSnapshot(scope: EventScope = {}): Promise<EventSnapshot> {
+    const result = await this.#query<EventSnapshot>(EVENT_SNAPSHOT_PATH + eventQuery(scope));
+    if (typeof result.instanceId !== "string" || !result.instanceId || !Number.isSafeInteger(result.eventSeq) ||
+        result.eventSeq < 0 || !Array.isArray(result.threads)) {
+      throw malformedResponse(200, "invalid event snapshot");
+    }
+    return result;
+  }
+
+  openEventSocket(options: EventSocketOptions = {}): AsyncIterable<EventSocketMessage> {
+    if (!this.socketPath) throw new TypeError("openEventSocket requires a local Unix socket");
+    return openEventSocket(this.socketPath, this.caller, options, this.#requestTimeoutMs, this.#connection.expectedInstanceId);
   }
 
   async getServerLogs(options: GetServerLogsOptions = {}): Promise<ServerLogsView> {

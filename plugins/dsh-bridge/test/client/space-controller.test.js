@@ -334,6 +334,27 @@ describe("independent Super Agent space controller", () => {
     await expect(value.controller.useCurrentFileBranch("expired-branch", 2)).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(value.controller.getSnapshot().fileSelection.snapshotId).toBe("new-baseline"); value.controller.dispose();
   });
+  it.each([
+    ["same Conversation", "thread-1", "conversation-1", false, true],
+    ["foreign Thread", "thread-other", "conversation-1", false, false],
+    ["unconfirmed input", "thread-1", "conversation-1", true, false],
+  ])("opens an old UDS draft only on its confirmed local Conversation: %s", async (_case, threadId, conversationId, pending, restored) => {
+    const selected = { threadId: "thread-1", conversationId: "conversation-1" }, draft = "未发送的草稿";
+    const old = { selected, draft, targetId: null, ...(pending && { pendingInputs: {
+      "conversation-1": { text: draft, signature: "old", requestId: "pending", payload: { text: draft } },
+    } }) };
+    const records = new Map([["super-agent.space.v1", JSON.stringify(old)]]);
+    const storage = { getItem: key => records.get(key), setItem: (key, value) => records.set(key, value) };
+    const value = await refreshed({ storage, state: () => ({ connection: "ready", threadId, conversationId, info: { instanceId: "local-instance" },
+      target: { local: true, selectedId: "local-go:local-instance", targets: [] } }) });
+    try {
+      expect(value.controller.getSnapshot()).toMatchObject({ targetId: "local-go:local-instance", selected: restored ? selected : null, draft: restored ? draft : "" });
+      const current = JSON.parse(records.get("super-agent.space.v1.local-go:local-instance"));
+      expect(current.pendingInputs).toEqual({});
+      expect(JSON.parse(records.get("super-agent.space.v1.uds")).draft).toBe(draft);
+      expect(value.requests.filter(request => request.action === "input.submit")).toHaveLength(0);
+    } finally { value.controller.dispose(); }
+  });
   it("does not let a late input response clear the other target's draft", async () => {
     const input = deferred();
     const value = await refreshed({ action: { "input.submit": async () => input.promise } });
@@ -674,14 +695,15 @@ describe("independent Super Agent space controller", () => {
     const dispose = value.controller.start();
     await value.controller.refresh();
     await value.controller.selectThread("thread-1", "conversation-1");
-    expect(sources).toHaveLength(1);
-    expect(sources[0].url).toBe("/super-agent/events");
-    sources[0].emit("live", liveFrame({ messageId: "generation-sse", delta: "from SSE" }));
+    expect(sources).toHaveLength(2);
+    expect(sources[0].closed).toBe(true);
+    expect(sources[1].url).toBe("/super-agent/events?threadId=thread-1");
+    sources[1].emit("live", liveFrame({ messageId: "generation-sse", delta: "from SSE" }));
     await vi.waitFor(() => expect(value.controller.getSnapshot().live).toHaveLength(1));
 
     dispose();
-    expect(sources[0].closed).toBe(true);
-    sources[0].emit("live", liveFrame({ messageId: "generation-after-dispose", delta: "must not arrive" }));
+    expect(sources[1].closed).toBe(true);
+    sources[1].emit("live", liveFrame({ messageId: "generation-after-dispose", delta: "must not arrive" }));
     await Promise.resolve();
     expect(value.controller.getSnapshot().live).toHaveLength(1);
     value.controller.dispose();

@@ -2,21 +2,25 @@
 
 在 DeepSeek Harness 中提供独立的 Super Agent 工作区。用户在同一应用里管理工作目录、会话、任务执行、人工等待、模型与连接设置，同时保留 DSH 原生工作区、会话和模型选择。
 
-本插件从 `agent-loop-core/clients/dsh-bridge` 迁入，包名仍为 `@super-agent/dsh-bridge`。Core 服务及其模型、工具和持久任务状态继续由原仓库维护，插件通过公开 SDK 连接服务。SDK 和协议的固定源码快照随本插件构建，因此安装插件不要求旁边另有 Core 源码；实际执行任务仍需要运行中的兼容 Core。
+本插件从 `agent-loop-core/clients/dsh-bridge` 迁入，包名仍为 `@super-agent/dsh-bridge`。Core 服务及其模型、工具和持久任务状态继续由原仓库维护，插件通过公开 SDK 连接服务。SDK 和协议的固定源码快照随插件构建。发行包含当前平台的 Go 二进制。Host 启动时探测、拉起并连接 Runtime。
 
-当前插件版本为 0.1.3，支持 DSH 0.2.1-rc.5。连接支持后台任务的 Go Core 后，在 Conversation 的“后台任务”区域可转后台、查看退出码和分流日志、停止任务或创建有限期的周期检查。服务关闭新建时，已有任务仍可查看和停止。参见[宿主验收与操作说明](docs/2026-11-05-background-tasks/spec.md)和[后台任务 SDK 来源](provenance/sdk-background-tasks-2026-11-05.json)。
+插件支持 DSH 0.2.1-rc.5。连接支持后台任务的 Go Core 后，在 Conversation 的“后台任务”区域可转后台、查看退出码和分流日志、停止任务或创建有限期的周期检查。服务关闭新建时，已有任务仍可查看和停止。参见[宿主验收与操作说明](docs/2026-11-05-background-tasks/spec.md)和[后台任务 SDK 来源](provenance/sdk-background-tasks-2026-11-05.json)。
 
-Go 提供 `delegationsV1` 时，可以在父任务详情中查看单条真实委派、区分子任务状态和报告交付，并仅取消选中的委派。见[委派管理与验收](docs/2026-11-07-delegation-details/spec.md)和[当前 SDK 快照](provenance/sdk-conversation-branches-2026-11-07.json)。
+Go 提供 `delegationsV1` 时，可以在父任务详情中查看单条真实委派、区分子任务状态和报告交付，并仅取消选中的委派。见[委派管理与验收](docs/2026-11-07-delegation-details/spec.md)和[当前 SDK 快照](provenance/sdk-local-runtime.json)。
 
 当前桌面的升级路径、14 张 ticket 和复验入口见[工作区 UI 与 Go 发布验收](docs/2026-11-07-workspace-ui/spec.md)。
 
-## 安装与运行
+## 安装与启动
 
-1. 准备 Node.js ≥ 22.19.0、npm 和 DSH，在仓库根目录执行 `npm ci`。
-2. 在根目录执行 `./install.sh --plugin dsh-bridge --profile desktop`。安装器先构建并备份配置，再链接插件，保留其他插件配置。
-3. 重新加载插件或重启 DSH，从 Super Agent 入口进入。选择并配对已有 HTTPS Core；未选择远端时保留原有本机 UDS 兼容连接。Core 不可用时页面说明连接状态，不伪造任务结果。
+用户安装当前系统和 CPU 对应的发行包后，打开 DSH 即可使用 Super Agent。DSH 自动启动本机 Go Runtime，通过同一 Unix 域套接字发送短 HTTP 请求并订阅 WebSocket。多个窗口、多个工作区共用一个 Go 服务。模型和凭据可在 Super Agent 设置中配置。
 
-原有 `agent-loop-core/clients/dsh-bridge` 路径保留为本机兼容链接。后续源码修改、安装与发布均以本目录为准。迁移版本为 0.1.1，DSH 兼容声明为 `0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3`；新增 rc.3 声明前，已使用其实际 Session、Scope、Agent 与 V4 回放接口通过现有宿主回归。该检查不等于完整 UI 与真实模型旅程验收。
+1. 将平台发行包 `.tgz` 解压到长期保留的插件目录。安装需要已安装的 DSH、PATH 中的 `dsh` 和 Node.js ≥ 22.19.0。发行包包含 Host、SDK 和平台 Go 可执行文件。
+2. 进入解压后的 `package/`，执行 `node install.mjs --profile desktop`。脚本核对平台和二进制 SHA-256，备份并登记选定 profile 的 bundle。DSH 链接到该目录。测试 Web 版可将 profile 改为 `web`。
+3. 重新打开 DSH，进入 Super Agent 并选择工作区。默认服务使用 `~/.super-agent/run/core.sock`。已有服务会被复用。显式停止服务后，重新加载插件可再次启动。启动日志在 `<home>/logs/runtime-launch.log`。
+
+源码开发从仓库根执行 `./install.sh --plugin dsh-bridge --profile desktop`。生成新的发行包时，在插件目录设置 `SUPER_AGENT_RUNTIME_BINARY` 为对应平台 Go 可执行文件的绝对路径再执行 `npm pack`。开发者也可指定 `SUPER_AGENT_SOURCE_ROOT` 由 Go 与 C 编译器构建。已有分发目录可直接重新打包。当清单缺失且未指定来源时，构建脚本从相邻的 `agent-loop-core` 构建。
+
+后续源码修改、安装与发布均以本目录为准。本地 Go 发行版本为 0.2.0。rc.5 已通过实际 Electron Host 下的 Session、Scope、取消、消息结算和 V4 回放回归。
 
 ## 数据存储
 
@@ -24,25 +28,26 @@ Go 提供 `delegationsV1` 时，可以在父任务详情中查看单条真实委
 
 | 位置 | 内容 |
 |---|---|
-| `<home>/run/core.sock` | 原本机 Core 连接；`SUPER_AGENT_SOCKET` 可覆盖 socket 路径。 |
-| `<home>/dsh-targets.json` | HTTPS Core 入口、配对信息与选中项，包含敏感凭据，不提交或分发。 |
+| `<home>/run/core.sock` | 本机 Go Runtime 的 HTTP/WS 连接；`SUPER_AGENT_SOCKET` 可覆盖 socket 路径。 |
+| `<home>/dsh-targets.json` | 原 HTTPS 目标的归档记录，包含敏感凭据，升级保留。 |
 | `<home>/bridge/sessions.json`、`inputs.json` | 原生 Session 与 Thread／Conversation 的兼容关联及输入回执。 |
 | `<home>/dsh-content-uploads/` | 本机 UDS 连接的上传候选、内容块、操作与回执。 |
 | `<home>/dsh-artifact-applies/` | 本机 UDS 连接的产物回传与冲突处理日志。 |
-| `<home>/targets/<摘要>/` | 各 HTTPS Core 实例的本机上传缓存和回传记录，按入口与实例隔离。 |
-| `<home>/task-receipts/`、`<home>/targets/<摘要>/task-receipts/` | UDS 或 HTTPS 的后台命令回执缓存。Host 保存已接收的回执摘要，读取时重新向 Core 核对当前身份及资源归属。 |
+| `<home>/targets/<摘要>/` | 按持久实例标识分区的本机上传缓存和回传记录。 |
+| `<home>/task-receipts/`、`<home>/targets/<摘要>/task-receipts/` | 按实例隔离的后台命令回执缓存。Host 保存已接收的回执摘要，读取时重新向 Core 核对当前身份及资源归属。 |
 | DSH 浏览器 `localStorage` | `super-agent.space.v1` 及各入口后缀 key，保存界面与草稿等本机状态。 |
+| `<home>/logs/runtime-launch.log` | Go 启动诊断，包括二进制和锁错误。 |
 | 用户选择的工作目录 | 任务输入来源，以及用户明确选择回传的目标文件；插件按原有版本和冲突检查写入。 |
 
 Core 的会话、运行、事件、配置和模型数据仍由 Core 服务在原数据目录中管理。本次迁移不移动业务数据，不改存储 key，不将文件放入仓库 `.scratch/`。清理开发材料时保留上述用户数据和恢复记录。
 
-设置中的“执行已连接”表示 Host 读到了当前 Core 的就绪状态。UDS 可以执行任务。配置管理需要已配对的 HTTPS 入口。查看或修改模型时核对当前目标和基于的版本；版本冲突后重新审阅保留的草稿。丢失配置回执时使用“查询原操作”，界面读回同一实例的激活版本后再显示成功。
+设置使用与任务执行相同的本地 UDS 读取和修改配置。查看或修改模型时核对当前目标和基于的版本；版本冲突后重新审阅保留的草稿。丢失配置回执时使用“查询原操作”，界面读回同一实例的激活版本后再显示成功。
 
-周期检查默认创建后立即开始，也可选择等待一个间隔。提交前界面将原授权、绝对截止时间和请求编号保存在当前操作分区。结果待确认时可先查询原回执，或明确选择重试原操作；页面刷新不会替用户重新发送命令。HTTPS 使用实例和操作者分区；UDS 无持久实例标识时使用原进程身份，替换本机服务后不会将旧操作送给新进程。
+周期检查默认创建后立即开始，也可选择等待一个间隔。提交前界面将原授权、绝对截止时间和请求编号保存在当前操作分区。结果待确认时可先查询原回执，或明确选择重试原操作；页面刷新不会替用户重新发送命令。本地服务按持久实例和操作者分开保存回执。服务重启后仍可核对原操作。
 
 ## 持续目标
 
-版本 0.1.2 增加 Go runtime 的持久目标入口。Core 必须明确声明 `runtimeFeatures.goalsV1`；旧 Core 和 TypeScript runtime 返回 `NOT_SUPPORTED`，插件保留草稿。
+版本 0.1.2 增加 Go runtime 的持久目标入口。Core 必须明确声明 `runtimeFeatures.goalsV1`；不支持该功能的旧 Core 返回 `NOT_SUPPORTED`，插件保留草稿。
 
 1. 在输入框发送 `/goal 修复登录并通过测试 --budget 200000`。预算是整个目标的累计 token 上限。创建目标沿用已选择的附件、Skill、上下文预检与文件输入。
 2. 使用 `/goal status` 查看目标。目标卡片显示阶段、当前任务、完成项、下一步、已结算用量、预留和未确认占用。暂停或取消的请求回执只表示服务已接收，卡片等服务确认状态后更新。
@@ -67,12 +72,15 @@ SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/built-agent-loop-core DSH_ELECTRON="/A
 SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/built-agent-loop-core DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:background-host-core
 SUPER_AGENT_SOURCE_ROOT=/absolute/path/to/built-agent-loop-core DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:settings-host-core
 DSH_ELECTRON="/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" npm run test:host
+npm run test:local-startup
 npm pack --dry-run
 ```
 
-默认测试使用固定 SDK 与合成数据，不需要 Core 源码。`test:core` 另需已安装依赖的 Core 源码，覆盖上传恢复与真实 Core 产物回传；`test:host` 使用实际 DSH Electron Node 检查分发加载、Session／Scope 路由、取消、消息结算和 V4 回放。非标准安装位置可用 `DSH_INSTALL_ROOT` 指定实际 DSH 包根目录。浏览器交互与真实模型旅程分别报告，不包含在这些检查中。
+默认测试使用固定 SDK 与合成数据，不需要 Core 源码。`test:core` 另需包含独立 Go 服务二进制的 Core 工作树，覆盖上传恢复与真实 Core 产物回传；`test:host` 使用实际 DSH Electron Node 检查分发加载、Session／Scope 路由、取消、消息结算和 V4 回放。非标准安装位置可用 `DSH_INSTALL_ROOT` 指定实际 DSH 包根目录。浏览器交互与真实模型旅程分别报告，不包含在这些检查中。
 
-`test:goal-host-core` 额外要求 Core 的公开 dist 和 `go-runtime/bin/runtime-worker` 已构建。该检查在真实 DSH Electron Node 中，通过插件 Host 与公开 SDK 调用真实 Go Goal；模型只连接本机合成 fixture，覆盖工具证据、评估、独立审核、完成与运行中取消，不产生外部模型费用。
+`test:goal-host-core` 额外要求 Core 的`go-runtime/bin/super-agent-runtime` 已构建。该检查在真实 DSH Electron Node 中，通过插件 Host 与公开 SDK 调用真实 Go Goal；模型只连接本机合成 fixture，覆盖工具证据、评估、独立审核、完成与运行中取消，不产生外部模型费用。
+
+`test:local-startup` 从真实 npm 发行包向临时 DSH profile 安装，启动两个 DSH 进程，验证同一服务上的两个工作区、事件过滤以及关闭和重开。验证范围见[本地 Go Runtime 迭代说明](docs/2026-11-08-local-go-runtime/spec.md)。
 
 目录边界见 [AGENTS.md](AGENTS.md)。迭代 spec 保存在本插件 `docs/YYYY-MM-DD-<主题>/spec.md`。来源和原文件哈希见 [导入记录](provenance/import-2026-10-26.json)。上游 SDK 与协议按固定快照单向更新，修改后重新构建并验证协议兼容。
 

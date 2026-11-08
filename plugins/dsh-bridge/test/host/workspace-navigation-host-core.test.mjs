@@ -78,7 +78,7 @@ describe.skipIf(!process.versions.electron || !process.env.SUPER_AGENT_SOURCE_RO
       const label = textOf(users.at(-1)), path = paths[label];
       if (!path || body.messages.slice(body.messages.lastIndexOf(users.at(-1)) + 1).some(m => m.role === "tool")) return reply("done");
       return reply("", { id: "write-" + label, type: "function", function: { name: "write", arguments: JSON.stringify({ path, content: label, mode: "create" }) } });
-    }, {}, undefined, { files: true });
+    });
     const registered = await f.sdk.registerWorkspace({ requestId: "artifact-harness", root: f.workspaceRoot });
     const baseline = await f.sdk.files.snapshotDirectory(registered.workspaceId, { requestId: "artifact-baseline", path: f.workspaceRoot });
     const thread = await f.sdk.createThread({ requestId: "artifact-thread", agentId: "main", modelId: "native-goal-model", workspaceId: registered.workspaceId,

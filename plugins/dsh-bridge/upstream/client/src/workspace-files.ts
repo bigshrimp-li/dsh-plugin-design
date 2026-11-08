@@ -3,7 +3,7 @@ import { constants } from "node:fs";
 import { lstat, open, readdir, realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { isDeepStrictEqual, promisify } from "node:util";
 import { DEFAULT_FILE_TRANSFER_BUDGET } from "@super-agent/protocol";
 import type {
   CreateFileTransferRequest, FileApplyOperation, FileBranch, FileManifest, FileMergePreview,
@@ -76,7 +76,7 @@ export async function packLocalDirectory(path: string, options: {
   readonly signal?: AbortSignal;
 } = {}): Promise<LocalFileBundle> {
   const root = await realpath(path), budget = options.budget ?? DEFAULT_FILE_TRANSFER_BUDGET;
-  const rules = options.rules ?? [".git", "node_modules", ".cache", "dist", "build", ".env", ".env.*", "*.pem", "*.key"];
+  const rules = options.rules ?? [".git", ".super-agent/workspace.json", "node_modules", ".cache", "dist", "build", ".env", ".env.*", "*.pem", "*.key"];
   const deadline = Date.now() + budget.timeoutMs, files: ManifestFile[] = [], blocks = new Map<string, Buffer>();
   const ignored: string[] = [], signatures = new Map<string, string>();
   const signature = (item: Awaited<ReturnType<typeof lstat>>): string => [item.dev, item.ino, item.mode, item.size, item.mtimeMs, item.ctimeMs].join(":");
@@ -157,7 +157,7 @@ export async function uploadLocalBundle(client: WorkspaceFileClient, bundle: Loc
   const operation = input.operationId ? await client.getTransfer(input.operationId) : await client.createTransfer({
     requestId: input.requestId, workspaceId: input.workspaceId, manifest: bundle.manifest, source: { mode: "local_upload", location: bundle.root },
   });
-  if (operation.workspaceId !== input.workspaceId || JSON.stringify(operation.manifest) !== JSON.stringify(bundle.manifest)) throw new Error("resumed upload requires the original manifest; create a new candidate for changed source files");
+  if (operation.workspaceId !== input.workspaceId || !isDeepStrictEqual(operation.manifest, bundle.manifest)) throw new Error("resumed upload requires the original manifest; create a new candidate for changed source files");
   for (const digest of operation.missingBlocks) {
     input.signal?.throwIfAborted();
     const bytes = bundle.blocks.get(digest);

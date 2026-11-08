@@ -55,6 +55,7 @@ describe.skipIf(!process.versions.electron || !process.env.SUPER_AGENT_SOURCE_RO
     expect((await f.sdk.getServerInfo()).runtimeFeatures).toMatchObject({ backgroundTasksV1: true, taskMonitorsV1: true, taskSchedulesV1: true });
     const origin = await input(f, "launch", "后台运行测试，失败后告诉我");
     const shell = await task(f, "shell", "running");
+    const { executionRoot } = await f.sdk.files.getRunFiles(origin.runId);
     expect(shell).toMatchObject({ originRunId: origin.runId, conversationId });
     const checkpoint = (await f.bridge.call("task.list", { conversationId })).asOfSeq;
     const prefix = await waitFor(() => f.bridge.call("task.output", { taskId: shell.taskId, stream: "stdout", limitBytes: 2 }),
@@ -63,7 +64,7 @@ describe.skipIf(!process.versions.electron || !process.env.SUPER_AGENT_SOURCE_RO
     expect((await input(f, "math", "2 加 2 等于几")).answer).toBe("4");
     await input(f, "watch", "观察 " + shell.taskId);
     const monitor = await task(f, "monitor", "running");
-    await writeFile(join(f.workspaceRoot, "emit"), "");
+    await writeFile(join(executionRoot, "emit"), "");
     await waitFor(() => f.bridge.call("task.get", { taskId: monitor.taskId }), v => v.status === "running" && v.monitor.matches === 1, "live monitor");
     await waitFor(() => f.sdk.listMessages(conversationId), v => v.items.some(m => m.source === "background_task" && m.text?.includes("monitor_batch")), "monitor delivery");
 
@@ -72,13 +73,13 @@ describe.skipIf(!process.versions.electron || !process.env.SUPER_AGENT_SOURCE_RO
     const cancelled = await resumed.bridge.call("task.cancel", { taskId: monitor.taskId, requestId: "stop-watching" });
     expect(cancelled.state).toBe("accepted");
     await waitFor(() => resumed.bridge.call("task.get", { taskId: monitor.taskId }), v => v.status === "cancelled", "stop watcher");
-    await writeFile(join(f.workspaceRoot, "exit"), "");
+    await writeFile(join(executionRoot, "exit"), "");
     const terminal = await waitFor(() => resumed.bridge.call("task.get", { taskId: shell.taskId }),
       v => v.status === "failed" && v.deliveryState === "processed", "original Conversation receives failure");
     expect(terminal).toMatchObject({ taskId: shell.taskId, originRunId: origin.runId, conversationId, exitCode: 7 });
     expect(await resumed.bridge.call("task.output", { taskId: shell.taskId, stream: "stderr" })).toMatchObject({ data: "ERROR test failed\n", eof: true });
     expect((await replay(resumed, checkpoint, shell.taskId)).seq).toBeGreaterThan(checkpoint);
-    expect(await readFile(join(f.workspaceRoot, "launches"), "utf8")).toBe("x");
+    expect(await readFile(join(executionRoot, "launches"), "utf8")).toBe("x");
   });
   it("recovers a dropped Go acknowledgement without duplicating a schedule or crossing principals", async () => {
     const f = await nativeFixture(backgroundProvider(), enabled), conversationId = f.thread.mainConversationId;

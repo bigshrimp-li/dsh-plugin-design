@@ -284,3 +284,15 @@ export type LiveFrame = {
 export type SubscriptionEvent =
   | { readonly kind: "committed"; readonly event: CommittedEvent }
   | { readonly kind: "live"; readonly frame: LiveFrame };
+
+/** Committed cursor and all matching Thread views from one read transaction. */
+export type EventSnapshot = {
+  readonly instanceId: string;
+  readonly eventSeq: number;
+  readonly threads: readonly import("./p1-contracts.js").ThreadView[];
+};
+
+export type EventSocketMessage = SubscriptionEvent | {
+  readonly kind: "resync_required";
+  readonly code: "CURSOR_EXPIRED" | "ACCOUNT_CHANGED" | "INVALID_REQUEST";
+};

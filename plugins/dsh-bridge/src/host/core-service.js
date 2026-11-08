@@ -23,6 +23,7 @@
  * the id is chosen.
  */
 /** The prefix every route this plugin registers lives under. */
+import { once } from "node:events";
 import { createObservationService } from "./observation-service.js";
 import { createLocalArtifactService } from "./local-artifacts.js";
 import { createFileDecisionActions } from "./file-decisions-service.js";
@@ -227,8 +228,8 @@ export function createCoreService({ client, settingsClient, options, now = () =>
     if (!options.baseUrl) {
       const info = await client.getServerInfo();
       if (!Number.isInteger(info?.pid) || typeof info.startedAt !== "string") throw new CoreServiceError("PROTOCOL_INCOMPATIBLE", "当前 UDS Core 未提供进程版本");
-      if (payload.expectedInstanceId || payload.expectedServerPid !== undefined && payload.expectedServerPid !== info.pid || payload.expectedServerStartedAt !== undefined && payload.expectedServerStartedAt !== info.startedAt) throw new CoreServiceError("INSTANCE_CHANGED", "UDS Core 进程已变化，请重新读取工作区后确认");
-      return { instanceId: null, connectionKind: "uds", serverPid: info.pid, serverStartedAt: info.startedAt, targetId: payload.targetId ?? null };
+      if (payload.expectedInstanceId && payload.expectedInstanceId !== info.instanceId || payload.expectedServerPid !== undefined && payload.expectedServerPid !== info.pid || payload.expectedServerStartedAt !== undefined && payload.expectedServerStartedAt !== info.startedAt) throw new CoreServiceError("INSTANCE_CHANGED", "UDS Core 进程已变化，请重新读取工作区后确认");
+      return { instanceId: info.instanceId ?? null, connectionKind: "uds", serverPid: info.pid, serverStartedAt: info.startedAt, targetId: payload.targetId ?? null };
     }
     const identity = await settingsClient.getIdentity();
     if (typeof identity?.instanceId !== "string" || !identity.instanceId) throw new CoreServiceError("PROTOCOL_INCOMPATIBLE", "当前 Core 未提供工作区实例标识");
@@ -491,7 +492,7 @@ export function createCoreService({ client, settingsClient, options, now = () =>
     "workspace.managed.open": payload => attempt(async () => {
       let identity, input;
       try {
-        if (options.baseUrl) requireText(payload, "expectedInstanceId");
+        if (options.baseUrl || options.expectedInstanceId) requireText(payload, "expectedInstanceId");
         else if (!Number.isInteger(payload.expectedServerPid) || !payload.expectedServerStartedAt) throw new CoreServiceError("INVALID_REQUEST", "请先读取当前 UDS Core 的工作区目录");
         input = { requestId: requireRequestId(payload), relativePath: requireText(payload, "relativePath"), createIfMissing: payload.createIfMissing === true };
         identity = await managedWorkspaceIdentity(payload);
@@ -831,7 +832,7 @@ export async function createCoreServiceFor({
   sessionMap = null,
 } = {}) {
   const connection = {
-    ...(options.baseUrl ? { baseUrl: options.baseUrl, accessToken: options.accessToken, expectedInstanceId: options.expectedInstanceId, ...(options.ca ? { ca: options.ca } : {}) } : { socketPath: options.socketPath }), caller,
+    ...(options.baseUrl ? { baseUrl: options.baseUrl, accessToken: options.accessToken, expectedInstanceId: options.expectedInstanceId, ...(options.ca ? { ca: options.ca } : {}) } : { socketPath: options.socketPath, expectedInstanceId: options.expectedInstanceId }), caller,
   };
   const module = await import("@super-agent/client");
   const sdk = client ?? module.createClient(connection);
@@ -998,8 +999,10 @@ export function registerCoreRoutes({ webServer, effect, service, log }) {
         const url = new URL(req.url ?? "/", "http://localhost");
         const query = url.searchParams.get("after");
         const service = await resolveService();
-        const eventScope = service.eventScope?.();
-        const cursorScope = eventScope === undefined ? null : Buffer.from(eventScope).toString("base64url");
+        const eventScope = await service.eventScope?.();
+        const scope = [url.searchParams.get("threadId"), url.searchParams.get("workspaceId")];
+        const scopedKey = scope.some(Boolean) ? JSON.stringify([eventScope, ...scope]) : eventScope;
+        const cursorScope = scopedKey === undefined ? null : Buffer.from(scopedKey).toString("base64url");
         const lastEventId = req.headers["last-event-id"];
         const scopedCursor = typeof lastEventId === "string" ? /^([A-Za-z0-9_-]+):([0-9]+)$/.exec(lastEventId) : null;
         const after = query !== null ? Number(query) : cursorScope === null
@@ -1012,15 +1015,25 @@ export function registerCoreRoutes({ webServer, effect, service, log }) {
         });
         const controller = new AbortController();
         const close = () => controller.abort();
+        const send = async frame => {
+          if (res.write(frame) === false) await once(res, "drain", { signal: controller.signal });
+        };
         req.on("close", close);
         try {
           const events = service.subscribe({
             ...(Number.isSafeInteger(after) ? { after } : {}),
             ...(eventScope === undefined ? {} : { expectedEventScope: eventScope }),
+            ...(url.searchParams.has("threadId") ? { threadId: url.searchParams.get("threadId") } : {}),
+            ...(url.searchParams.has("workspaceId") ? { workspaceId: url.searchParams.get("workspaceId") } : {}),
             live: true,
             signal: controller.signal,
           });
           for await (const event of await events) {
+            if (event.kind === "resync_required") {
+              // Empty SSE id resets EventSource's stored cursor before it reconnects.
+              await send(`id:\nevent: resync_required\ndata: ${JSON.stringify({ code: event.code })}\n\n`);
+              break;
+            }
             if (event.kind === "committed") {
               // The default message, with the type inside the JSON rather than
               // as an SSE `event:` name. A named event only reaches a listener
@@ -1029,11 +1042,11 @@ export function registerCoreRoutes({ webServer, effect, service, log }) {
               // that goes stale the first time the Core grows a type. The
               // browser half has no way to import the protocol's own list, so
               // the wire carries it instead.
-              res.write(`id: ${cursorScope === null ? "" : `${cursorScope}:`}${event.event.seq}\ndata: ${JSON.stringify(event.event)}\n\n`);
+              await send(`id: ${cursorScope === null ? "" : `${cursorScope}:`}${event.event.seq}\ndata: ${JSON.stringify(event.event)}\n\n`);
             } else {
               // No `id:` line: a live frame is not durable, and giving it one
               // would make the browser resume from a seq the Core never wrote.
-              res.write(`event: live\ndata: ${JSON.stringify(event.frame)}\n\n`);
+              await send(`event: live\ndata: ${JSON.stringify(event.frame)}\n\n`);
             }
           }
         } catch (error) {

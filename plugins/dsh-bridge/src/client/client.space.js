@@ -151,7 +151,7 @@ window.__ModuleLoader__.load({
       const listeners = new Set(), metadata = new Map(), firstTitles = new Map(), drafts = new Map(Object.entries(saved.drafts || {})), pendingInputs = restorePendingInputs(saved.pendingInputs), pendingWaitActions = new Map(), materialDrafts = new Map(Object.entries(saved.materialDrafts || {}));
       const restoreGoalOperations = value => new Map(Object.entries(value || {}).filter(([, record]) => record && /^goal\.(update|steer|pause|resume|cancel)$/.test(record.action) && record.payload && typeof record.payload.requestId === "string" && typeof record.payload.goalId === "string"));
       const pendingGoalOperations = restoreGoalOperations(saved.pendingGoalOperations);
-      let disposed = false, started = false, epoch = 0, timer, source, refreshing = null, refreshAfterCurrent = false;
+      let disposed = false, started = false, epoch = 0, timer, source, eventFilter = "", refreshing = null, refreshAfterCurrent = false;
       let createAttempt = saved.createAttempt && typeof saved.createAttempt.id === "string" && typeof saved.createAttempt.signature === "string" ? saved.createAttempt : null;
       const runLookups = new Map(), liveCursors = new Map(), terminalRunIds = new Set(), pendingRedos = new Map(), pendingMerges = new Map(), pendingRollbacks = new Map(), runDiffCache = new Map();
       let materialUpload = null;
@@ -182,7 +182,9 @@ window.__ModuleLoader__.load({
       };
       const set = patch => { if (disposed) return;
         if (["draft", "materials", "attachments", "attachmentRemovals", "selectedSkillIds", "selectedSkills", "delivery", "targetRunId", "modelId", "thinkingLevel", "permissionMode", "fileSelection", "root"].some(key => Object.hasOwn(patch, key) && JSON.stringify(patch[key]) !== JSON.stringify(state[key])) && !Object.hasOwn(patch, "inputPreview")) patch = { ...patch, inputPreview: null, previewError: "" };
-        const next = { ...state, ...patch }; if (JSON.stringify(next) === JSON.stringify(state)) return; state = next; persist(); for (const fn of listeners) fn(); };
+        const next = { ...state, ...patch }; if (JSON.stringify(next) === JSON.stringify(state)) return; state = next; persist(); for (const fn of listeners) fn();
+        if (started && ("selected" in patch || "root" in patch || "directories" in patch)) connectEvents();
+      };
       const threadIdOf = threadOrId => typeof threadOrId === "string" ? threadOrId : threadOrId?.threadId;
       const decorateThreads = (threads, overrides = {}) => {
         const pinned = new Set(overrides.pinnedThreadIds ?? state.pinnedThreadIds);
@@ -520,7 +522,18 @@ window.__ModuleLoader__.load({
         const query = selected ? `?${new URLSearchParams({ threadId: selected.threadId, conversationId: selected.conversationId })}` : "";
         const view = await read(`state${query}`);
         if (disposed || at !== epoch) return;
-        if (view.target && view.target.selectedId !== state.targetId) { controller.targetChanged(view.target.selectedId); return; }
+        if (view.target && view.target.selectedId !== state.targetId) {
+          const targetId = view.target.selectedId;
+          // Old UDS profiles stored an unscoped selection. Only carry over its unsent
+          // text when this Go instance confirms the same Thread and Conversation.
+          const sameConversation = view.target.local && state.targetId === null && selected &&
+            view.connection === "ready" && view.info?.instanceId && targetId === `local-go:${view.info.instanceId}` &&
+            view.threadId === selected.threadId && view.conversationId === selected.conversationId;
+          const legacyDraft = sameConversation && !pendingInputs.has(selected.conversationId)
+            ? { selected, draft: state.draft, drafts: { [selected.conversationId]: state.draft } } : null;
+          controller.targetChanged(targetId, { legacyDraft });
+          return;
+        }
         // This store is private to this space; no native Session identity is involved.
         services.viewState.set({ ...view, sessionError: null, sessionId: null });
         const target = view.target?.targets?.find(item => item.id === view.target.selectedId);
@@ -603,7 +616,7 @@ window.__ModuleLoader__.load({
             const models = Array.isArray(modelsResult) ? modelsResult.filter(m => m && typeof m.id === "string") : Array.isArray(modelsResult?.items) ? modelsResult.items : [];
             const summaries = listed.status === "fulfilled" ? listed.value : state.threads;
             const defaults = settings.status === "fulfilled" ? settings.value?.configuration : null;
-            const instanceId = settings.status === "fulfilled" ? settings.value?.instanceId : null;
+            const instanceId = info.status === "fulfilled" && info.value?.instanceId || (settings.status === "fulfilled" ? settings.value?.instanceId : null);
             const service = info.status === "fulfilled" ? info.value : null;
             const inputServiceIdentity = Number.isInteger(service?.pid) && typeof service.startedAt === "string"
               ? JSON.stringify([instanceId, service.pid, service.startedAt]) : instanceId || null;
@@ -996,13 +1009,23 @@ window.__ModuleLoader__.load({
         void refresh();
       };
       const connectEvents = () => {
-        if (disposed || source) return;
+        if (disposed) return;
+        const workspaceId = state.directories.find(directory => directory.root === state.root)?.workspaceId;
+        const threadId = state.selected?.threadId;
+        const filter = new URLSearchParams();
+        if (workspaceId) filter.set("workspaceId", workspaceId);
+        else if (threadId) filter.set("threadId", threadId);
+        const query = filter.toString();
+        if (source && query === eventFilter) return;
+        source?.close();
+        eventFilter = query;
         if (transport.subscribe) {
-          const stop = transport.subscribe({ onEvent: receiveEvent, onLive: frame => void receiveLive(frame).catch(() => {}), onError: () => { set({ live: [] }); void refresh(); } });
+          const stop = transport.subscribe({ query, onEvent: receiveEvent, onLive: frame => void receiveLive(frame).catch(() => {}), onError: () => { set({ live: [] }); void refresh(); } });
           source = { close: stop }; return;
         }
         if (!EventSourceImpl) return;
-        source = new EventSourceImpl("/super-agent/events");
+        source = new EventSourceImpl("/super-agent/events" + (query ? "?" + query : ""));
+        source.addEventListener?.("resync_required", () => { set({ live: [] }); void refresh(); });
         source.addEventListener("message", event => { try { receiveEvent(JSON.parse(event.data)); } catch { receiveEvent(null); } });
         source.addEventListener("live", event => { try { void receiveLive(JSON.parse(event.data)).catch(() => {}); } catch {} });
         source.addEventListener("error", () => { set({ live: [] }); void refresh(); });
@@ -1665,14 +1688,18 @@ window.__ModuleLoader__.load({
           return sendThreadControl(record, true);
         },
         clearTargetCache(targetId) { try { storage?.removeItem(`${STORAGE_KEY}.${targetId || "uds"}`); } catch {} },
-        targetChanged(targetId, { forget = false } = {}) {
+        targetChanged(targetId, { forget = false, legacyDraft = null } = {}) {
           rememberDraft(); persist();
           capabilityGeneration++; capabilityRequest = null;
           workspaceReadVersion++; workspaceBrowseAbort?.abort();
           epoch++; metadata.clear(); firstTitles.clear(); runLookups.clear(); liveCursors.clear(); terminalRunIds.clear(); runDiffCache.clear(); pendingInputs.clear(); pendingWaitActions.clear(); pendingRollbacks.clear(); if (materialUpload) materialUpload.cancelled = true; materialUpload = null; createAttempt = null;
           source?.close(); source = null;
-          let cached = {};
-          try { if (forget) storage?.removeItem(`${STORAGE_KEY}.${targetId || "uds"}`); else cached = JSON.parse(storage?.getItem(`${STORAGE_KEY}.${targetId || "uds"}`) || "{}"); } catch {}
+          let cached = legacyDraft || {};
+          try {
+            const key = `${STORAGE_KEY}.${targetId || "uds"}`;
+            if (forget) storage?.removeItem(key);
+            else if (storage?.getItem(key)) cached = JSON.parse(storage.getItem(key));
+          } catch {}
           materialDrafts.clear(); for (const [key, value] of Object.entries(cached.materialDrafts || {})) materialDrafts.set(key, value);
           composerDrafts.clear(); for (const [key, value] of Object.entries(cached.composerDrafts || {})) composerDrafts.set(key, restoreComposer(value));
           drafts.clear(); for (const [key, value] of Object.entries(cached.drafts || {})) if (typeof value === "string") drafts.set(key, value);
@@ -1684,7 +1711,8 @@ window.__ModuleLoader__.load({
           set({ taskFeatures: {}, taskScope: null, pendingTaskOperations: [], backgroundTasks: [], taskReadError: "", goal: null, goalCancelIntent: null, waitReceipt: null, goalsSupported: false, goalError: "", goalNotice: "", goalBusy: false, goalInputMode: "message", goalEventSeq: 0, attachments: restoreAttachments(cached.attachments), attachmentRemovals: cached.attachmentRemovals || [], attachmentDraftId: cached.attachmentDraftId || null, selectedSkills: cached.selectedSkills || [], skillCatalog: [], skillCatalogError: "", attachmentCapabilities: null, inputServiceIdentity: null, attachmentCapabilityError: "", inputPreview: null, previewLoading: false, previewError: "", attachmentNotice: "", busy: false, inspector: false, targetId, workspaceForm: false, coreInstanceId: null, coreTargetLabel: "当前 Core", managedWorkspaceLocation: null, workspaceLoading: false, workspaceOpening: false, workspaceError: "", workspaceRequest: cached.workspaceRequest || null, selected: cached.selected || null, directories: Array.isArray(cached.directories) ? cached.directories : [], removedRoots: cached.removedRoots || [], titles: cached.titles || {}, pinnedThreadIds: cached.pinnedThreadIds || [], archivedThreadIds: cached.archivedThreadIds || [], models: [], threads: [], messages: [], live: [], thread: null, runDetails: [], waits: [], executions: [], contextView: null, contextError: "", conversation: null, branches: [], branchError: "", branchesLoaded: false, branchLoading: false, root: cached.root || "", modelId: cached.modelId || "", modelSource: cached.modelSource || (cached.modelId ? "conversation_override" : "service_default"), thinkingLevel: typeof cached.thinkingLevel === "string" ? cached.thinkingLevel : null, defaultModelId: "", permissionMode: cached.permissionMode || null, delivery: "new_run", targetRunId: null, diffSelection: cached.diffSelection && typeof cached.diffSelection.runId === "string" ? cached.diffSelection : null, draft: typeof cached.draft === "string" ? cached.draft : "", materials: Array.isArray(cached.materials) ? cached.materials : [], selectedSkillIds: Array.isArray(cached.selectedSkillIds) ? cached.selectedSkillIds : [], fileSelection: null, ready: false, error: "", historyError: "" });
           services.resetForTarget?.();
           services.viewState.set({ connection: "offline", threadId: null, conversationId: null, snapshot: null, run: null, threads: [], info: null, eventSeq: null });
-          if (started) connectEvents(); void refresh();
+          if (started) connectEvents();
+          if (refreshing) refreshAfterCurrent = true; else void refresh();
         },
         async fork(message) {
           if (!state.selected || !Number.isInteger(message.entryId)) return;
