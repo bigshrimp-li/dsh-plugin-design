@@ -64,7 +64,7 @@ export async function withHiddenDesktop({ executable, chromiumHome, env, cwd }, 
   child.stderr.on("data", collect); child.stdout.on("data", collect);
   const exited = once(child, "exit");
   try {
-    const inspectorURL = await until(() => output.match(/Debugger listening on (ws:\/\/127\.0\.0\.1:\d+\/[\w-]+)/)?.[1], "Desktop inspector", 10000);
+    const inspectorURL = await until(() => output.match(/Debugger listening on (ws:\/\/127\.0\.0\.1:\d+\/[\w-]+)/)?.[1], "Desktop inspector", 30000);
     inspector = await connectInspector(inspectorURL);
     await inspector.send("Runtime.enable"); await inspector.send("Debugger.enable");
     const pause = inspector.next("Debugger.paused");

@@ -12,3 +12,5 @@
 | 业务回归 | `test:core` 使用真实 Go 服务检查上传、取消、恢复、Run 产物和外部文件冲突。`test:goal-host-core` 在 DSH Electron 中用本机合成模型检查工具调用、验证、完成与运行中取消。 |
 
 实际宿主验收使用 Darwin arm64 上的 DSH 0.2.1-rc.5。发行包按平台构建。以上测试使用临时数据目录和本地合成模型，覆盖 Host 入口及浏览器使用的 HTTP 事件路由。移动端、公网接入和外部模型不在本次验收范围内。
+
+本次合并与 [Core 的共享 Go 服务](https://github.com/bigshrimp-li/agent-loop-core/pull/8) 配套。实际 Electron Host 的 10 项跨仓用例覆盖 Goal、委派、工作区与分支、设置，以及后台 Shell 运行期间继续在同一 Conversation 提问。5 项真实 Go 文件用例覆盖上传恢复与 Run 产物回传。桌面安装升级回归使用签名 DSH rc.3 和 rc.5，验证从插件 0.1.2 升级至 0.2.0 后仍可打开原 Thread、Conversation 和未发送的草稿。旧实例下尚未确认的输入保留在原浏览器存储分区。
