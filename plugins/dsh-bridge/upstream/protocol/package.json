@@ -10,10 +10,13 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./idl/openapi.yaml": "./idl/openapi.yaml",
+    "./idl/asyncapi.yaml": "./idl/asyncapi.yaml"
   },
   "files": [
-    "dist"
+    "dist",
+    "idl"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json"

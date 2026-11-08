@@ -46,9 +46,11 @@ export const EMPTY_RECOVERY: RecoverySummary = {
   activeDelegations: 0,
 };
 
-export type RuntimeFeatures = { readonly delegationsV1?: boolean; readonly goalsV1?: boolean; readonly backgroundTasksV1?: boolean; readonly taskMonitorsV1?: boolean; readonly taskSchedulesV1?: boolean; readonly taskCreation?: { readonly shell: boolean; readonly monitors: boolean; readonly schedules: boolean } };
+export type RuntimeFeatures = { readonly delegationsV1?: boolean; readonly eventsWebSocketV1?: boolean; readonly goalsV1?: boolean; readonly backgroundTasksV1?: boolean; readonly taskMonitorsV1?: boolean; readonly taskSchedulesV1?: boolean; readonly taskCreation?: { readonly shell: boolean; readonly monitors: boolean; readonly schedules: boolean } };
 
 export type ServerInfo = {
+  readonly runtimeKind?: "go";
+  readonly instanceId?: string;
   /** Missing features are unsupported. Reported from the serving runtime. */
   readonly runtimeFeatures?: RuntimeFeatures;
   readonly version: string;

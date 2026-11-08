@@ -79,7 +79,10 @@ async function install() {
     if (!await exists(path.join(repositoryRoot, 'node_modules', '.bin', 'tsc'))) {
       run('npm', ['ci', '--no-audit', '--no-fund', '--registry=https://registry.npmjs.org'], { cwd: repositoryRoot });
     }
-    for (const plugin of plugins) runPluginScript(plugin, 'build');
+    for (const plugin of plugins) {
+      runPluginScript(plugin, 'build');
+      runPluginScript(plugin, 'prepare:distribution');
+    }
   }
   await checkPlugins({ built: true, ids: plugins.map(plugin => plugin.id) });
   const backup = path.join(dshHome, 'plugin-backups', `${Date.now()}-${randomUUID()}`);

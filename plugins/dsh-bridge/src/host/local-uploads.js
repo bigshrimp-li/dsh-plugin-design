@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 /** One DSH host owns this cache. Upload retries always read captured bytes, never the live source. */
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
@@ -59,7 +60,7 @@ export function createLocalUploadService({ files, home, targetKey, actorId = "lo
       const captured = await candidate(operation.candidateId); signal.throwIfAborted();
       let remote = operation.transferId ? await files.getTransfer(operation.transferId) : null;
       if (!remote || remote.status === "cancelled" || remote.status === "uploading" && now() > remote.expiresAt) remote = await files.createTransfer({ requestId: `${operation.requestId}:transfer:${operation.attempt}`, workspaceId: operation.workspaceId, manifest: captured.manifest, source: { mode: "local_upload", location: captured.localRoot } });
-      if (remote.workspaceId !== operation.workspaceId || JSON.stringify(remote.manifest) !== JSON.stringify(captured.manifest)) throw failure("FILE_CONFLICT", "云端原传输清单与本机捕获内容不同，已拒绝替换来源");
+      if (remote.workspaceId !== operation.workspaceId || !isDeepStrictEqual(remote.manifest, captured.manifest)) throw failure("FILE_CONFLICT", "云端原传输清单与本机捕获内容不同，已拒绝替换来源");
       operation = await update(id, current => ({ ...current, transferId: remote.operationId, transferIds: [...new Set([...current.transferIds, remote.operationId])], missingBlocks: remote.missingBlocks.length, updatedAt: now() }));
       for (const digest of remote.missingBlocks) {
         signal.throwIfAborted(); const bytes = await readFile(join(root, "blocks", digest));

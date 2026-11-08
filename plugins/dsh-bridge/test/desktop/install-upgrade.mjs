@@ -74,7 +74,7 @@ async function startCore() {
 }
 async function makeProfile(name) {
   const base = join(temp, name), home = join(base, "home"), dsh = join(base, "dsh"), chromiumHome = join(base, "chromium");
-  const core = join(base, "bridge"), scratch = join(base, "tmp");
+  const core = join(coreDir, "core"), scratch = join(base, "tmp");
   await Promise.all([home, dsh, chromiumHome, core, scratch].map(dir => mkdir(dir, { recursive: true, mode: 0o700 })));
   const env = { PATH: process.env.PATH, HOME: home, DSH_HOME: dsh, TMPDIR: scratch,
     SUPER_AGENT_HOME: core, SUPER_AGENT_SOCKET: socket, DEEPSEEK_API_KEY: "synthetic-install-test",
@@ -185,8 +185,9 @@ try {
   const legacy = JSON.parse((await run("tar", ["-xOzf", oldArchive, "package/package.json"])).stdout);
   assert.equal(legacy.name, pkg); assert.equal(legacy.version, "0.1.2");
   report.versions = { previousHost: "0.2.1-rc.3", currentHost: "0.2.1-rc.5", previousPlugin: legacy.version };
-  await run("npm", ["run", "build"], { cwd: plugin });
-  const pack = JSON.parse((await run("npm", ["pack", "--json", "--pack-destination", temp], { cwd: plugin })).stdout)[0];
+  const buildEnv = { ...process.env, SUPER_AGENT_SOURCE_ROOT: resolve(coreSource) };
+  await run("npm", ["run", "prepack"], { cwd: plugin, env: buildEnv });
+  const pack = JSON.parse((await run("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", temp], { cwd: plugin, env: buildEnv })).stdout)[0];
   const candidate = join(temp, pack.filename);
   assert.equal(pack.name, pkg); assert.notEqual(pack.version, legacy.version);
   report.versions.candidatePlugin = pack.version;

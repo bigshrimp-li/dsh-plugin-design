@@ -63,6 +63,7 @@ window.__ModuleLoader__.load({
                 };
                 source.onmessage = parse("onEvent");
                 source.addEventListener?.("live", parse("onLive"));
+                source.addEventListener?.("resync_required", () => publish("onError", null));
                 source.addEventListener?.("error", () => publish("onError", null));
               } catch { publish("onError", null); }
             };
@@ -846,8 +847,8 @@ window.__ModuleLoader__.load({
          * @param options.onLive - called with each live frame.
          * @returns the stop function.
          */
-        subscribe({ onEvent, onLive, onError } = {}) {
-          return subscribeSharedEvents(Events, `${base}/events`, { onEvent, onLive, onError });
+        subscribe({ onEvent, onLive, onError, query } = {}) {
+          return subscribeSharedEvents(Events, `${base}/events` + (query ? "?" + query : ""), { onEvent, onLive, onError });
         },
       };
     }

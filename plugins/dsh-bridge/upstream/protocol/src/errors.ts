@@ -1,25 +1,6 @@
-/**
- * The error vocabulary and its mapping to HTTP status codes.
- *
- * `ERROR_CODES` is the single source of truth: the union type, the status map
- * and the completeness test are all derived from it, so a code cannot be added
- * without a status.
- *
- * The set is the Core's own error vocabulary (`@super-agent/core`
- * `types/contracts.ts`) plus the codes the service interface introduces
- * (design §4.2). Every Core code is present here so a Core error can always be
- * transported without translation; codes the design's table does not list are
- * given the status that matches what the caller has to do about them.
- *
- * Two codes are in neither list and are additions this package makes:
- * `VERSION_CONFLICT`, which §4.2's table and §3.3 both use but neither source
- * declares; and `SERVER_STOPPING`, because §2.1 makes `stopping` refuse new
- * commands and the only "not serving" code the design has is `SERVER_STARTING`,
- * which would report the wrong state. Both need to be folded back into the
- * design document.
- */
 import type { JsonObject } from "./json.js";
 
+/** Public error vocabulary. The SDK and the Go HTTP adapter share the status contract in idl/shared.yaml. */
 export const ERROR_CODES = [
   // 400 — the request itself is wrong and must be changed before retrying.
   "INVALID_REQUEST",

@@ -12,7 +12,8 @@ await build({
   platform: 'node',
   format: 'esm',
   target: 'node22.19',
-  external: ['@deepseek-ai/*'],
+  banner: { js: "import { createRequire as createNodeRequire } from 'node:module'; const require = createNodeRequire(import.meta.url);" },
+  external: ['@deepseek-ai/*', 'bufferutil', 'utf-8-validate'],
   alias: {
     '@super-agent/client': local('../upstream/client/src/index.ts'),
     '@super-agent/protocol': local('../upstream/protocol/src/index.ts'),

@@ -16,8 +16,8 @@ function fixture() {
       output = reply(JSON.stringify({ decision: verify ? "pass" : "candidate_complete", summary: "Verified native Host committed shell proof", nextStep: "", blockerKey: "", evidenceRefs, gaps: [], completedItems: ["native proof"], remainingItems: [],
         ...(verify ? { criteria: input.acceptanceCriteria.map(item => ({ criterionId: item.id, verdict: "pass", evidenceRefs })) } : {}) }));
     } else {
-      const last = body.messages.filter(message => !(message.role === "user" && (textOf(message).startsWith("<runtime-goal-context>") || textOf(message).startsWith("<orchestration-context>")))).at(-1);
-      output = last?.role === "tool" ? reply("NATIVE_GOAL_WORK_DONE") : reply("", serialized.includes("CANCEL_NATIVE_FIXTURE") ? "printf started > native-goal-tool-started; sleep 10; printf CANCEL_NATIVE_FIXTURE" : "printf NATIVE_COMMITTED_PROOF");
+      const hasProof = body.messages.some(message => message.role === "tool" && textOf(message).includes("NATIVE_COMMITTED_PROOF"));
+      output = hasProof ? reply("NATIVE_GOAL_WORK_DONE") : reply("", serialized.includes("CANCEL_NATIVE_FIXTURE") ? "printf started > native-goal-tool-started; sleep 10; printf CANCEL_NATIVE_FIXTURE" : "printf NATIVE_COMMITTED_PROOF");
     }
     return output;
   });
@@ -41,7 +41,9 @@ describe.skipIf(!process.versions.electron || !process.env.SUPER_AGENT_SOURCE_RO
     const receipt = await f.bridge.call("goal.create", { requestId: "native-goal-cancel-create", conversationId: f.thread.mainConversationId, objective: "CANCEL_NATIVE_FIXTURE", limits: { totalTokens: 100000, maxIterations: 3, maxModelRequests: 12 } });
     await waitFor(async () => {
       const executions = await f.sdk.listExecutions(f.thread.threadId);
-      const started = await readFile(join(f.workspaceRoot, "native-goal-tool-started"), "utf8").catch(() => "");
+      const running = executions.find(item => item.toolName === "bash" && item.status === "running");
+      const executionRoot = running && (await f.sdk.files.getRunFiles(running.runId)).executionRoot;
+      const started = executionRoot ? await readFile(join(executionRoot, "native-goal-tool-started"), "utf8").catch(() => "") : "";
       return { executions, started };
     }, value => value.started === "started" && value.executions.some(item => item.toolName === "bash" && item.status === "running"), "running shell with actual start marker");
     const current = await f.bridge.call("goal.get", { goalId: receipt.goalId });

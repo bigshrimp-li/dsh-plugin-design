@@ -1,0 +1,16 @@
+# DSH 本机 Go Runtime
+
+同一用户的数据目录对应一个 Go 服务。服务启动时取得数据目录锁。DSH 插件启动时先检查协议、持久实例标识和服务状态，通过同一个 Unix 域套接字调用 HTTP 和 WebSocket。多个窗口同时打开时，获得锁的服务负责两个窗口的请求。退出 DSH 窗口后服务继续处理已接收的任务。
+
+| 功能 | 行为与验证 |
+|---|---|
+| 本机安装 | `npm pack` 生成 Host、SDK、当前平台可执行文件和 SHA-256 清单。解包后 `node install.mjs --profile desktop` 校验并登记该目录。 |
+| 自动发现 | 插件加载立即探活并订阅事件。服务未启动时使用安装包的可执行文件。连续失败进入退避，旧版本或不匹配的 socket 返回诊断。 |
+| Workspace | 两个不同目录在同一实例注册两个 workspaceId。HTTP 访问和快照按工作区查询，插件将当前空间传给 WS 订阅。 |
+| 恢复 | 已提交事件带 seq，WS 恢复时同时发送实例标识。过期游标或实例切换刷新快照。临时增量不会推进持久水位。 |
+| 分发验收 | `test:local-startup` 在临时 profile 解包并安装发行包，并发启动两个实际 DSH，验证同一 PID 和 instanceId。先提交 B 事件再提交 A，通过 A 的浏览器事件接口只收到 A 的 Thread。关闭两个 DSH 后再次打开，复用服务和工作区。 |
+| 业务回归 | `test:core` 使用真实 Go 服务检查上传、取消、恢复、Run 产物和外部文件冲突。`test:goal-host-core` 在 DSH Electron 中用本机合成模型检查工具调用、验证、完成与运行中取消。 |
+
+实际宿主验收使用 Darwin arm64 上的 DSH 0.2.1-rc.5。发行包按平台构建。以上测试使用临时数据目录和本地合成模型，覆盖 Host 入口及浏览器使用的 HTTP 事件路由。移动端、公网接入和外部模型不在本次验收范围内。
+
+本次合并与 [Core 的共享 Go 服务](https://github.com/bigshrimp-li/agent-loop-core/pull/8) 配套。实际 Electron Host 的 10 项跨仓用例覆盖 Goal、委派、工作区与分支、设置，以及后台 Shell 运行期间继续在同一 Conversation 提问。5 项真实 Go 文件用例覆盖上传恢复与 Run 产物回传。桌面安装升级回归使用签名 DSH rc.3 和 rc.5，验证从插件 0.1.2 升级至 0.2.0 后仍可打开原 Thread、Conversation 和未发送的草稿。旧实例下尚未确认的输入保留在原浏览器存储分区。

@@ -58,3 +58,5 @@ export { createManagedWorkspaceClient } from "./managed-workspaces.js";
 export type { ManagedWorkspaceClient } from "./managed-workspaces.js";
 export * from "./background-tasks.js";
 export * from "./delegations.js";
+
+export type { EventScope, EventSocketOptions } from "./event-socket.js";

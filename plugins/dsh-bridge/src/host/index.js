@@ -57,7 +57,8 @@ import {
 import { defaultInputReceiptsPath, openInputReceipts } from "./input-receipts.js";
 import { defaultSessionMapPath, openSessionMap } from "./session-map.js";
 import { MessagePositions } from "./message-positions.js";
-import { openTargetService } from "./target-store.js";
+import { LocalRuntime } from "./local-runtime.js";
+import { localService } from "./local-service.js";
 
 /** Services that must exist before the factory can be registered. */
 export const inject = [];
@@ -201,7 +202,11 @@ function explainCreateRefusal(error, settings) {
 
 /** Independent space only. Never replace the Harness AgentFactory or native sessions. */
 export function apply(ctx) {
-  const service = onceSucceeding(() => openTargetService({ options: resolveCoreOptions() }));
+  const runtime = new LocalRuntime(resolveCoreOptions(), { log: ctx.logger });
+  const local = localService(runtime);
+  const service = () => local;
+  ctx.effect?.(() => () => runtime.close());
+  runtime.start();
   ctx.inject?.(["webServer"], (host) => {
     registerCoreRoutes({ webServer: host.webServer, effect: host.effect, service, log: ctx.logger });
     registerObservationRoutes({ webServer: host.webServer, effect: host.effect,

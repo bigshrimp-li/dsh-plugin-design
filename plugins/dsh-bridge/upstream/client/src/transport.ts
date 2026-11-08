@@ -195,5 +195,5 @@ async function requestConnection(options: ConnectionOptions): Promise<{
     };
   }
   if (!options.socketPath) throw new CoreConnectionError("unreachable", "Core connection is required");
-  return { request: httpRequest, options: { socketPath: options.socketPath }, headers: {} };
+  return { request: httpRequest, options: { socketPath: options.socketPath }, headers: options.expectedInstanceId ? { "x-core-instance-id": options.expectedInstanceId } : {} };
 }

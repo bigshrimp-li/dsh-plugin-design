@@ -7,7 +7,9 @@
  * verification of the echo Agent needs the live harness and is covered by
  * `docs/requirements/p0-skeleton/P0人工检查.md`.
  */
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const read = (relative) => readFile(new URL(relative, import.meta.url), "utf8");
@@ -34,7 +36,7 @@ describe("bundle manifest", () => {
     expect(manifest.dsh?.client?.platform).toBe("web");
   });
 
-  it("declares only the two DSH releases verified against this bridge", () => {
+  it("declares only the DSH releases verified against this bridge", () => {
     expect(manifest.engines?.dsh).toBe(VALIDATED_DSH_RANGE);
     expect(bridgeLock?.engines?.dsh).toBe(VALIDATED_DSH_RANGE);
   });
@@ -85,6 +87,11 @@ describe("host entry", () => {
 
   it("registers the Core routes without reading the native AgentFactory or Session services", async () => {
     const host = await import("../../src/host/index.js");
+    const temporary = await mkdtemp(join(tmpdir(), "dsh-apply-"));
+    const originalHome = process.env.SUPER_AGENT_HOME, originalSocket = process.env.SUPER_AGENT_SOCKET;
+    process.env.SUPER_AGENT_HOME = temporary;
+    process.env.SUPER_AGENT_SOCKET = join(temporary, "core.sock");
+    let close;
     const accesses = [];
     const requestedDependencies = [];
     const paths = [];
@@ -101,6 +108,7 @@ describe("host entry", () => {
     };
     const ctx = new Proxy(
       {
+        effect(start) { close = start(); },
         logger: { error() {}, warn() {} },
         inject(dependencies, callback) {
           requestedDependencies.push(dependencies);
@@ -118,7 +126,13 @@ describe("host entry", () => {
       },
     );
 
-    expect(() => host.apply(ctx)).not.toThrow();
+    try { expect(() => host.apply(ctx)).not.toThrow(); }
+    finally {
+      close?.();
+      if (originalHome === undefined) delete process.env.SUPER_AGENT_HOME; else process.env.SUPER_AGENT_HOME = originalHome;
+      if (originalSocket === undefined) delete process.env.SUPER_AGENT_SOCKET; else process.env.SUPER_AGENT_SOCKET = originalSocket;
+      await rm(temporary, { recursive: true, force: true });
+    }
     expect(requestedDependencies).toEqual([["webServer"]]);
     expect(paths).toEqual(expect.arrayContaining(["/super-agent/state", "/super-agent/action", "/super-agent/events"]));
     expect(accesses).not.toContain("agents");

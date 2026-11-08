@@ -277,6 +277,8 @@ window.__ModuleLoader__.load({
             notice("先保存入口，再配对。认证令牌仅保存在 DSH 宿主，本页不读取令牌。不同 Core 实例须重新配对。"), s.error && h("div", { role: "alert", className: "sa-settings-error" }, s.error)));
       }
       function Connections({ s, setDialog }) {
+        if (s.local) return h(React.Fragment, null, h("h3", null, "本地 Go Runtime"),
+          notice(s.targets.find(target => target.id === s.selectedId)?.baseUrl || "正在连接本机服务"));
         return h(React.Fragment, null, h("div", { className: "sa-settings-row" }, h("div", null, h("h3", null, "连接与环境"), h("p", { className: "sa-settings-muted" }, "本地和远程使用相同的 HTTPS 校验与认证。配置权限由所选服务和配对身份决定。")), button("添加连接", () => setDialog({ type: "target" }))),
           !s.targets.length && notice("尚未添加 HTTPS Core。先添加入口并配对；空模型目录不影响打开设置。"),
           h("p", { className: "sa-settings-notice" }, s.executionConnection === "connected" ? "执行已连接" : s.executionConnection === "degraded" ? "执行服务受限" : s.executionConnection === "checking" ? "正在检查执行连接" : "执行连接不可用", s.compatibilityUds ? " · 本机 UDS" : s.selectedId ? " · HTTPS" : ""),
