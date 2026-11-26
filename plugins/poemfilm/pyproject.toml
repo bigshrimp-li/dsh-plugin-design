@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poemfilm"
+version = "0.1.0"
+description = "用 OpenAI API 赠金制作诗词素材，在本机离线剪辑与验片"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6,<7", "Pillow>=11,<13", "websockets>=15,<17"]
+
+[project.optional-dependencies]
+agent = ["mcp>=1.14,<2"]
+test = ["pytest>=8,<10"]
+
+[project.scripts]
+poemfilm = "poemfilm.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/poemfilm/skills/poemfilm" = ["skills/poemfilm/SKILL.md"]
+"share/poemfilm/examples" = ["examples/赠金核对模板.json"]
+"share/poemfilm" = ["使用说明.md"]

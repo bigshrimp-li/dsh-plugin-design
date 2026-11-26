@@ -7,10 +7,11 @@ DeepSeek Harness 的多插件仓库。每个插件独立安装、测试和维护
 | [Design](plugins/design/README.md) | `plugins/design` | `@local/dsh-plugin-design` | 已有完整测试 |
 | [目标日程](plugins/okr-schedule/README.md) | `plugins/okr-schedule` | `@local/okr-schedule` | 实验插件 |
 | [会话可视化](plugins/agent-session-visualizer/README.md) | `plugins/agent-session-visualizer` | `@local/agent-session-visualizer` | 实验插件 |
+| [古诗视频](plugins/poemfilm/README.md) | `plugins/poemfilm` | `@local/poemfilm` | 实验插件 |
 
 ## 安装
 
-前提：Node.js ≥ 20、npm、已安装 DSH，并且 `dsh` 在 PATH 中。Design 的渲染和浏览器测试还需要 Chrome、Chromium 或 Edge。
+前提：Node.js ≥ 20、npm、已安装 DSH，并且 `dsh` 在 PATH 中。Design 的渲染和浏览器测试还需要 Chrome、Chromium 或 Edge。Poemfilm 构建使用 uv 和 Python 3.11+；本机剪辑需要 FFmpeg 与 FFprobe。
 
 1. 克隆仓库并安装锁定的依赖：
 
@@ -27,6 +28,7 @@ DeepSeek Harness 的多插件仓库。每个插件独立安装、测试和维护
    ./install.sh --plugin design --profile desktop
    ./install.sh --plugin okr-schedule --profile desktop
    ./install.sh --plugin agent-session-visualizer --profile desktop
+   ./install.sh --plugin poemfilm --profile desktop
    ```
 
    无参数 `./install.sh` 继续只安装 Design。`--plugin` 可以重复；`--dry-run` 预览且不修改配置；`--skip-build` 用于已经构建的本机仓库；`--keep-skills` 保留已有本机 skills。`DSH_BIN` 和 `DSH_HOME` 可以覆盖默认 CLI 与数据根目录。

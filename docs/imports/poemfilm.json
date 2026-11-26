@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "poemfilm",
+  "importedAt": "2026-11-26",
+  "kind": "working-tree-snapshot",
+  "sourceProject": "poemfilm 0.1.0",
+  "files": {
+    "examples/赠金核对模板.json": "c675e6dbad17cfd575cd34c2d8293cc8aa8484c9df90b1de9f67576fac121a94",
+    "pyproject.toml": "5c44a29629591a81ad07a37ec3c065ac0ea07a587d69f6562b300fdab70d6ef1",
+    "skills/poemfilm/SKILL.md": "e806ffcdd88cab1aa65dcc8e85b980bc7b6e24cabe75419c96d60854c62bc5ef",
+    "src/poemfilm/__init__.py": "a581f497888d80804e31ef9597327a51130814a0807965461e0a99336650c611",
+    "src/poemfilm/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "src/poemfilm/bridge.py": "c32ab50ee08c25e6d7cad1475be27c5d5e2b4615e887c08a7458f7442b45d57e",
+    "src/poemfilm/cli.py": "bbc6628b7547624220d2733562d131632a94ce48aad6f990b12f98e18c89a1d7",
+    "src/poemfilm/core.py": "959ce5e7cf79078ded5ddd560bb5abc8b803258d18ee1b642557d60f37cea2fb",
+    "src/poemfilm/funding.py": "9a8b6557cacac5c7478902b3440ba3b166dec6f6e59c90618f754447a363544b",
+    "src/poemfilm/generate.py": "e0727d93455a60e0e1c67b796dc1dd57f9bac5746152dd40a37181128885f20e",
+    "src/poemfilm/keychain.py": "bb14dff67f698aec50ca5c90a1e3ab823e2063afad285477839658b070078275",
+    "src/poemfilm/media.py": "9d6e738a4e6dffe8ffd6c8cfa30d8e385832b447e88b5ec5390008365eec4a95",
+    "src/poemfilm/media_plan.py": "593b92b551bdfb7869da60864da5cad7b4afb6f63f8782a3b8f4a75ede843a03",
+    "src/poemfilm/media_tools.py": "e895feb8d5b92927da879eaecbd5817b6552fa0c8d9b3bd7da13e5bf42d75796",
+    "src/poemfilm/providers.py": "0a91b890003bd193e5404bfe5d7ae6c714d98356019edbe76f4ab6fa2151ccda",
+    "src/poemfilm/workspace.py": "946f03ccd036c89d3d88ee78010110af0ab989b11cdf0cc44fd55f4de2cba192",
+    "tests/test_funding.py": "43f34d9ba11a040a0d199d7ca5753245ad63da58aa57348d30be5c3268671375",
+    "tests/test_generate.py": "ac6ff9c655d19044b53df4e6e5cb6b61ae1ce3f056e5550d992a5a35a484a79a",
+    "tests/test_media.py": "b21fda7151c6a700f003f29f38de75a6f3ae608c02aba8dae6faee24ceb0e149",
+    "tests/test_workspace_cli.py": "3c313455b1ca1649969ebc42a3ccef54ec0bbcf02926e2211b6bd86806d084af",
+    "使用说明.md": "57a674887c0c73bca49dbe96c47f360a53f564bc13eba2df1186031229016af7"
+  },
+  "maintenance": "后续在插件目录维护。指纹对应迁入前的源码快照，Skill 和使用说明已适配 DSH。"
+}

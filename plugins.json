@@ -32,6 +32,18 @@
         "kind": "local",
         "importRecord": "docs/imports/agent-session-visualizer.json"
       }
+    },
+    {
+      "id": "poemfilm",
+      "path": "plugins/poemfilm",
+      "status": "experimental",
+      "skills": [
+        "poemfilm"
+      ],
+      "source": {
+        "kind": "local",
+        "importRecord": "docs/imports/poemfilm.json"
+      }
     }
   ]
 }

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "organization_id": null,
+  "project_id": null,
+  "source": "chatgpt_subscription_api_grant",
+  "currency": "USD",
+  "grant_remaining_usd": null,
+  "purchased_balance_usd": null,
+  "other_funds_usd": null,
+  "billing_mode": null,
+  "auto_recharge": null,
+  "exclusive_usage": null,
+  "safety_reserve_usd": null,
+  "checked_by": null,
+  "checked_at": null,
+  "valid_until": null,
+  "grant_expires_at": null,
+  "evidence_ref": null
+}
