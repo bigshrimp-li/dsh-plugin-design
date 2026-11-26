@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+# npm and pnpm may invoke this file through a profile's .bin symlink.
+plugin_root=$(node -e 'const {dirname}=require("node:path"); process.stdout.write(dirname(dirname(require("node:fs").realpathSync(process.argv[1]))))' "$0")
+if [ "$#" -eq 1 ] && [ "$1" = "--setup" ]; then
+  exec node "$plugin_root/scripts/runtime.mjs" setup
+fi
+python=$(node "$plugin_root/scripts/runtime.mjs" python)
+exec "$python" -I -c 'import sys; sys.path.insert(0, sys.argv.pop(1)); from poemfilm.cli import main; raise SystemExit(main())' "$plugin_root/src" "$@"

@@ -39,9 +39,9 @@ function install(f, args = [], env = {}) {
   return spawnSync(process.execPath, [installer, '--skip-build', ...args], { encoding: 'utf8', env: { ...process.env, DSH_HOME: f.directory, DSH_BIN: f.binary, ...env } });
 }
 
-test('the three plugins have independent, complete DSH entrypoints', async () => {
+test('the catalog plugins have independent, complete DSH entrypoints', async () => {
   const plugins = await checkPlugins({ built: true });
-  assert.deepEqual(plugins.map(p => p.id), ['design', 'okr-schedule', 'agent-session-visualizer']);
+  assert.deepEqual(plugins.map(p => p.id), ['design', 'okr-schedule', 'agent-session-visualizer', 'poemfilm']);
   assert.throws(() => selectPlugins(plugins, ['missing']), /未知插件/);
 });
 
@@ -65,7 +65,11 @@ test('all plugins install repeatedly without replacing other bundles or duplicat
   const manifest = JSON.parse(await fs.readFile(path.join(f.profileDir, 'package.json')));
   assert.equal(manifest.dependencies.other, '1.0.0');
   assert.equal(manifest.dsh.profile.custom, true);
-  assert.deepEqual(manifest.dsh.profile.bundles, ['other', '@local/dsh-plugin-design', '@local/okr-schedule', '@local/agent-session-visualizer']);
+  assert.deepEqual(manifest.dsh.profile.bundles, ['other', '@local/dsh-plugin-design', '@local/okr-schedule', '@local/agent-session-visualizer', '@local/poemfilm']);
+  const owners = JSON.parse(await fs.readFile(path.join(f.directory, 'plugin-skill-owners.json')));
+  assert.equal(owners.poemfilm.pluginId, 'poemfilm');
+  assert.equal(await fs.readFile(path.join(f.directory, 'skills/poemfilm/SKILL.md'), 'utf8'),
+    await fs.readFile(path.join(repositoryRoot, 'plugins/poemfilm/skills/poemfilm/SKILL.md'), 'utf8'));
   for (const plugin of await loadPlugins()) assert.equal(manifest.dependencies[plugin.manifest.name], `link:${plugin.directory}`);
   assert.ok((await fs.readFile(path.join(f.directory, 'skills/design/SKILL.md'), 'utf8')).length > 0);
 });

@@ -1,0 +1,45 @@
+{
+  "name": "@local/poemfilm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "古诗视频分镜、素材生成和本机剪辑工具与 DSH Skill",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "poemfilm": "./bin/poemfilm"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "bin/poemfilm",
+    "scripts/runtime.mjs",
+    "pyproject.toml",
+    "uv.lock",
+    "src/poemfilm/*.py",
+    "skills/poemfilm/SKILL.md",
+    "examples/赠金核对模板.json",
+    "使用说明.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "scripts": {
+    "build": "npm run check && node scripts/runtime.mjs setup",
+    "check": "node --check index.js && node --check client.js && node --check scripts/runtime.mjs && sh -n bin/poemfilm",
+    "test": "node --test tests/*.test.mjs && uv run --frozen --extra agent --extra test python -m pytest -q tests"
+  }
+}
